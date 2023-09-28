@@ -8,6 +8,13 @@ add_executable(
     src/target/server.cpp
     src/server/Server.cpp
     src/server/thread/Thread.cpp
+    src/server/httpMessage/HttpMessage.cpp
+    src/server/socket/Socket.cpp
+)
+
+add_executable(
+    client
+    src/target/client.cpp
 )
 
 target_include_directories(
