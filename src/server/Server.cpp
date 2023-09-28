@@ -3,7 +3,7 @@
 //
 
 #include "Server.hpp"
-
+#include <iostream>
 
 namespace {
 using namespace gabe::server;
@@ -35,7 +35,7 @@ auto Server::initialize() -> void {
   }
 }
 
-auto Server::getClient() const -> int {
+auto Server::getClient() -> void {
   sockaddr_in client_addr {};
   socklen_t client_addr_size = sizeof(client_addr);
   int fd;
@@ -44,7 +44,7 @@ auto Server::getClient() const -> int {
     throw exception::AcceptException();
   }
 
-  return fd;
+  createThread(fd);
 }
 
 auto Server::createThread(int fd) -> void {
@@ -56,13 +56,26 @@ auto Server::createThread(int fd) -> void {
 
 auto Server::threadMain(void* pParam) -> void* {
   int fd = *static_cast<int*>(pParam);
-  char buffer[1024];
+  delete pParam;
+  char buffer[30000] = {0};
+  std::string response = "Hello there";
   while (true) {
-    if (0 >= read(fd, buffer, 1024)) {
+    if (0 >= read(fd, buffer, sizeof(buffer))) {
       break;
     }
-    write(1, buffer, 1024);
+    fflush(stdout);
+
+    HttpMessage message;
+    message.setHeader("Content-Type", "text/plain");
+    message.setHeader("Content-Length", response.size());
+    message.setBody(response);
+    sendMessage(fd, message);
   }
 
   return nullptr;
+}
+
+auto Server::sendMessage(int fd, HttpMessage const& message) -> void {
+  auto buffer = message.getHeaders() + "\n" + message.getBody();
+  write(fd, buffer.c_str(), buffer.size());
 }

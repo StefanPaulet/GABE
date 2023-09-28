@@ -5,6 +5,7 @@
 #pragma once
 
 #include <exceptions/Exceptions.hpp>
+#include <httpMessage/HttpMessage.hpp>
 #include <list>
 #include <netinet/in.h>
 #include <thread/Thread.hpp>
@@ -12,13 +13,13 @@
 
 namespace gabe::server {
 class Server {
-
 public:
   Server() noexcept(false);
-  [[nodiscard]] auto getClient() const -> int;
-  auto createThread(int fd) noexcept(false) -> void;
+  auto getClient() -> void;
+  static auto sendMessage(int fd, HttpMessage const& message) -> void;
 
 private:
+  auto createThread(int fd) noexcept(false) -> void;
   inline auto initialize() noexcept(false) -> void;
   static auto threadMain(void* pParam) -> void*;
 
