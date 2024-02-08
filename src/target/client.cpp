@@ -2,9 +2,9 @@
 // Created by stefan on 8/10/23.
 //
 
-#include <arpa/inet.h
+#include <arpa/inet.h>
 #include <cstring>
-#include <netinet/in.h>>
+#include <netinet/in.h>
 #include <unistd.h>
 
 int main() {

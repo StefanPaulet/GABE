@@ -17,8 +17,19 @@ add_executable(
     src/target/client.cpp
 )
 
+add_executable(
+    main
+    src/target/main.cpp
+)
+
 target_include_directories(
     server
     PUBLIC
     src/server
+)
+
+target_include_directories(
+    main
+    PUBLIC
+    src
 )
