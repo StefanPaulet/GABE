@@ -30,4 +30,8 @@ class AcceptException : public std::exception {
 class ThreadCreationException : public std::exception {
   [[nodiscard]] char const* what() const noexcept override { return "Could not create thread"; }
 };
+
+class ConnectionTimeoutException : public std::exception {
+  [[nodiscard]] char const* what() const noexcept override { return "Connection from client dropped"; }
+};
 } // namespace gabe::server::exception

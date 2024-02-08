@@ -3,10 +3,11 @@
 //
 
 #include "Server.hpp"
-#include <iostream>
+#include <fstream>
 
 namespace {
 using namespace gabe::server;
+using namespace gabe::server::exception;
 } // namespace
 
 Server::Server() {
@@ -19,19 +20,19 @@ Server::Server() {
 auto Server::initialize() -> void {
 
   if (-1 == (_socketFd = socket(AF_INET, SOCK_STREAM, 0))) {
-    throw exception::SocketCreationException();
+    throw SocketCreationException();
   }
 
   if (int optionToggle = 1; -1 == setsockopt(_socketFd, SOL_SOCKET, SO_REUSEADDR, &optionToggle, sizeof(int))) {
-    throw exception::SocketOptionException();
+    throw SocketOptionException();
   }
 
   if (-1 == bind(_socketFd, reinterpret_cast<sockaddr*>(&_properties), sizeof(sockaddr))) {
-    throw exception::SocketBindException();
+    throw SocketBindException();
   }
 
   if (-1 == listen(_socketFd, 1)) {
-    throw exception::ListenException();
+    throw ListenException();
   }
 }
 
@@ -41,7 +42,7 @@ auto Server::getClient() -> void {
   int fd;
 
   if (-1 == (fd = accept(_socketFd, reinterpret_cast<sockaddr*>(&client_addr), &client_addr_size))) {
-    throw exception::AcceptException();
+    throw AcceptException();
   }
 
   createThread(fd);
@@ -57,25 +58,19 @@ auto Server::createThread(int fd) -> void {
 auto Server::threadMain(void* pParam) -> void* {
   int fd = *static_cast<int*>(pParam);
   delete pParam;
-  char buffer[30000] = {0};
-  std::string response = "Hello there";
+  HttpMessage response {"Http 1.1/ 200 OK", {}, "ok"};
+  Socket const socket {fd};
+  auto cout = std::ofstream("fisier.out");
   while (true) {
-    if (0 >= read(fd, buffer, sizeof(buffer))) {
+    try {
+      HttpMessage request = socket.read();
+      cout << request;
+      cout.flush();
+      socket.write(response);
+    } catch (ConnectionTimeoutException& e) {
       break;
     }
-    fflush(stdout);
-
-    HttpMessage message;
-    message.setHeader("Content-Type", "text/plain");
-    message.setHeader("Content-Length", response.size());
-    message.setBody(response);
-    sendMessage(fd, message);
   }
 
   return nullptr;
-}
-
-auto Server::sendMessage(int fd, HttpMessage const& message) -> void {
-  auto buffer = message.getHeaders() + "\n" + message.getBody();
-  write(fd, buffer.c_str(), buffer.size());
 }
