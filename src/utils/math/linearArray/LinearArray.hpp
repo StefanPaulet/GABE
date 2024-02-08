@@ -11,29 +11,105 @@
 
 namespace gabe::utils::math {
 
-template <typename> class LinearArrayGenericOps {
+template <typename D> class LinearArrayGenericOps {
 public:
-  template <typename FD> friend auto operator+ (
-      LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs
-  ) noexcept(noexcept(false)) -> FD;
+  template <typename FD>
+  friend auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
+
+  template <typename FD>
+  friend auto operator-(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
+
+  template <typename FD>
+  friend auto operator*(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
+
+  template <typename FD>
+  friend auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
+
+  template <typename FD> friend auto operator==(LinearArrayGenericOps<FD> const&, LinearArrayGenericOps<FD> const&)
+      -> bool;
+
+  template <typename N> auto& operator[](N idx) {
+    auto& data = static_cast<D*>(this)->data();
+    assert(idx >= 0 && idx < data.size() && "Requested index out of range");
+    return data[idx];
+  }
+
+  template <typename N> auto const& operator[](N idx) const {
+    auto& data = static_cast<D const*>(this)->data();
+    assert(idx >= 0 && idx < data.size() && "Requested index out of range");
+    return data[idx];
+  }
+
+  auto begin() { return static_cast<D*>(this)->data().begin(); }
+  auto end() { return static_cast<D*>(this)->data().end(); }
+
+  auto begin() const { return static_cast<D const*>(this)->data().begin(); }
+  auto end() const { return static_cast<D const*>(this)->data().end(); }
 };
 
-template <typename FD> auto operator+ (
-      LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs
-) noexcept(noexcept(false)) -> FD {
+template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
+    -> FD {
   auto const& lhsArr = *static_cast<FD const*>(&lhs);
   auto const& rhsArr = *static_cast<FD const*>(&rhs);
 
   FD result;
   Size idx;
-  auto backInsert = [&result, &idx](auto const& entry) {
-    result[idx++] += entry;
-  };
+  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] += entry; };
   idx = 0;
-  std::for_each(lhsArr.begin(), lhsArr.end(), backInsert);
+  std::ranges::for_each(lhsArr, backInsert);
   idx = 0;
-  std::for_each(rhsArr.begin(), rhsArr.end(), backInsert);
+  std::ranges::for_each(rhsArr, backInsert);
   return result;
+}
+
+template <typename FD> auto operator-(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
+    -> FD {
+  auto const& lhsArr = *static_cast<FD const*>(&lhs);
+  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+
+  FD result;
+  Size idx;
+  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] -= entry; };
+  idx = 0;
+  std::ranges::for_each(lhsArr, backInsert);
+  idx = 0;
+  std::ranges::for_each(rhsArr, backInsert);
+  return result;
+}
+
+template <typename FD> auto operator*(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
+    -> FD {
+  auto const& lhsArr = *static_cast<FD const*>(&lhs);
+  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+
+  FD result;
+  Size idx;
+  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] *= entry; };
+  idx = 0;
+  std::ranges::for_each(lhsArr, backInsert);
+  idx = 0;
+  std::ranges::for_each(rhsArr, backInsert);
+  return result;
+}
+
+template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
+    -> FD {
+  auto const& lhsArr = *static_cast<FD const*>(&lhs);
+  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+
+  FD result;
+  Size idx;
+  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] /= entry; };
+  idx = 0;
+  std::ranges::for_each(lhsArr, backInsert);
+  idx = 0;
+  std::ranges::for_each(rhsArr, backInsert);
+  return result;
+}
+
+template <typename FD> auto operator==(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
+    -> bool {
+  return static_cast<FD const*>(&lhs)->data() == static_cast<FD const*>(&rhs)->data();
 }
 
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray :
@@ -45,48 +121,8 @@ public:
   LinearArray(LinearArray const&) = default;
   explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) : _data(data) {}
 
-  template <typename N> auto operator[](N idx) -> InnerLinearArray& {
-    assert(std::is_signed_v<N> && idx >= 0 && idx < first_size && "Requested index out of range");
-    return _data[idx];
-  }
-
-  template <typename N> auto operator[](N idx) const -> InnerLinearArray const& {
-    assert(std::is_signed_v<N> && idx >= 0 && idx < first_size && "Requested index out of range");
-    return _data[idx];
-  }
-
-  auto operator*(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < first_size; ++idx) {
-      result._data[idx] = result._data[idx] * other._data[idx];
-    }
-    return result;
-  }
-
-  auto operator-(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < first_size; ++idx) {
-      result._data[idx] = result._data[idx] - other._data[idx];
-    }
-    return result;
-  }
-
-  auto operator/(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < first_size; ++idx) {
-      result._data[idx] = result._data[idx] / other._data[idx];
-    }
-    return result;
-  }
-
-  auto begin() { return _data.begin(); }
-  auto end() { return _data.end(); }
-
-  auto begin() const { return _data.begin(); }
-  auto end() const { return _data.end(); }
+  auto& data() { return _data; }
+  auto const& data() const { return _data; }
 
 private:
   std::array<InnerLinearArray, first_size> _data {};
@@ -98,71 +134,8 @@ public:
   LinearArray() = default;
   explicit LinearArray(std::array<DataType, size> const& array) : _data(array) {}
 
-  class Iterator {
-  public:
-    Iterator(LinearArray* owner, int index) : _pOwner(owner), _index(index) {}
-
-    auto operator*() const -> DataType& { return (*_pOwner)[_index]; }
-    auto operator->() const -> DataType* { return &((*_pOwner)[_index]); }
-    auto operator++() -> Iterator& {
-      ++this->_index;
-      return *this;
-    }
-
-    auto operator++(int) -> Iterator {
-      Iterator result = *this;
-      ++(*this);
-      return result;
-    }
-    auto operator==(Iterator const& other) const -> bool = default;
-
-  private:
-    LinearArray* _pOwner;
-    int _index {0};
-  };
-
-  auto begin() { return _data.begin(); }
-  auto end() { return _data.end(); }
-
-  auto begin() const { return _data.begin(); }
-  auto end() const { return _data.end(); }
-
-  template <typename N> auto operator[](N idx) -> DataType& {
-    assert(idx >= 0 && idx < size && "Requested index out of range");
-    return _data[idx];
-  }
-
-  template <typename N> auto operator[](N idx) const -> DataType const& {
-    assert(std::is_signed_v<N> && idx >= 0 && idx < size && "Requested index out of range");
-    return _data[idx];
-  }
-
-  auto operator*(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < size; ++idx) {
-      result._data[idx] = result._data[idx] * other._data[idx];
-    }
-    return result;
-  }
-
-  auto operator-(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < size; ++idx) {
-      result._data[idx] = result._data[idx] - other._data[idx];
-    }
-    return result;
-  }
-
-  auto operator/(LinearArray const& other) const -> LinearArray {
-    LinearArray result;
-    result._data = this->_data;
-    for (int idx = 0; idx < size; ++idx) {
-      result._data[idx] = result._data[idx] / other._data[idx];
-    }
-    return result;
-  }
+  auto& data() { return _data; }
+  auto const& data() const { return _data; }
 
   auto dot(LinearArray const& other) const -> int {
     int sum = 0;
@@ -177,7 +150,8 @@ private:
 };
 
 namespace linearArray {
-template <typename... Types> auto array(Types&&... types) noexcept -> LinearArray<std::common_type_t<Types...>, sizeof...(Types)> {
+template <typename... Types> auto larray(Types&&... types) noexcept
+    -> LinearArray<std::common_type_t<Types...>, sizeof...(Types)> {
   return LinearArray<std::common_type_t<Types...>, sizeof...(Types)>{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
 }
 } // namespace linearArray
