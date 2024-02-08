@@ -11,7 +11,7 @@
 
 namespace gabe::utils::math {
 
-template <typename D> class LinearArrayGenericOps {
+template <typename> class LinearArrayGenericOps {
 public:
   template <typename FD> friend auto operator+ (
       LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs
@@ -175,4 +175,10 @@ public:
 private:
   std::array<DataType, size> _data {};
 };
+
+namespace linearArray {
+template <typename... Types> auto array(Types&&... types) noexcept -> LinearArray<std::common_type_t<Types...>, sizeof...(Types)> {
+  return LinearArray<std::common_type_t<Types...>, sizeof...(Types)>{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
+}
+} // namespace linearArray
 } // namespace gabe::utils::math
