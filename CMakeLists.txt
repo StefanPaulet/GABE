@@ -3,6 +3,14 @@ project(GABE)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(COMPILER_SPECIFIC_COVERAGE_FLAGS "-fcoverage-mapping -fprofile-instr-generate -O0 -g")
+else()
+  set(COMPILER_SPECIFIC_COVERAGE_FLAGS "")
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPILER_SPECIFIC_COVERAGE_FLAGS}")
+
 add_executable(
     server
     src/target/server.cpp
