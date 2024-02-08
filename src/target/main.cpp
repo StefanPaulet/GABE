@@ -13,6 +13,7 @@ int main() {
   LinearArray<int, 3> b {{5, -2, 3}};
   LinearArray<int, 2, 3> c {{a, b}};
   LinearArray<int, 2, 3> d {{a + a, b}};
+  auto f = c + d;
 
   // LinearArray<int, 2, 3> e2 {{ {1, 2, 3}, {5, -2, 3} }};
   LinearArray<int, 2, 3> e {{ LinearArray<int, 3>{{1, 2, 3}}, LinearArray<int, 3>{{5, -2, 3}} }};

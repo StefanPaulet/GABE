@@ -92,6 +92,13 @@ private:
   std::array<InnerLinearArray, first_size> _data {};
 };
 
+template <typename T, Size l, Size c> auto operator+(
+    LinearArrayGenericOps<LinearArray<T, l, c>> const& lhs,
+    LinearArrayGenericOps<LinearArray<T, l, c>> const& rhs
+) noexcept -> LinearArray<T, l, c> {
+  // matrix spec, triggers SIGILL in main
+}
+
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public LinearArrayGenericOps<LinearArray<DataType, size>> {
 public:
