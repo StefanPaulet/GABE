@@ -8,6 +8,7 @@
 #include <httpMessage/HttpMessage.hpp>
 #include <list>
 #include <netinet/in.h>
+#include <socket/Socket.hpp>
 #include <thread/Thread.hpp>
 #include <unistd.h>
 
@@ -16,7 +17,6 @@ class Server {
 public:
   Server() noexcept(false);
   auto getClient() -> void;
-  static auto sendMessage(int fd, HttpMessage const& message) -> void;
 
 private:
   auto createThread(int fd) noexcept(false) -> void;

@@ -31,13 +31,18 @@ public:
       -> void {
     _headers.emplace(name, content);
   }
+
   constexpr auto setBody(std::string const& body) -> void;
 
   constexpr auto setTopLine(std::string const& topLine) -> void;
 
   [[nodiscard]] constexpr auto getHeaders() const -> HeaderType const&;
+
   [[nodiscard]] constexpr auto getBody() const -> std::string const&;
+
   [[nodiscard]] constexpr auto getTopLine() const -> std::string const&;
+
+  [[nodiscard]] auto to_string() const -> std::string;
 
   friend auto operator<<(std::ostream& out, HttpMessage const& message) -> std::ostream&;
 
