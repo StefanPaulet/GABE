@@ -33,3 +33,7 @@ target_include_directories(
     PUBLIC
     src
 )
+
+include(FetchContent)
+enable_testing()
+add_subdirectory(test/unittest)
