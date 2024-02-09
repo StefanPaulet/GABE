@@ -150,9 +150,56 @@ private:
 };
 
 namespace linearArray {
-template <typename... Types> auto larray(Types&&... types) noexcept
-    -> LinearArray<std::common_type_t<Types...>, sizeof...(Types)> {
-  return LinearArray<std::common_type_t<Types...>, sizeof...(Types)>{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
+template <typename> struct IsLinearArray : std::false_type {};
+template <typename T, Size f, Size... s> struct IsLinearArray<LinearArray<T, f, s...>> : std::true_type {};
+
+template <typename> struct IsMalformedLinearArray : std::false_type {};
+template <typename T, Size f> struct IsMalformedLinearArray<LinearArray<T, f>> :
+    std::bool_constant<IsLinearArray<T>::value> {};
+
+template <Size... > struct SizePack {};
+
+template <typename T, Size s> struct PackPush {};
+template <Size ...p, Size s> struct PackPush<SizePack<p...>, s> {
+  using type = SizePack<s, p...>;
+};
+
+template <typename> struct GetSizePackOfMLA {
+  using type = SizePack<>;
+  using inner_type = void;
+};
+
+template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
+  using type = std::conditional_t<
+      IsMalformedLinearArray<LinearArray<T, s>>::value,
+      typename PackPush<typename GetSizePackOfMLA<T>::type, s>::type,
+      SizePack<s>
+  >;
+
+  using inner_type = std::conditional_t<
+      IsMalformedLinearArray<LinearArray<T, s>>::value,
+      typename GetSizePackOfMLA<T>::inner_type,
+      T
+  >;
+};
+
+template <typename, typename> struct ComposeLA {};
+template <typename I, Size... s> struct ComposeLA<I, SizePack<s...>> {
+  using type = LinearArray<I, s...>;
+};
+
+template <typename T> struct TransformMLAToLA {
+  using pack_type = typename GetSizePackOfMLA<T>::type;
+  using inner_type = typename GetSizePackOfMLA<T>::inner_type;
+  using resulted_type = typename ComposeLA<inner_type, pack_type>::type;
+};
+
+template <
+    typename... Types,
+    typename R = typename TransformMLAToLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>::resulted_type
+> auto larray(Types&&... types) noexcept
+    -> R {
+  return R{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
 }
 } // namespace linearArray
 } // namespace gabe::utils::math
