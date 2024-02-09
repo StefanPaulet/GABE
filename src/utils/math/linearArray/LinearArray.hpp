@@ -164,6 +164,7 @@ template <Size ...p, Size s> struct PackPush<SizePack<p...>, s> {
   using type = SizePack<s, p...>;
 };
 
+namespace h1 {
 template <typename> struct GetSizePackOfMLA {
   using type = SizePack<>;
   using inner_type = void;
@@ -182,21 +183,33 @@ template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
       T
   >;
 };
+}
 
+template <typename T> using GetSizePackOfMLA = typename h1::GetSizePackOfMLA<T>::type;
+template <typename T> using GetInnerTypeOfMLA = typename h1::GetSizePackOfMLA<T>::inner_type;
+
+namespace h2 {
 template <typename, typename> struct ComposeLA {};
 template <typename I, Size... s> struct ComposeLA<I, SizePack<s...>> {
   using type = LinearArray<I, s...>;
 };
+}
 
+template <typename L, typename R> using ComposeLA = typename h2::ComposeLA<L, R>::type;
+
+namespace h3 {
 template <typename T> struct TransformMLAToLA {
-  using pack_type = typename GetSizePackOfMLA<T>::type;
-  using inner_type = typename GetSizePackOfMLA<T>::inner_type;
-  using resulted_type = typename ComposeLA<inner_type, pack_type>::type;
+  using pack_type = GetSizePackOfMLA<T>;
+  using inner_type = GetInnerTypeOfMLA<T>;
+  using resulted_type = ComposeLA<inner_type, pack_type>;
 };
+}
+
+template <typename T> using MLAToLA = typename h3::TransformMLAToLA<T>::resulted_type;
 
 template <
     typename... Types,
-    typename R = typename TransformMLAToLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>::resulted_type
+    typename R = MLAToLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>
 > auto larray(Types&&... types) noexcept
     -> R {
   return R{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
