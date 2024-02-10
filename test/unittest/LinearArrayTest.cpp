@@ -11,10 +11,10 @@ using gabe::utils::math::linearArray::larray;
 }
 
 TEST(LinearArrayTest, Construction) {
+
   auto arr1 = larray(larray<int, float, int>(1, 2, 3), larray<float>(4, 5, 6));
   auto isCorrectType = std::is_same_v<decltype(arr1), LinearArray<float, 2, 3>>;
   ASSERT_TRUE(isCorrectType);
-
   (void) arr1;
 
   auto arr2 = LinearArray<int, 3>();

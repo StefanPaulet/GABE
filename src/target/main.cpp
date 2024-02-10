@@ -18,12 +18,8 @@ int main() {
   LinearArray<int, 1, 3> e1 {{ LinearArray<int, 3>{{1, 2, 3}} }};
 
   using linearArray::larray;
-  for (auto e2 = larray(larray(1, 2.2, 3), larray(4.4, 5, 6)); auto const& l : e2) {
-    for (auto const& e : l) {
-      std::cout << e << ' ';
-    }
-    std::cout << '\n';
-  }
+  auto e = larray(larray(1, 2, 3), larray(4, 5, 6));
+  e = a1;
 
   std::cout << a.dot(b);
 }

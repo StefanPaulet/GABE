@@ -4,10 +4,11 @@
 
 #pragma once
 
+#include "LinearArrayTraits.hpp"
+#include <algorithm>
 #include <array>
 #include <cassert>
-#include <algorithm>
-#include <types.hpp>
+#include <ostream>
 
 namespace gabe::utils::math {
 
@@ -39,6 +40,8 @@ public:
     assert(idx >= 0 && idx < data.size() && "Requested index out of range");
     return data[idx];
   }
+
+  template <typename FD> friend auto operator<<(std::ostream&, LinearArrayGenericOps<FD> const&) -> std::ostream&;
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
@@ -112,6 +115,15 @@ template <typename FD> auto operator==(LinearArrayGenericOps<FD> const& lhs, Lin
   return static_cast<FD const*>(&lhs)->data() == static_cast<FD const*>(&rhs)->data();
 }
 
+template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<FD> const& obj) -> std::ostream& {
+  out << "{\n";
+  for (auto const& e : static_cast<FD const*>(&obj)->data()) {
+    out << "{" << e << "}\n";
+  }
+  out << "}";
+  return out;
+}
+
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray :
     public LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
 public:
@@ -145,73 +157,22 @@ public:
     return sum;
   }
 
+  friend auto operator<<(std::ostream& out, LinearArray const& obj) -> std::ostream& {
+    for (auto const& e : obj._data) {
+      out << e << ",";
+    }
+    return out;
+  }
+
 private:
   std::array<DataType, size> _data {};
 };
 
 namespace linearArray {
-template <typename> struct IsLinearArray : std::false_type {};
-template <typename T, Size f, Size... s> struct IsLinearArray<LinearArray<T, f, s...>> : std::true_type {};
-
-template <typename> struct IsMalformedLinearArray : std::false_type {};
-template <typename T, Size f> struct IsMalformedLinearArray<LinearArray<T, f>> :
-    std::bool_constant<IsLinearArray<T>::value> {};
-
-template <Size... > struct SizePack {};
-
-template <typename T, Size s> struct PackPush {};
-template <Size ...p, Size s> struct PackPush<SizePack<p...>, s> {
-  using type = SizePack<s, p...>;
-};
-
-namespace h1 {
-template <typename> struct GetSizePackOfMLA {
-  using type = SizePack<>;
-  using inner_type = void;
-};
-
-template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
-  using type = std::conditional_t<
-      IsMalformedLinearArray<LinearArray<T, s>>::value,
-      typename PackPush<typename GetSizePackOfMLA<T>::type, s>::type,
-      SizePack<s>
-  >;
-
-  using inner_type = std::conditional_t<
-      IsMalformedLinearArray<LinearArray<T, s>>::value,
-      typename GetSizePackOfMLA<T>::inner_type,
-      T
-  >;
-};
-}
-
-template <typename T> using GetSizePackOfMLA = typename h1::GetSizePackOfMLA<T>::type;
-template <typename T> using GetInnerTypeOfMLA = typename h1::GetSizePackOfMLA<T>::inner_type;
-
-namespace h2 {
-template <typename, typename> struct ComposeLA {};
-template <typename I, Size... s> struct ComposeLA<I, SizePack<s...>> {
-  using type = LinearArray<I, s...>;
-};
-}
-
-template <typename L, typename R> using ComposeLA = typename h2::ComposeLA<L, R>::type;
-
-namespace h3 {
-template <typename T> struct TransformMLAToLA {
-  using pack_type = GetSizePackOfMLA<T>;
-  using inner_type = GetInnerTypeOfMLA<T>;
-  using resulted_type = ComposeLA<inner_type, pack_type>;
-};
-}
-
-template <typename T> using MLAToLA = typename h3::TransformMLAToLA<T>::resulted_type;
-
 template <
     typename... Types,
-    typename R = MLAToLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>
-> auto larray(Types&&... types) noexcept
-    -> R {
+    typename R = typename impl::TransformMLAtoLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>::type>
+auto larray(Types&&... types) noexcept -> R {
   return R{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
 }
 } // namespace linearArray
