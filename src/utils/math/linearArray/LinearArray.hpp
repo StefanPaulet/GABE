@@ -43,6 +43,19 @@ public:
 
   template <typename FD> friend auto operator<<(std::ostream&, LinearArrayGenericOps<FD> const&) -> std::ostream&;
 
+  template <typename T> auto& transform(T&& transformer) {
+    for (auto& e : *static_cast<D*>(this)) {
+      e.transform(std::forward<T>(transformer));
+    }
+    return *this;
+  }
+
+  template <typename T> auto project(T&& transformer) {
+    auto rez = *this;
+    rez.transform(std::forward<T>(transformer));
+    return rez;
+  }
+
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
 
@@ -118,7 +131,7 @@ template <typename FD> auto operator==(LinearArrayGenericOps<FD> const& lhs, Lin
 template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<FD> const& obj) -> std::ostream& {
   out << "{\n";
   for (auto const& e : static_cast<FD const*>(&obj)->data()) {
-    out << "{" << e << "}\n";
+    out << "\t{" << e << "}\n";
   }
   out << "}";
   return out;
@@ -157,11 +170,23 @@ public:
     return sum;
   }
 
+  auto operator=(LinearArray const& other) -> LinearArray& = default;
+
   friend auto operator<<(std::ostream& out, LinearArray const& obj) -> std::ostream& {
-    for (auto const& e : obj._data) {
-      out << e << ",";
+    for (auto iter = obj._data.begin(); iter != obj._data.end(); ++iter) {
+      if (iter != obj._data.begin()) {
+        out << ", ";
+      }
+      out << *iter;
     }
     return out;
+  }
+
+  template <typename T> auto& transform(T&& transformer) {
+    for (auto& e : _data) {
+      e = std::forward<T>(transformer)(e);
+    }
+    return *this;
   }
 
 private:
