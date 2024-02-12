@@ -12,6 +12,20 @@
 
 namespace gabe::utils::math {
 
+template <typename DataType, Size s> class LinearArrayContainer {
+public:
+  LinearArrayContainer() = default;
+  LinearArrayContainer(LinearArrayContainer const&) = default;
+  LinearArrayContainer(LinearArrayContainer&&) noexcept = default;
+  explicit LinearArrayContainer(std::array<DataType, s> const& data) : _data(data) {}
+
+  auto& data() { return _data; }
+  auto const& data() const { return _data; }
+
+private:
+  std::array<DataType, s> _data;
+};
+
 template <typename D> class LinearArrayGenericOps {
 public:
   template <typename FD>
@@ -65,60 +79,48 @@ public:
 
 template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> FD {
-  auto const& lhsArr = *static_cast<FD const*>(&lhs);
-  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+  auto const& lhsArr = static_cast<FD const*>(&lhs)->data();
+  auto const& rhsArr = static_cast<FD const*>(&rhs)->data();
 
   FD result;
-  Size idx;
-  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] += entry; };
-  idx = 0;
-  std::ranges::for_each(lhsArr, backInsert);
-  idx = 0;
-  std::ranges::for_each(rhsArr, backInsert);
+  std::ranges::copy(lhsArr, result.begin());
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e += rhsArr[i++]; });
   return result;
 }
 
 template <typename FD> auto operator-(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> FD {
-  auto const& lhsArr = *static_cast<FD const*>(&lhs);
-  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+  auto const& lhsArr = static_cast<FD const*>(&lhs)->data();
+  auto const& rhsArr = static_cast<FD const*>(&rhs)->data();
 
-  FD result = lhsArr;
-  Size idx;
-  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] -= entry; };
-  idx = 0;
-  std::ranges::for_each(rhsArr, backInsert);
+  FD result;
+  std::ranges::copy(lhsArr, result.begin());
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e -= rhsArr[i++]; });
   return result;
 }
 
 template <typename FD> auto operator*(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> FD {
-  auto const& lhsArr = *static_cast<FD const*>(&lhs);
-  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+  auto const& lhsArr = static_cast<FD const*>(&lhs)->data();
+  auto const& rhsArr = static_cast<FD const*>(&rhs)->data();
 
-  FD result = FD::unit();
-  Size idx;
-  auto backInsert = [&result, &idx](auto const& entry) { result[idx++] *= entry; };
-  idx = 0;
-  std::ranges::for_each(lhsArr, backInsert);
-  idx = 0;
-  std::ranges::for_each(rhsArr, backInsert);
+  FD result;
+  std::ranges::copy(lhsArr, result.begin());
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e *= rhsArr[i++]; });
   return result;
 }
 
 template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> FD {
-  auto const& lhsArr = *static_cast<FD const*>(&lhs);
-  auto const& rhsArr = *static_cast<FD const*>(&rhs);
+  auto const& lhsArr = static_cast<FD const*>(&lhs)->data();
+  auto const& rhsArr = static_cast<FD const*>(&rhs)->data();
 
-  FD result = lhsArr;
-  Size idx;
-  auto backInsert = [&result, &idx](auto const& entry) {
-    assert(entry != 0 && "Cannot divide by 0");
-    result[idx++] /= entry;
-  };
-  idx = 0;
-  std::ranges::for_each(rhsArr, backInsert);
+  FD result;
+  std::ranges::copy(lhsArr, result.begin());
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable {
+    assert(rhsArr[i] != 0 && "Cannot divide by 0");
+    e /= rhsArr[i++];
+  });
   return result;
 }
 
@@ -140,49 +142,42 @@ template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<
   return out;
 }
 
-//TODO create base class with _data for access with 2 specializations
-
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray :
+    public LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
     public LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
   static_assert(first_size != 0, "Size of linear array must not be 0");
 
 public:
   using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
+  using LinearArrayContainer<InnerLinearArray, first_size>::data;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) : _data(data) {}
 
-  auto& data() { return _data; }
-  auto const& data() const { return _data; }
-
-private:
-  std::array<InnerLinearArray, first_size> _data {};
+  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) :
+      LinearArrayContainer<InnerLinearArray, first_size>(data) {}
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
+    public LinearArrayContainer<LinearArray<DataType, col_size>, line_size>,
     public LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>> {
   static_assert(line_size != 0 && col_size != 0, "Size of linear matrix must not be 0");
 
 public:
+  using LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
+
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) {
-    for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
-      _data[lineIdx].data() = other[lineIdx].data();
-    }
-  }
-
-  auto& data() { return _data; }
-  auto const& data() const { return _data; }
+  explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
+      LinearArrayContainer<LinearArray<DataType, col_size>, line_size>(other) {}
 
   auto transpose() const -> LinearArray<DataType, col_size, line_size> {
     auto rez = LinearArray<DataType, col_size, line_size>();
     for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
       for (int colIdx = 0; colIdx < col_size; ++colIdx) {
-        rez[colIdx][lineIdx] = this->_data[lineIdx][colIdx];
+        rez[colIdx][lineIdx] = data()[lineIdx][colIdx];
       }
     }
     return rez;
@@ -194,7 +189,7 @@ public:
     for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
       for (int colIdx = 0; colIdx < col_size; ++colIdx) {
         for (int cellIdx = 0; cellIdx < rez_col_size; ++cellIdx) {
-          rez[lineIdx][cellIdx] += this->_data[lineIdx][colIdx] * rhs[colIdx][cellIdx];
+          rez[lineIdx][cellIdx] += data()[lineIdx][colIdx] * rhs[colIdx][cellIdx];
         }
       }
     }
@@ -211,16 +206,13 @@ public:
         for (int convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
           for (int convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
             rez[lineIdx][colIdx] +=
-                this->_data[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
+                data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
           }
         }
       }
     }
     return rez;
   }
-
-private:
-  std::array<LinearArray<DataType, col_size>, line_size> _data;
 };
 
 template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
@@ -229,17 +221,17 @@ template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
 template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<DataType, size, size>;
 
 template <typename DataType, Size size> class LinearArray<DataType, size> :
+    public LinearArrayContainer<DataType, size>,
     public LinearArrayGenericOps<LinearArray<DataType, size>> {
   static_assert(size != 0, "Size of linear array must not be 0");
 
 public:
+  using LinearArrayContainer<DataType, size>::data;
+
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<DataType, size> const& array) : _data(array) {}
-
-  auto& data() { return _data; }
-  auto const& data() const { return _data; }
+  explicit LinearArray(std::array<DataType, size> const& data) : LinearArrayContainer<DataType, size>(data) {}
 
   auto dot(LinearArray const& other) const -> DataType {
     DataType sum = 0;
@@ -252,7 +244,7 @@ public:
   auto operator=(LinearArray const& other) -> LinearArray& = default;
 
   template <typename T> auto& transform(T&& transformer) {
-    for (auto& e : _data) {
+    for (auto& e : data()) {
       e = std::forward<T>(transformer)(e);
     }
     return *this;
@@ -260,7 +252,7 @@ public:
 
   template <typename T> auto project(T&& transformer) -> LinearArray {
     auto rez = *this;
-    for (auto& e : rez._data) {
+    for (auto& e : rez.data()) {
       e = std::forward<T>(transformer)(e);
     }
     return rez;
@@ -268,14 +260,11 @@ public:
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();
-    for (auto& e : result._data) {
+    for (auto& e : result.data()) {
       e = unit;
     }
     return result;
   }
-
-private:
-  std::array<DataType, size> _data {};
 };
 
 namespace linearArray {
