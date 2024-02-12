@@ -41,6 +41,11 @@ template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
       std::conditional_t<IsMalformedLinearArray<LinearArray<T, s>>::value, typename GetSizePackOfMLA<T>::inner_type, T>;
 };
 
+template <typename T, Size s1, Size s2, Size... sn> struct GetSizePackOfMLA<LinearArray<T, s1, s2, sn...>> {
+  using type = SizePack<s1, s2, sn...>;
+  using inner_type = T;
+};
+
 
 template <typename, typename> struct MakeLA {};
 template <typename T, Size... s> struct MakeLA<T, SizePack<s...>> {

@@ -14,6 +14,7 @@ endif()
 set(
     UNIT_TEST_SOURCES
     LinearArrayTest.cpp
+    LinearMatrixTest.cpp
 )
 
 add_executable(unittests
