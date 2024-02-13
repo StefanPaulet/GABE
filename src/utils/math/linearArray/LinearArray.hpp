@@ -14,6 +14,8 @@ namespace gabe::utils::math {
 
 template <typename DataType, Size s> class LinearArrayContainer {
   static_assert(std::is_constructible_v<DataType, int>, "LinearArray is intended to work with arithmetic types");
+  static_assert(s != 0, "Size of linear array must not be 0");
+
 public:
   LinearArrayContainer() = default;
   LinearArrayContainer(LinearArrayContainer const&) = default;
@@ -147,7 +149,6 @@ template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray :
     public LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
     public LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
-  static_assert(first_size != 0, "Size of linear array must not be 0");
 
 public:
   using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
@@ -164,8 +165,6 @@ public:
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
     public LinearArrayContainer<LinearArray<DataType, col_size>, line_size>,
     public LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>> {
-  static_assert(line_size != 0 && col_size != 0, "Size of linear matrix must not be 0");
-
 public:
   using LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
 
@@ -226,8 +225,6 @@ template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public LinearArrayContainer<DataType, size>,
     public LinearArrayGenericOps<LinearArray<DataType, size>> {
-  static_assert(size != 0, "Size of linear array must not be 0");
-
 public:
   using LinearArrayContainer<DataType, size>::data;
 
