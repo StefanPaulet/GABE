@@ -6,8 +6,6 @@
 #include <iostream>
 #include <types.hpp>
 
-using gabe::Size;
-
 namespace gabe::utils::math {
 
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray;
