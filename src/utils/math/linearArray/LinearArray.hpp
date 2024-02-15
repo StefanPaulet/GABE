@@ -20,6 +20,7 @@ public:
   LinearArrayContainer(LinearArrayContainer const&) = default;
   LinearArrayContainer(LinearArrayContainer&&) noexcept = default;
   explicit LinearArrayContainer(std::array<DataType, s> const& data) : _data(data) {}
+  auto operator=(LinearArrayContainer const&) -> LinearArrayContainer& = default;
 
   auto& data() { return _data; }
   auto const& data() const { return _data; }
@@ -41,6 +42,26 @@ public:
 
   template <typename FD>
   friend auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
+
+  auto& operator+=(LinearArrayGenericOps const& rhs) {
+    *this = *this + rhs;
+    return *this;
+  }
+
+  auto& operator-=(LinearArrayGenericOps const& rhs) {
+    *this = *this - rhs;
+    return *this;
+  }
+
+  auto& operator*=(LinearArrayGenericOps const& rhs) {
+    *this = *this * rhs;
+    return *this;
+  }
+
+  auto& operator/=(LinearArrayGenericOps const& rhs) {
+    *this = *this / rhs;
+    return *this;
+  }
 
   template <typename FD> friend auto operator==(LinearArrayGenericOps<FD> const&, LinearArrayGenericOps<FD> const&)
       -> bool;
@@ -66,8 +87,8 @@ public:
     return *this;
   }
 
-  template <typename T> auto project(T&& transformer) -> D {
-    auto rez = *static_cast<D*>(this);
+  template <typename T> auto project(T&& transformer) const -> D {
+    auto rez = *static_cast<D const*>(this);
     rez.transform(std::forward<T>(transformer));
     return rez;
   }
@@ -86,7 +107,7 @@ template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e += rhsArr[i++]; });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e + rhsArr[i++]; });
   return result;
 }
 
@@ -97,7 +118,7 @@ template <typename FD> auto operator-(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e -= rhsArr[i++]; });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e - rhsArr[i++]; });
   return result;
 }
 
@@ -108,7 +129,7 @@ template <typename FD> auto operator*(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e *= rhsArr[i++]; });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e * rhsArr[i++]; });
   return result;
 }
 
@@ -121,7 +142,7 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
   std::ranges::copy(lhsArr, result.begin());
   std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable {
     assert(rhsArr[i] != 0 && "Cannot divide by 0");
-    e /= rhsArr[i++];
+    e = e / rhsArr[i++];
   });
   return result;
 }
@@ -172,6 +193,10 @@ public:
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
+
+  auto operator=(LinearArray const& other) -> LinearArray& = default;
+  auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
+
   explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
       LinearArrayContainer<LinearArray<DataType, col_size>, line_size>(other) {}
 
@@ -245,6 +270,7 @@ public:
   }
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
+  auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
   template <typename T> auto& transform(T&& transformer) {
     for (auto& e : data()) {
@@ -253,7 +279,7 @@ public:
     return *this;
   }
 
-  template <typename T> auto project(T&& transformer) -> LinearArray {
+  template <typename T> auto project(T&& transformer) const -> LinearArray {
     auto rez = *this;
     for (auto& e : rez.data()) {
       e = std::forward<T>(transformer)(e);

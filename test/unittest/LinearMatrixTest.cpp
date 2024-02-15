@@ -20,6 +20,14 @@ TEST(LinearMatrixTest, Construction) {
   (void) mtrx2;
 }
 
+TEST(LinearMatrixTest, Addition) {
+  auto mtrx1 = larray(larray(1, 2, 3), larray(4, 5, 6));
+  auto mtrx2 = larray(larray(3, 5, 7), larray(2, 4, 6));
+  auto mtrx3 = mtrx1 + mtrx2;
+  auto mtrx4 = larray(larray(4, 7, 10), larray(6, 9, 12));
+  ASSERT_EQ(mtrx3, mtrx4);
+}
+
 TEST(LinearMatrixTest, Transpose) {
   auto mtrx1 = larray(larray(1, 2, 3), larray(4, 5, 6));
   auto mtrx2 = larray(larray(1, 4), larray(2, 5), larray(3, 6));

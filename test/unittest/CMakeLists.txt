@@ -15,6 +15,7 @@ set(
     UNIT_TEST_SOURCES
     LinearArrayTest.cpp
     LinearMatrixTest.cpp
+    NeuralNetTest.cpp
 )
 
 add_executable(unittests
