@@ -14,7 +14,9 @@ using namespace layer;
 using linearArray::larray;
 
 int main() {
-  NeuralNetwork<float, InputLayer<float, 5>, Layer<float, SigmoidFunction<>, 3>> nn;
-  auto input = larray(larray(1.0f, 2, 3, 4, 5));
+  NeuralNetwork<float, InputLayer<float, 3>, Layer<float, IdentityFunction<>, 3>> nn;
+  auto input = larray(larray(1.0f, 2, 3));
+  nn.weights(0) = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
+  nn.biases(0) = larray(larray(1.0f, 2, 3)).transpose();
   std::cout << nn.feedForward(input.transpose());
 }

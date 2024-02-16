@@ -7,5 +7,5 @@
 
 namespace gabe::nn {
 template <typename DataType, typename InputLayer, typename... Layers> class NeuralNetwork :
-    public LayerPair<DataType, InputLayer, Layers...> {};
+    public impl::LayerPair<DataType, InputLayer, Layers...> {};
 } // namespace gabe::nn
