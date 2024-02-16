@@ -27,11 +27,10 @@ private:
   InnerLinearArray _neurons;
 };
 
-template <typename DataType, template <typename> typename ActivationFunction, Size size> class Layer :
+template <typename DataType, typename ActivationFunction, Size size> class Layer :
     public LayerContainer<DataType, size> {
 private:
   using InnerLinearArray = typename LayerContainer<DataType, size>::InnerLinearArray;
-  using InnerActivationFunction = ActivationFunction<DataType>;
 
 public:
   static const Size dimension = size;
@@ -43,7 +42,7 @@ public:
 
   template <Size inputSize> auto feedForward(utils::math::LinearArray<DataType, inputSize, 1> const& input)
       -> InnerLinearArray {
-    this->neurons() = input.project(InnerActivationFunction());
+    this->neurons() = input.project(ActivationFunction());
     return this->neurons();
   }
 };
@@ -85,6 +84,6 @@ private:
 
 
 namespace layer {
-template <typename DataType, Size size> using InputLayer = Layer<DataType, utils::math::IdentityFunction, size>;
+template <typename DataType, Size size> using InputLayer = Layer<DataType, utils::math::IdentityFunction<>, size>;
 } // namespace layer
 } // namespace gabe::nn

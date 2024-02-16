@@ -264,8 +264,8 @@ template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
 
 template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<DataType, size, size>;
 
-template <typename DataType, Size colSize> using LinearColumnVector = LinearMatrix<DataType, colSize, 1>;
-template <typename DataType, Size lineSize> using LinearLineVector = LinearMatrix<DataType, 1, lineSize>;
+template <typename DataType, Size colSize> using LinearColumnArray = LinearMatrix<DataType, colSize, 1>;
+template <typename DataType, Size lineSize> using LinearLineArray = LinearMatrix<DataType, 1, lineSize>;
 
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public LinearArrayContainer<DataType, size>,

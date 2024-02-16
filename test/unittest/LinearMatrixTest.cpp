@@ -7,8 +7,8 @@
 
 namespace {
 using gabe::utils::math::LinearArray;
-using gabe::utils::math::LinearColumnVector;
-using gabe::utils::math::LinearLineVector;
+using gabe::utils::math::LinearColumnArray;
+using gabe::utils::math::LinearLineArray;
 using gabe::utils::math::LinearMatrix;
 using gabe::utils::math::SquareLinearMatrix;
 using gabe::utils::math::linearArray::larray;
@@ -21,12 +21,12 @@ TEST(LinearMatrixTest, Construction) {
   auto mtrx2 = SquareLinearMatrix<int, 2> {{LinearArray<int, 2> {{1, 2}}, LinearArray<int, 2> {{2, 3}}}};
   (void) mtrx2;
 
-  auto lineV = LinearLineVector<int, 3> {{LinearArray<int, 3> {{1, 2, 3}}}};
+  auto lineV = LinearLineArray<int, 3> {{LinearArray<int, 3> {{1, 2, 3}}}};
   auto mtrx3 = larray(larray(1, 2, 3));
   ASSERT_EQ(lineV, mtrx3);
 
   auto colV =
-      LinearColumnVector<int, 3> {{LinearArray<int, 1> {{1}}, LinearArray<int, 1> {{2}}, LinearArray<int, 1> {{3}}}};
+      LinearColumnArray<int, 3> {{LinearArray<int, 1> {{1}}, LinearArray<int, 1> {{2}}, LinearArray<int, 1> {{3}}}};
   auto mtrx4 = larray(larray(1), larray(2), larray(3));
   ASSERT_EQ(colV, mtrx4);
 }

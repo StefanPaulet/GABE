@@ -17,8 +17,8 @@ public:
   auto derive(InputType const& input) const -> OutputType { return static_cast<D const*>(this)->derive(input); }
 };
 
-template <typename InputType> class SigmoidFunction :
-    public ActivationFunction<SigmoidFunction<InputType>, InputType, double> {
+template <typename InputType = double> class SigmoidFunction :
+    public ActivationFunction<SigmoidFunction<InputType>, InputType, InputType> {
 public:
   auto operator()(InputType const& input) const -> double { return 1.0 / (1.0 + std::exp(-input)); }
   auto derive(InputType const& input) const -> double {
@@ -27,7 +27,7 @@ public:
   }
 };
 
-template <typename InputType> class IdentityFunction :
+template <typename InputType = double> class IdentityFunction :
     public ActivationFunction<IdentityFunction<InputType>, InputType, InputType> {
 public:
   auto operator()(InputType const& input) const -> InputType { return input; }
