@@ -7,6 +7,8 @@
 
 namespace {
 using gabe::utils::math::LinearArray;
+using gabe::utils::math::LinearColumnVector;
+using gabe::utils::math::LinearLineVector;
 using gabe::utils::math::LinearMatrix;
 using gabe::utils::math::SquareLinearMatrix;
 using gabe::utils::math::linearArray::larray;
@@ -18,6 +20,15 @@ TEST(LinearMatrixTest, Construction) {
 
   auto mtrx2 = SquareLinearMatrix<int, 2> {{LinearArray<int, 2> {{1, 2}}, LinearArray<int, 2> {{2, 3}}}};
   (void) mtrx2;
+
+  auto lineV = LinearLineVector<int, 3> {{LinearArray<int, 3> {{1, 2, 3}}}};
+  auto mtrx3 = larray(larray(1, 2, 3));
+  ASSERT_EQ(lineV, mtrx3);
+
+  auto colV =
+      LinearColumnVector<int, 3> {{LinearArray<int, 1> {{1}}, LinearArray<int, 1> {{2}}, LinearArray<int, 1> {{3}}}};
+  auto mtrx4 = larray(larray(1), larray(2), larray(3));
+  ASSERT_EQ(colV, mtrx4);
 }
 
 TEST(LinearMatrixTest, Addition) {
@@ -25,6 +36,30 @@ TEST(LinearMatrixTest, Addition) {
   auto mtrx2 = larray(larray(3, 5, 7), larray(2, 4, 6));
   auto mtrx3 = mtrx1 + mtrx2;
   auto mtrx4 = larray(larray(4, 7, 10), larray(6, 9, 12));
+  ASSERT_EQ(mtrx3, mtrx4);
+}
+
+TEST(LinearMatrixTest, Substraction) {
+  auto mtrx1 = larray(larray(10, 15, 20), larray(4, 5, 6));
+  auto mtrx2 = larray(larray(9, 8, 7), larray(1, 2, 3));
+  auto mtrx3 = mtrx1 - mtrx2;
+  auto mtrx4 = larray(larray(1, 7, 13), larray(3, 3, 3));
+  ASSERT_EQ(mtrx3, mtrx4);
+}
+
+TEST(LinearMatrixTest, Multiplication) {
+  auto mtrx1 = larray(larray(1, 2, 3), larray(4, 5, 6));
+  auto mtrx2 = larray(larray(2, 2, 2), larray(1, 3, 5));
+  auto mtrx3 = mtrx1 * mtrx2;
+  auto mtrx4 = larray(larray(2, 4, 6), larray(4, 15, 30));
+  ASSERT_EQ(mtrx3, mtrx4);
+}
+
+TEST(LinearMatrixTest, Divistion) {
+  auto mtrx1 = larray(larray(10, 3, 2), larray(30, 25, 24));
+  auto mtrx2 = larray(larray(3, 1, 2), larray(3, 5, 3));
+  auto mtrx3 = mtrx1 / mtrx2;
+  auto mtrx4 = larray(larray(3, 3, 1), larray(10, 5, 8));
   ASSERT_EQ(mtrx3, mtrx4);
 }
 

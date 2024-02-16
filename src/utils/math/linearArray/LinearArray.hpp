@@ -140,10 +140,7 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable {
-    assert(rhsArr[i] != 0 && "Cannot divide by 0");
-    e = e / rhsArr[i++];
-  });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e / rhsArr[i++]; });
   return result;
 }
 
@@ -200,6 +197,25 @@ public:
   explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
       LinearArrayContainer<LinearArray<DataType, col_size>, line_size>(other) {}
 
+  static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
+    static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
+    auto result = LinearArray();
+    for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
+      result[lineIdx][lineIdx] = unit;
+    }
+    return result;
+  }
+
+  static constexpr auto nul(DataType const& nulVal = 0) -> LinearArray {
+    auto result = LinearArray();
+    for (auto& l : result.data()) {
+      for (auto& e : l.data()) {
+        e = nulVal;
+      }
+    }
+    return result;
+  }
+
   auto transpose() const -> LinearArray<DataType, col_size, line_size> {
     auto rez = LinearArray<DataType, col_size, line_size>();
     for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
@@ -248,6 +264,9 @@ template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
 
 template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<DataType, size, size>;
 
+template <typename DataType, Size colSize> using LinearColumnVector = LinearMatrix<DataType, colSize, 1>;
+template <typename DataType, Size lineSize> using LinearLineVector = LinearMatrix<DataType, 1, lineSize>;
+
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public LinearArrayContainer<DataType, size>,
     public LinearArrayGenericOps<LinearArray<DataType, size>> {
@@ -291,6 +310,14 @@ public:
     auto result = LinearArray();
     for (auto& e : result.data()) {
       e = unit;
+    }
+    return result;
+  }
+
+  static constexpr auto nul(DataType const& nulVal = 0) -> LinearArray {
+    auto result = LinearArray();
+    for (auto& e : result.data()) {
+      e = nulVal;
     }
     return result;
   }
