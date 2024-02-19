@@ -10,14 +10,33 @@
 
 namespace gabe::nn {
 
+template <Size s> struct Dimension {
+  static constexpr auto size = s;
+};
+template <template <typename...> typename LayerType, typename... Params> struct NDL {
+  template <typename DataType> using Type = LayerType<DataType, Params...>;
+};
 
-template <typename DataType, typename ActivationFunction, Size size> class Layer {
+template <typename> struct IsNDL : std::false_type {};
+template <template <typename...> typename LayerType, typename... Params> struct IsNDL<NDL<LayerType, Params...>> :
+    std::true_type {};
+
+template <typename T, bool = IsNDL<T>::value> struct NDLType {};
+template <typename T> struct NDLType<T, true> {
+  template <typename DT> using Type = typename T::template Type<DT>;
+};
+template <typename T> struct NDLType<T, false> {
+  template <typename> using Type = T;
+};
+
+template <typename DataType, typename ActivationFunction, typename Dim> class Layer : private ActivationFunction {
+public:
+  static const Size dimension = Dim::size;
+
 private:
-  using InnerLinearArray = gabe::utils::math::LinearArray<DataType, size, 1>;
+  using InnerLinearArray = gabe::utils::math::LinearArray<DataType, dimension, 1>;
 
 public:
-  static const Size dimension = size;
-
   Layer() = default;
   Layer(Layer const&) = default;
   Layer(Layer&&) noexcept = default;
@@ -25,7 +44,7 @@ public:
 
   template <Size inputSize> auto feedForward(utils::math::LinearArray<DataType, inputSize, 1> const& input)
       -> InnerLinearArray {
-    _neurons = input.project(ActivationFunction());
+    _neurons = input.project(*static_cast<ActivationFunction*>(this));
     return _neurons;
   }
 
@@ -39,7 +58,7 @@ private:
 namespace impl {
 template <typename DataType, Size flSize, Size slSize> class LayerPairContainer {
 protected:
-  using InnerLinearMatrix = typename utils::math::LinearArray<DataType, slSize, flSize>;
+  using InnerLinearMatrix = typename utils::math::LinearMatrix<DataType, slSize, flSize>;
   using InnerLinearArray = typename utils::math::LinearColumnArray<DataType, slSize>;
 
 public:
@@ -58,15 +77,19 @@ private:
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer, typename... RemainingLayers> class LayerPair :
-    public LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension>,
+    public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
+                              NDLType<SecondLayer>::template Type<DataType>::dimension>,
     public LayerPair<DataType, SecondLayer, RemainingLayers...> {
 
 private:
-  using Input = utils::math::LinearArray<DataType, FirstLayer::dimension>;
+  static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
+  static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
+  using Input = utils::math::LinearArray<DataType, flDim>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension>::biases;
-  using LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension>::weights;
+  using LayerPairContainer<DataType, flDim, slDim>::biases;
+  using LayerPairContainer<DataType, flDim, slDim>::weights;
+  using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
 public:
   auto& weights(int idx) {
@@ -96,17 +119,21 @@ public:
 
   auto feedForward(Input const& input) {
     return NextLayerPair::feedForward(
-        SecondLayer().template feedForward<FirstLayer::dimension>(weights().product(input) + biases()));
+        SecondLayerType().template feedForward<flDim>(weights().product(input) + biases()));
   }
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer>
 class LayerPair<DataType, FirstLayer, SecondLayer> :
-    public LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension> {
+    public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
+                              NDLType<SecondLayer>::template Type<DataType>::dimension> {
 private:
-  using Input = typename utils::math::LinearArray<DataType, FirstLayer::dimension, 1>;
-  using LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension>::biases;
-  using LayerPairContainer<DataType, FirstLayer::dimension, SecondLayer::dimension>::weights;
+  static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
+  static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
+  using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
+  using LayerPairContainer<DataType, flDim, slDim>::biases;
+  using LayerPairContainer<DataType, flDim, slDim>::weights;
+  using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
 public:
   auto& weights(int idx) {
@@ -126,11 +153,12 @@ public:
     return biases();
   }
 
-  auto feedForward(Input const& input) { return SecondLayer().feedForward(weights().product(input) + biases()); }
+  auto feedForward(Input const& input) { return SecondLayerType().feedForward(weights().product(input) + biases()); }
 };
 } // namespace impl
 
 namespace layer {
-template <typename DataType, Size size> using InputLayer = Layer<DataType, utils::math::IdentityFunction<>, size>;
+template <typename DataType, typename Dim> struct InputLayer :
+    Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {};
 } // namespace layer
 } // namespace gabe::nn

@@ -8,31 +8,48 @@
 
 namespace gabe::utils::math {
 
-template <typename D, typename InputType, typename OutputType> class ActivationFunction {
-  static_assert(std::is_constructible_v<InputType, int> && std::is_constructible_v<OutputType, int>,
-                "Function is intended to work with integer arithmetic types");
+template <typename = void> struct SigmoidFunction {};
 
-public:
-  auto operator()(InputType const& input) const -> OutputType { return static_cast<D const*>(this)->operator()(input); }
-  auto derive(InputType const& input) const -> OutputType { return static_cast<D const*>(this)->derive(input); }
-};
-
-template <typename InputType = double> class SigmoidFunction :
-    public ActivationFunction<SigmoidFunction<InputType>, InputType, InputType> {
-public:
-  auto operator()(InputType const& input) const -> double { return 1.0 / (1.0 + std::exp(-input)); }
+template <std::floating_point InputType> struct SigmoidFunction<InputType> {
+  static constexpr auto isActivationFunction = true;
+  auto operator()(InputType const& input) const -> double {
+    return static_cast<InputType>(1) / (static_cast<InputType>(1) + std::exp(-input));
+  }
   auto derive(InputType const& input) const -> double {
     auto aux = operator()(input);
-    return aux * (1.0 - aux);
+    return aux * (static_cast<InputType>(1) - aux);
   }
 };
 
-template <typename InputType = double> class IdentityFunction :
-    public ActivationFunction<IdentityFunction<InputType>, InputType, InputType> {
-public:
-  auto operator()(InputType const& input) const -> InputType { return input; }
-  auto derive(InputType const& input) const -> InputType { return static_cast<InputType>(1); }
+template <> struct SigmoidFunction<void> {
+  static constexpr auto isActivationFunction = true;
+  static constexpr auto isTransparent = true;
+
+  template <typename InputType> auto operator()(InputType&& input) const {
+    return SigmoidFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  }
+
+  template <typename InputType> auto derive(InputType&& input) const {
+    return SigmoidFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  }
 };
+
+
+template <typename InputType = void> struct IdentityFunction {
+  auto operator()(InputType const& input) const -> InputType { return input; }
+  auto derive(InputType const&) const -> InputType { return static_cast<InputType>(1); }
+};
+
+template <> struct IdentityFunction<void> {
+  template <typename InputType> auto operator()(InputType&& input) const {
+    return IdentityFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  }
+
+  template <typename InputType> auto derive(InputType&& input) const {
+    return IdentityFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  }
+};
+
 
 namespace func {
 template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;

@@ -328,7 +328,10 @@ template <
     typename... Types,
     typename R = typename impl::TransformMLAtoLA<LinearArray<std::common_type_t<Types...>, sizeof...(Types)>>::type>
 auto larray(Types&&... types) noexcept -> R {
-  return R{{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
+  return R {{static_cast<std::common_type_t<Types...>>(std::forward<Types>(types))...}};
+}
+template <Size colSize, typename... Types> auto lmatrix(std::array<Types, colSize>... lists) noexcept {
+  return larray(LinearArray<std::common_type_t<Types...>, colSize> {lists}...);
 }
 } // namespace linearArray
 } // namespace gabe::utils::math
