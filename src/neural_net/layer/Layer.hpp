@@ -34,7 +34,7 @@ public:
   static const Size dimension = Dim::size;
 
 private:
-  using InnerLinearArray = gabe::utils::math::LinearArray<DataType, dimension, 1>;
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
 
 public:
   Layer() = default;
@@ -42,8 +42,7 @@ public:
   Layer(Layer&&) noexcept = default;
   explicit Layer(InnerLinearArray const& neurons) : _neurons(neurons) {}
 
-  template <Size inputSize> auto feedForward(utils::math::LinearArray<DataType, inputSize, 1> const& input)
-      -> InnerLinearArray {
+  auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
     _neurons = input.project(*static_cast<ActivationFunction*>(this));
     return _neurons;
   }
@@ -84,42 +83,49 @@ template <typename DataType, typename FirstLayer, typename SecondLayer, typename
 private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
-  using Input = utils::math::LinearArray<DataType, flDim>;
+
+  using Input = utils::math::LinearColumnArray<DataType, flDim>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
+  using LayerPairContainer<DataType, flDim, slDim>::biases;
+  using LayerPairContainer<DataType, flDim, slDim>::weights;
+
+
 public:
-  auto& weights(int idx) {
-    if (idx == 0) {
+  template <Size idx> auto& weights() {
+    if constexpr (idx == 0) {
+      return weights();
+    } else {
+      return static_cast<InnerLayerPair*>(this)->template weights<idx - 1>();
+    }
+  }
+
+  template <Size idx> auto const& weights() const {
+    if constexpr (idx == 0) {
       return weights();
     }
-    return static_cast<InnerLayerPair*>(this)->weights(idx - 1);
+    return static_cast<InnerLayerPair const*>(this)->template weights<idx - 1>();
   }
-  auto const& weights(int idx) const {
-    if (idx == 0) {
-      return weights();
+
+  template <Size idx> auto& biases() {
+    if constexpr (idx == 0) {
+      return biases();
+    } else {
+      return static_cast<InnerLayerPair*>(this)->template biases<idx - 1>();
     }
-    return static_cast<InnerLayerPair const*>(this)->weights(idx - 1);
   }
-  auto& biases(int idx) {
-    if (idx == 0) {
+
+  template <Size idx> auto const& biases() const {
+    if constexpr (idx == 0) {
       return biases();
     }
-    return static_cast<InnerLayerPair*>(this)->biases(idx - 1);
-  }
-  auto const& biases(int idx) const {
-    if (idx == 0) {
-      return biases();
-    }
-    return static_cast<InnerLayerPair const*>(this)->biases(idx - 1);
+    return static_cast<InnerLayerPair const*>(this)->template biases<idx - 1>();
   }
 
   auto feedForward(Input const& input) {
-    return NextLayerPair::feedForward(
-        SecondLayerType().template feedForward<flDim>(weights().product(input) + biases()));
+    return NextLayerPair::feedForward(SecondLayerType().feedForward(weights().product(input) + biases()));
   }
 };
 
@@ -130,26 +136,32 @@ class LayerPair<DataType, FirstLayer, SecondLayer> :
 private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
+
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
+
+  using LayerPairContainer<DataType, flDim, slDim>::biases;
+  using LayerPairContainer<DataType, flDim, slDim>::weights;
+
 public:
-  auto& weights(int idx) {
-    assert(idx == 0 && "Request for weights beyond last layer");
+  template <Size idx> auto& weights() {
+    static_assert(idx == 0, "Request for weights beyond last layer");
     return weights();
   }
-  auto const& weights(int idx) const {
-    assert(idx == 0 && "Request for weights beyond last layer");
+
+  template <Size idx> auto const& weights() const {
+    static_assert(idx == 0, "Request for weights beyond last layer");
     return weights();
   }
-  auto& biases(int idx) {
-    assert(idx == 0 && "Request for biases beyond last layer");
+
+  template <Size idx> auto& biases() {
+    static_assert(idx == 0, "Request for biases beyond last layer");
     return biases();
   }
-  auto const& biases(int idx) const {
-    assert(idx == 0 && "Request for biases beyond last layer");
+
+  template <Size idx> auto const& biases() const {
+    static_assert(idx == 0, "Request for biases beyond last layer");
     return biases();
   }
 
