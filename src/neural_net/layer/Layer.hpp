@@ -17,6 +17,8 @@ template <template <typename...> typename LayerType, typename... Params> struct 
   template <typename DataType> using Type = LayerType<DataType, Params...>;
 };
 
+template <Size s, template <typename...> typename L, typename... P> using SizedLayer = NDL<L, P..., Dimension<s>>;
+
 template <typename> struct IsNDL : std::false_type {};
 template <template <typename...> typename LayerType, typename... Params> struct IsNDL<NDL<LayerType, Params...>> :
     std::true_type {};
