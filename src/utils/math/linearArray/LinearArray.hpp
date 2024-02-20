@@ -12,6 +12,7 @@
 
 namespace gabe::utils::math {
 
+namespace linearArray::impl {
 template <typename DataType, Size s> class LinearArrayContainer {
   static_assert(s != 0, "Size of linear array must not be 0");
 
@@ -162,30 +163,34 @@ template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<
   out << "]";
   return out;
 }
+} // namespace linearArray::impl
+
 
 template <typename DataType, Size first_size, Size... remaining_sizes> class LinearArray :
-    public LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
-    public LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
+    public linearArray::impl::LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
+    public linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
+
+  using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
+  using LinearArrayContainer = linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>;
 
 public:
-  using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
-  using LinearArrayContainer<InnerLinearArray, first_size>::data;
+  using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
 
-  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) :
-      LinearArrayContainer<InnerLinearArray, first_size>(data) {}
+  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) : LinearArrayContainer(data) {}
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
-    public LinearArrayContainer<LinearArray<DataType, col_size>, line_size>,
-    public LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>> {
+    public linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>,
+    public linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>> {
   static_assert(std::is_constructible_v<DataType, int>, "LinearMatrix is intended to work with arithmetic types");
+  using LinearArrayContainer = linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>;
 
 public:
-  using LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
+  using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -195,7 +200,7 @@ public:
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
   explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
-      LinearArrayContainer<LinearArray<DataType, col_size>, line_size>(other) {}
+      LinearArrayContainer(other) {}
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
@@ -268,17 +273,18 @@ template <typename DataType, Size colSize> using LinearColumnArray = LinearMatri
 template <typename DataType, Size lineSize> using LinearLineArray = LinearMatrix<DataType, 1, lineSize>;
 
 template <typename DataType, Size size> class LinearArray<DataType, size> :
-    public LinearArrayContainer<DataType, size>,
-    public LinearArrayGenericOps<LinearArray<DataType, size>> {
+    public linearArray::impl::LinearArrayContainer<DataType, size>,
+    public linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, size>> {
   static_assert(std::is_constructible_v<DataType, int>, "LinearArray is intended to work with arithmetic types");
+  using LinearArrayContainer = linearArray::impl::LinearArrayContainer<DataType, size>;
 
 public:
-  using LinearArrayContainer<DataType, size>::data;
+  using linearArray::impl::LinearArrayContainer<DataType, size>::data;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<DataType, size> const& data) : LinearArrayContainer<DataType, size>(data) {}
+  explicit LinearArray(std::array<DataType, size> const& data) : LinearArrayContainer(data) {}
 
   auto dot(LinearArray const& other) const -> DataType {
     DataType sum = 0;

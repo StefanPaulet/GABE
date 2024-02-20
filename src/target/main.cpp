@@ -8,12 +8,6 @@
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
 
-using namespace gabe::utils::math;
-using namespace gabe::nn;
-using namespace layer;
-using linearArray::larray;
-using linearArray::lmatrix;
-
 namespace {
 using gabe::Size;
 template <Size s, typename L> auto&& weights(L&& layer) noexcept {
@@ -25,13 +19,13 @@ template <Size s, typename L> auto&& biases(L&& layer) noexcept {
 } // namespace
 
 int main() {
-  NeuralNetwork<float, SizedLayer<5, InputLayer>, SizedLayer<3, Layer, IdentityFunction<>>,
-                SizedLayer<1, Layer, IdentityFunction<>>> nn;
-  auto input = larray(larray(1.0f, 1, 1, 1, 1));
-  weights<0>(nn) = larray(larray(1.0f, 1, 1, 1, 1), larray(1.0f, 1, 1, 1, 1), larray(1.0f, 1, 1, 1, 1));
-  biases<0>(nn) = larray(larray(1.0f, 2, 3)).transpose();
-  weights<1>(nn) = larray(larray(1.0f), larray(1.0f), larray(1.0f)).transpose();
-  std::cout << nn.feedForward(input.transpose());
-
-  auto x = lmatrix<3, int, int>({1, 2, 3}, {4, 5, 6});
+  //  NeuralNetwork<float, SizedLayer<5, InputLayer>, SizedLayer<3, Layer, IdentityFunction<>>,
+  //                SizedLayer<1, Layer, IdentityFunction<>>> nn;
+  //  auto input = larray(larray(1.0f, 1, 1, 1, 1));
+  //  weights<0>(nn) = larray(larray(1.0f, 1, 1, 1, 1), larray(1.0f, 1, 1, 1, 1), larray(1.0f, 1, 1, 1, 1));
+  //  biases<0>(nn) = larray(larray(1.0f, 2, 3)).transpose();
+  //  weights<1>(nn) = larray(larray(1.0f), larray(1.0f), larray(1.0f)).transpose();
+  //  std::cout << nn.feedForward(input.transpose());
+  //
+  //  auto x = lmatrix<3, int, int>({1, 2, 3}, {4, 5, 6});
 }

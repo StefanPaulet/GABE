@@ -8,7 +8,8 @@
 namespace {
 using namespace gabe::utils::math;
 using namespace gabe::nn;
-using namespace layer;
+using impl::Dimension;
+using impl::NDL;
 using linearArray::larray;
 } // namespace
 

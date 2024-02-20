@@ -4,33 +4,11 @@
 
 #pragma once
 
-#include <types.hpp>
+#include "LayerTraits.hpp"
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
 
 namespace gabe::nn {
-
-template <Size s> struct Dimension {
-  static constexpr auto size = s;
-};
-template <template <typename...> typename LayerType, typename... Params> struct NDL {
-  template <typename DataType> using Type = LayerType<DataType, Params...>;
-};
-
-template <Size s, template <typename...> typename L, typename... P> using SizedLayer = NDL<L, P..., Dimension<s>>;
-
-template <typename> struct IsNDL : std::false_type {};
-template <template <typename...> typename LayerType, typename... Params> struct IsNDL<NDL<LayerType, Params...>> :
-    std::true_type {};
-
-template <typename T, bool = IsNDL<T>::value> struct NDLType {};
-template <typename T> struct NDLType<T, true> {
-  template <typename DT> using Type = typename T::template Type<DT>;
-};
-template <typename T> struct NDLType<T, false> {
-  template <typename> using Type = T;
-};
-
 template <typename DataType, typename ActivationFunction, typename Dim> class Layer : private ActivationFunction {
 public:
   static const Size dimension = Dim::size;
@@ -171,8 +149,6 @@ public:
 };
 } // namespace impl
 
-namespace layer {
 template <typename DataType, typename Dim> struct InputLayer :
     Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {};
-} // namespace layer
 } // namespace gabe::nn
