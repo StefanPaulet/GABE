@@ -16,6 +16,8 @@ set(
     LinearArrayTest.cpp
     LinearMatrixTest.cpp
     NeuralNetTest.cpp
+    FunctionTest.cpp
+    LayerTest.cpp
 )
 
 add_executable(unittests

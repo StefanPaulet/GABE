@@ -225,3 +225,25 @@ TEST(LinearArrayTest, Project) {
     }
   }
 }
+
+TEST(LinearArrayTest, Unit) {
+  auto arr1 = LinearArray<int, 3>::unit();
+  auto arr2 = larray(1, 1, 1);
+  ASSERT_EQ(arr1, arr2);
+
+  auto const d_arr1 = LinearArray<double, 3>::unit();
+  for (auto const& e : d_arr1) {
+    ASSERT_DOUBLE_EQ(e, 1.0);
+  }
+}
+
+TEST(LinearArrayTest, Nul) {
+  auto arr1 = LinearArray<int, 3>::nul();
+  auto arr2 = larray(0, 0, 0);
+  ASSERT_EQ(arr1, arr2);
+
+  auto const d_arr1 = LinearArray<double, 3>::nul();
+  for (auto const& e : d_arr1) {
+    ASSERT_DOUBLE_EQ(e, .0);
+  }
+}

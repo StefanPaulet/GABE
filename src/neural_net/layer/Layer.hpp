@@ -82,26 +82,12 @@ public:
     }
   }
 
-  template <Size idx> auto const& weights() const {
-    if constexpr (idx == 0) {
-      return weights();
-    }
-    return static_cast<InnerLayerPair const*>(this)->template weights<idx - 1>();
-  }
-
   template <Size idx> auto& biases() {
     if constexpr (idx == 0) {
       return biases();
     } else {
       return static_cast<InnerLayerPair*>(this)->template biases<idx - 1>();
     }
-  }
-
-  template <Size idx> auto const& biases() const {
-    if constexpr (idx == 0) {
-      return biases();
-    }
-    return static_cast<InnerLayerPair const*>(this)->template biases<idx - 1>();
   }
 
   auto feedForward(Input const& input) {
@@ -130,17 +116,7 @@ public:
     return weights();
   }
 
-  template <Size idx> auto const& weights() const {
-    static_assert(idx == 0, "Request for weights beyond last layer");
-    return weights();
-  }
-
   template <Size idx> auto& biases() {
-    static_assert(idx == 0, "Request for biases beyond last layer");
-    return biases();
-  }
-
-  template <Size idx> auto const& biases() const {
     static_assert(idx == 0, "Request for biases beyond last layer");
     return biases();
   }
@@ -150,5 +126,14 @@ public:
 } // namespace impl
 
 template <typename DataType, typename Dim> struct InputLayer :
-    Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {};
+    Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {
+  using Layer<DataType, utils::math::IdentityFunction<DataType>, Dim>::Layer;
+};
+
+template <Size s, typename N> auto&& weights(N&& neuralNet) noexcept {
+  return std::forward<N>(neuralNet).template weights<s>();
+}
+template <Size s, typename N> auto&& biases(N&& neuralNet) noexcept {
+  return std::forward<N>(neuralNet).template biases<s>();
+}
 } // namespace gabe::nn

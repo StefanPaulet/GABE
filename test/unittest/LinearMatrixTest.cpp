@@ -92,3 +92,15 @@ TEST(LinearMatrixTest, Convolve) {
   auto mtrx2 = mtrx1.convolve(kern1);
   ASSERT_EQ(mtrx2, rez);
 }
+
+TEST(LinearMatrixTest, Unit) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::unit();
+  auto mtrx2 = larray(larray(1, 0, 0), larray(0, 1, 0), larray(0, 0, 1));
+  ASSERT_EQ(mtrx1, mtrx2);
+}
+
+TEST(LinearMatrixTest, Nul) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::nul();
+  auto mtrx2 = larray(larray(0, 0, 0), larray(0, 0, 0), larray(0, 0, 0));
+  ASSERT_EQ(mtrx1, mtrx2);
+}
