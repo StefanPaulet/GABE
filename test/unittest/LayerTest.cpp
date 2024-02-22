@@ -8,16 +8,16 @@
 namespace {
 using namespace gabe::nn;
 using namespace gabe::utils::math;
-using namespace impl;
+using gabe::nn::impl::Dimension;
 using linearArray::larray;
 } // namespace
 
 TEST(LayerTest, Construction) {
-  Layer<int, IdentityFunction<>, impl::Dimension<3>> lay1 {};
+  Layer<int, IdentityFunction<>, Dimension<3>> lay1 {};
   SizedLayer<3, Layer, IdentityFunction<>>::template Type<int> lay2;
   static_assert(std::is_same_v<decltype(lay2), decltype(lay1)>);
 
-  Layer<int, IdentityFunction<>, impl::Dimension<3>> lay3 {larray(larray(1, 2, 3)).transpose()};
+  Layer<int, IdentityFunction<>, Dimension<3>> lay3 {larray(larray(1, 2, 3)).transpose()};
 }
 
 TEST(LayerTest, Neurons) {

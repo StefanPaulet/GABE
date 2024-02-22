@@ -18,6 +18,7 @@ set(
     NeuralNetTest.cpp
     FunctionTest.cpp
     LayerTest.cpp
+    PredicatesTest.cpp
 )
 
 add_executable(unittests

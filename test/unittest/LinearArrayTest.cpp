@@ -47,9 +47,7 @@ TEST(LinnearArrayTest, Addition) {
   auto d_arr3 = d_arr1 + d_arr2;
   auto d_arr4 = larray(5.5, 4.9, 4.2);
 
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    ASSERT_DOUBLE_EQ(d_arr3[index], d_arr4[index]);
-  }
+  ASSERT_EQ(d_arr3, d_arr4);
 }
 
 TEST(LinnearArrayTest, Substraction) {
@@ -66,9 +64,7 @@ TEST(LinnearArrayTest, Substraction) {
   auto d_arr2 = larray(1.1, 0.28, 11.53);
   auto d_arr3 = d_arr1 - d_arr2;
   auto d_arr4 = larray(0.79, 2.83, -6.3);
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    ASSERT_DOUBLE_EQ(d_arr3[index], d_arr4[index]);
-  }
+  ASSERT_EQ(d_arr3, d_arr4);
 }
 
 TEST(LinearArrayTest, Multiplication) {
@@ -85,9 +81,7 @@ TEST(LinearArrayTest, Multiplication) {
   auto d_arr2 = larray(0.1, -1.43, 0.25);
   auto d_arr3 = d_arr1 * d_arr2;
   auto d_arr4 = larray(0.23, -4.29, 1.3125);
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    ASSERT_DOUBLE_EQ(d_arr3[index], d_arr4[index]);
-  }
+  ASSERT_EQ(d_arr3, d_arr4);
 }
 
 TEST(LinnearArrayTest, Division) {
@@ -104,9 +98,7 @@ TEST(LinnearArrayTest, Division) {
   auto d_arr2 = larray(2, 1.4, 2);
   auto d_arr3 = d_arr1 / d_arr2;
   auto d_arr4 = larray(1.7, 4, 3.81);
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    ASSERT_DOUBLE_EQ(d_arr3[index], d_arr4[index]);
-  }
+  ASSERT_EQ(d_arr3, d_arr4);
 }
 
 TEST(LinearArrayTest, DotProduct) {
@@ -183,11 +175,7 @@ TEST(LinearArrayTest, Transform) {
   auto d_arr3 = larray(larray(1.0, 4, 9), larray(2.1, 4.2, 5.55));
   auto d_arr4 = larray(larray(1.0 / 3, 4.0 / 3, 3), larray(0.7, 1.4, 1.85));
   d_arr3.transform(mdt);
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    for (int p_index = 0; p_index < d_arr3.data()[0].data().size(); ++p_index) {
-      ASSERT_DOUBLE_EQ(d_arr3[index][p_index], d_arr4[index][p_index]);
-    }
-  }
+  ASSERT_EQ(d_arr3, d_arr4);
 }
 
 TEST(LinearArrayTest, Project) {
@@ -211,19 +199,13 @@ TEST(LinearArrayTest, Project) {
   auto d_arr1 = LinearArray<double, 3> {{1.41, 5.31, 9}};
   auto d_arr2 = d_arr1.project(MyDoubleTransform());
   auto d_arr3 = larray(0.47, 1.77, 3);
-  for (int index = 0; index < d_arr3.data().size(); ++index) {
-    ASSERT_DOUBLE_EQ(d_arr2[index], d_arr3[index]);
-  }
+  ASSERT_EQ(d_arr2, d_arr3);
 
   auto mdt = MyDoubleTransform();
   auto d_arr4 = larray(larray(1.0, 4, 9), larray(2.1, 4.2, 5.55));
   auto d_arr5 = d_arr4.project(mdt);
   auto d_arr6 = larray(larray(1.0 / 3, 4.0 / 3, 3), larray(0.7, 1.4, 1.85));
-  for (int index = 0; index < d_arr5.data().size(); ++index) {
-    for (int p_index = 0; p_index < d_arr5.data()[0].data().size(); ++p_index) {
-      ASSERT_DOUBLE_EQ(d_arr5[index][p_index], d_arr6[index][p_index]);
-    }
-  }
+  ASSERT_EQ(d_arr5, d_arr6);
 }
 
 TEST(LinearArrayTest, Unit) {
