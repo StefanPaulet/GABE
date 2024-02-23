@@ -4,46 +4,51 @@
 
 #pragma once
 
+#include "utils/concepts/Concepts.hpp"
 #include <array>
 #include <concepts>
 #include <types.hpp>
 
 namespace gabe::utils::math {
+template <typename L, typename R = L> struct Equals {
+  auto operator()(L const& lhs, R const& rhs) const -> bool { return &lhs == &rhs; }
+};
 
-namespace impl {
-template <typename L, typename R = L, typename = void> struct is_equal_comparable : std::false_type {};
 template <typename L, typename R>
-struct is_equal_comparable<L, R, std::void_t<decltype(std::declval<L>() == std::declval<R>())>> : std::true_type {};
-} // namespace impl
+  requires concepts::EqualComparable<L, R> && (!(std::floating_point<L> && std::floating_point<R>) )
+    && (!(concepts::RandomAccessFloatContainer<L> && concepts::RandomAccessFloatContainer<R>) )
+struct Equals<L, R> {
+  auto operator()(L const& lhs, R const& rhs) const -> bool { return lhs == rhs; }
+};
 
-template <typename L, typename R = L, std::enable_if_t<!impl::is_equal_comparable<L, R>::value, int> = 0>
-auto equals(L const& lhs, R const& rhs) -> bool {
-  return &lhs == &rhs;
-}
+template <typename L, typename R>
+  requires std::floating_point<L> && std::floating_point<R>
+struct Equals<L, R> {
+  auto operator()(L const& lhs, R const& rhs) const -> bool {
+    return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.00001;
+  }
+};
 
-template <typename L, typename R = L,
-          std::enable_if_t<impl::is_equal_comparable<L, R>::value
-                               && !(std::is_floating_point_v<L> && std::is_floating_point_v<R>),
-                           int> = 0>
-auto equals(L const& lhs, R const& rhs) -> bool {
-  return lhs == rhs;
-}
-
-template <typename L, typename R = L,
-          std::enable_if_t<std::is_floating_point_v<L> && std::is_floating_point_v<R>, int> = 0>
-auto equals(L const& lhs, R const& rhs) -> bool {
-  return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.00001;
-}
-
-template <Size s, typename L, typename R = L,
-          std::enable_if_t<std::is_floating_point_v<L> && std::is_floating_point_v<R>, int> = 0>
-auto equals(std::array<L, s> const& lhs, std::array<R, s> const& rhs) -> bool {
-  for (auto idx = 0; idx < s; ++idx) {
-    auto val = (lhs[idx] - rhs[idx] > 0) ? (lhs[idx] - rhs[idx]) : (rhs[idx] - lhs[idx]);
-    if (val > 0.00001) {
+template <typename L, typename R>
+  requires concepts::RandomAccessFloatContainer<L> && concepts::RandomAccessFloatContainer<R>
+struct Equals<L, R> {
+  auto operator()(L const& lhs, R const& rhs) const -> bool {
+    if (lhs.size() != rhs.size()) {
       return false;
     }
+    for (auto idx = 0; idx < lhs.size(); ++idx) {
+      auto val = (lhs[idx] - rhs[idx] > 0) ? (lhs[idx] - rhs[idx]) : (rhs[idx] - lhs[idx]);
+      if (val > 0.00001) {
+        return false;
+      }
+    }
+    return true;
   }
-  return true;
-}
+};
+
+template <> struct Equals<void, void> {
+  template <typename L, typename R> auto operator()(L&& lhs, R&& rhs) const -> bool {
+    return Equals<std::remove_cvref_t<L>, std::remove_cvref_t<R>>()(std::forward(lhs), std::forward(rhs));
+  }
+};
 } // namespace gabe::utils::math
