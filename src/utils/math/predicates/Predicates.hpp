@@ -10,14 +10,23 @@
 #include <types.hpp>
 
 namespace gabe::utils::math {
-template <typename L, typename R = L> struct Equals {
+template <typename L = void, typename R = L, typename = void> struct Equals {
   auto operator()(L const& lhs, R const& rhs) const -> bool { return &lhs == &rhs; }
 };
 
+template <> struct Equals<void, void, void> {
+  template <typename L, typename R> auto operator()(L&& lhs, R&& rhs) const -> bool {
+    return Equals<std::remove_cvref_t<L>, std::remove_cvref_t<R>>()(std::forward<L>(lhs), std::forward<R>(rhs));
+  }
+};
+
 template <typename L, typename R>
-  requires concepts::EqualComparable<L, R> && (!(std::floating_point<L> && std::floating_point<R>) )
-    && (!(concepts::RandomAccessFloatContainer<L> && concepts::RandomAccessFloatContainer<R>) )
-struct Equals<L, R> {
+  requires concepts::EqualComparable<L, R>
+    && (!(concepts::RandomAccessContainer<L> && concepts::RandomAccessContainer<R>) )
+struct Equals<
+    L, R,
+    std::enable_if_t<!(concepts::impl::UseFloatingEquals<L>::value && concepts::impl::UseFloatingEquals<R>::value),
+                     void>> {
   auto operator()(L const& lhs, R const& rhs) const -> bool { return lhs == rhs; }
 };
 
@@ -29,26 +38,18 @@ struct Equals<L, R> {
   }
 };
 
-template <typename L, typename R>
-  requires concepts::RandomAccessFloatContainer<L> && concepts::RandomAccessFloatContainer<R>
-struct Equals<L, R> {
+template <concepts::RandomAccessContainer L, concepts::RandomAccessContainer R> struct Equals<L, R> {
   auto operator()(L const& lhs, R const& rhs) const -> bool {
     if (lhs.size() != rhs.size()) {
       return false;
     }
     for (auto idx = 0; idx < lhs.size(); ++idx) {
-      auto val = (lhs[idx] - rhs[idx] > 0) ? (lhs[idx] - rhs[idx]) : (rhs[idx] - lhs[idx]);
-      if (val > 0.00001) {
+      auto val = Equals<>()(lhs[idx], rhs[idx]);
+      if (!val) {
         return false;
       }
     }
     return true;
-  }
-};
-
-template <> struct Equals<void, void> {
-  template <typename L, typename R> auto operator()(L&& lhs, R&& rhs) const -> bool {
-    return Equals<std::remove_cvref_t<L>, std::remove_cvref_t<R>>()(std::forward(lhs), std::forward(rhs));
   }
 };
 } // namespace gabe::utils::math

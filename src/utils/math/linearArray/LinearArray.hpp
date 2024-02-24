@@ -26,6 +26,7 @@ public:
 
   auto& data() { return _data; }
   auto const& data() const { return _data; }
+  constexpr auto size() const { return s; }
 
 private:
   std::array<DataType, s> _data;
@@ -148,8 +149,7 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
 
 template <typename FD> auto operator==(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> bool {
-  return Equals<std::remove_cvref_t<decltype(static_cast<FD const*>(&lhs)->data())>>()(
-      static_cast<FD const*>(&lhs)->data(), static_cast<FD const*>(&rhs)->data());
+  return Equals<>()(static_cast<FD const*>(&lhs)->data(), static_cast<FD const*>(&rhs)->data());
 }
 
 template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<FD> const& obj) -> std::ostream& {

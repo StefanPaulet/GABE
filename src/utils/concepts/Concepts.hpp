@@ -6,6 +6,7 @@
 
 #include "types.hpp"
 #include <concepts>
+#include <iterator>
 #include <type_traits>
 
 namespace gabe::utils::concepts {
@@ -14,13 +15,17 @@ concept EqualComparable = requires(L lhs, R rhs) {
   { lhs == rhs } -> std::same_as<bool>;
 };
 
-template <typename T, typename D>
-concept RandomAccessContainer = requires(T t, Size s) {
-  { std::remove_cvref_t<decltype(t[s])>() } -> std::same_as<D>;
-  { t.size() } -> std::convertible_to<int>;
-};
-
 template <typename T>
-concept RandomAccessFloatContainer =
-    RandomAccessContainer<T, typename T::value_type> && std::floating_point<typename T::value_type>;
+concept RandomAccessContainer = std::random_access_iterator<std::remove_cvref_t<decltype(std::declval<T>().begin())>>;
+
+namespace impl {
+template <typename T, typename = void> struct UseFloatingEquals : std::false_type {};
+
+template <std::floating_point T> struct UseFloatingEquals<T> : std::true_type {};
+
+template <gabe::utils::concepts::RandomAccessContainer T> struct UseFloatingEquals<
+    T, std::enable_if_t<std::is_floating_point_v<std::remove_cvref_t<decltype(*std::declval<T>().begin())>>, void>> :
+    std::true_type {};
+} // namespace impl
+
 } // namespace gabe::utils::concepts
