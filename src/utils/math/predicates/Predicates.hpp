@@ -4,34 +4,38 @@
 
 #pragma once
 
+#include "Predicates.hpp"
 #include "utils/concepts/Concepts.hpp"
 #include <array>
 #include <concepts>
 #include <types.hpp>
 
 namespace gabe::utils::math {
-template <typename L = void, typename R = L, typename = void> struct Equals {
+template <typename L = void, typename R = L> struct Equals {
   auto operator()(L const& lhs, R const& rhs) const -> bool { return &lhs == &rhs; }
 };
 
-template <> struct Equals<void, void, void> {
+template <> struct Equals<void, void> {
   template <typename L, typename R> auto operator()(L&& lhs, R&& rhs) const -> bool {
     return Equals<std::remove_cvref_t<L>, std::remove_cvref_t<R>>()(std::forward<L>(lhs), std::forward<R>(rhs));
   }
 };
 
-template <typename L, typename R>
-  requires concepts::EqualComparable<L, R> && (!(concepts::Iterable<L> && concepts::Iterable<R>) )
-struct Equals<
-    L, R,
-    std::enable_if_t<!(concepts::impl::UseFloatingEquals<L>::value && concepts::impl::UseFloatingEquals<R>::value),
-                     void>> {
-  auto operator()(L const& lhs, R const& rhs) const -> bool { return lhs == rhs; }
+template <typename> struct UsesDefaultEqOp : std::true_type {};
+template <concepts::Iterable I> struct UsesDefaultEqOp<I> : std::false_type {};
+template <std::floating_point F> struct UsesDefaultEqOp<F> : std::false_type {};
+}
+
+namespace gabe::utils::concepts {
+template <typename T> concept UsesDefaultEqOp = math::UsesDefaultEqOp<T>::value && EqualComparable<T>;
+}
+
+namespace gabe::utils::math {
+template <concepts::UsesDefaultEqOp Lhs, concepts::UsesDefaultEqOp Rhs> struct Equals<Lhs, Rhs> {
+  auto operator()(Lhs const& lhs, Rhs const& rhs) const -> bool { return lhs == rhs; }
 };
 
-template <typename L, typename R>
-  requires std::floating_point<L> && std::floating_point<R>
-struct Equals<L, R> {
+template <std::floating_point L, std::floating_point R> struct Equals<L, R> {
   auto operator()(L const& lhs, R const& rhs) const -> bool {
     return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.00001;
   }
