@@ -3,10 +3,12 @@
 //
 
 #include "utils/math/predicates/Predicates.hpp"
+#include "utils/math/linearArray/LinearArray.hpp"
 #include "gtest/gtest.h"
 
 namespace {
 using namespace gabe::utils::math;
+using linearArray::larray;
 }
 
 TEST(PredicatesTest, Equal) {
@@ -40,7 +42,13 @@ TEST(PredicatesTest, Equal) {
   std::array<double, 3> arr1 {2, 3, 4};
   std::array<double, 3> arr2 {1, 2, 3};
   std::array<double, 3> arr3 {2.000001, 3, 4};
-  auto arrComparator = Equals<std::array<double, 3>> {};
-  ASSERT_FALSE(arrComparator(arr1, arr2));
-  ASSERT_TRUE(arrComparator(arr1, arr3));
+  ASSERT_FALSE(Equals<>()(arr1, arr2));
+  ASSERT_TRUE(Equals<>()(arr1, arr3));
+
+  auto mtrx1 = larray(larray(1.0f, 2.000002, 3));
+  auto mtrx2 = larray(larray(1.00000001f, 2, 3.0000005));
+  auto mtrx3 = larray(larray(1.001f, 2, 3));
+  Equals<>()(mtrx1, mtrx2);
+  ASSERT_TRUE(Equals<>()(mtrx1, mtrx2));
+  ASSERT_FALSE(Equals<>()(mtrx1, mtrx3));
 }

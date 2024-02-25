@@ -21,8 +21,7 @@ template <> struct Equals<void, void, void> {
 };
 
 template <typename L, typename R>
-  requires concepts::EqualComparable<L, R>
-    && (!(concepts::RandomAccessContainer<L> && concepts::RandomAccessContainer<R>) )
+  requires concepts::EqualComparable<L, R> && (!(concepts::Iterable<L> && concepts::Iterable<R>) )
 struct Equals<
     L, R,
     std::enable_if_t<!(concepts::impl::UseFloatingEquals<L>::value && concepts::impl::UseFloatingEquals<R>::value),
@@ -38,16 +37,21 @@ struct Equals<L, R> {
   }
 };
 
-template <concepts::RandomAccessContainer L, concepts::RandomAccessContainer R> struct Equals<L, R> {
+template <concepts::Iterable L, concepts::Iterable R> struct Equals<L, R> {
   auto operator()(L const& lhs, R const& rhs) const -> bool {
     if (lhs.size() != rhs.size()) {
       return false;
     }
-    for (auto idx = 0; idx < lhs.size(); ++idx) {
-      auto val = Equals<>()(lhs[idx], rhs[idx]);
-      if (!val) {
+    auto lhsIt = lhs.begin();
+    auto rhsIt = rhs.begin();
+    for (; lhsIt != lhs.end() && rhsIt != rhs.end(); ++lhsIt, ++rhsIt) {
+      auto partialRes = Equals<>()(*lhsIt, *rhsIt);
+      if (!partialRes) {
         return false;
       }
+    }
+    if (lhsIt != lhs.end() || rhsIt != rhs.end()) {
+      return false;
     }
     return true;
   }

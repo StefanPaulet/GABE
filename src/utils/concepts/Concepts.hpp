@@ -16,6 +16,21 @@ concept EqualComparable = requires(L lhs, R rhs) {
 };
 
 template <typename T>
+concept IsNotVoid = !std::same_as<T, void>;
+
+template <typename I>
+concept Iterator = requires(I i) {
+  { *i } -> IsNotVoid;
+  { ++i } -> std::same_as<I&>;
+} && std::copyable<I>;
+
+template <typename T>
+concept Iterable = requires(T t) {
+  { t.begin() } -> Iterator;
+  { t.size() } -> std::convertible_to<Size>;
+};
+
+template <typename T>
 concept RandomAccessContainer = std::random_access_iterator<std::remove_cvref_t<decltype(std::declval<T>().begin())>>;
 
 namespace impl {
@@ -23,8 +38,8 @@ template <typename T, typename = void> struct UseFloatingEquals : std::false_typ
 
 template <std::floating_point T> struct UseFloatingEquals<T> : std::true_type {};
 
-template <gabe::utils::concepts::RandomAccessContainer T> struct UseFloatingEquals<
-    T, std::enable_if_t<std::is_floating_point_v<std::remove_cvref_t<decltype(*std::declval<T>().begin())>>, void>> :
+template <gabe::utils::concepts::Iterable T> struct UseFloatingEquals<
+    T, std::enable_if_t<UseFloatingEquals<std::remove_cvref_t<decltype(*std::declval<T>().begin())>>::value, void>> :
     std::true_type {};
 } // namespace impl
 
