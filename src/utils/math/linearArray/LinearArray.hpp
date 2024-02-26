@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "../predicates/Predicates.hpp"
 #include "LinearArrayTraits.hpp"
 #include <algorithm>
 #include <array>
@@ -25,6 +26,7 @@ public:
 
   auto& data() { return _data; }
   auto const& data() const { return _data; }
+  constexpr auto size() const { return s; }
 
 private:
   std::array<DataType, s> _data;
@@ -147,8 +149,7 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
 
 template <typename FD> auto operator==(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
     -> bool {
-  // TODO : Use Equal<> idiom.
-  return static_cast<FD const*>(&lhs)->data() == static_cast<FD const*>(&rhs)->data();
+  return Equals<>()(static_cast<FD const*>(&lhs)->data(), static_cast<FD const*>(&rhs)->data());
 }
 
 template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<FD> const& obj) -> std::ostream& {
@@ -249,15 +250,16 @@ public:
       -> LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1> {
     auto rez = LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1>();
 
-    // TODO : Extract for 3 and 4 to lambda
+    auto add = [&](int lineIdx, int colIdx) {
+      for (int convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
+        for (int convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
+          rez[lineIdx][colIdx] += data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
+        }
+      }
+    };
     for (int lineIdx = 0; lineIdx < line_size - conv_line_size + 1; ++lineIdx) {
       for (int colIdx = 0; colIdx < col_size - conv_col_size + 1; ++colIdx) {
-        for (int convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
-          for (int convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
-            rez[lineIdx][colIdx] +=
-                data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
-          }
-        }
+        add(lineIdx, colIdx);
       }
     }
     return rez;
