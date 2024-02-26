@@ -21,16 +21,6 @@ template <> struct Equals<void, void> {
   }
 };
 
-template <typename> struct UsesDefaultEqOp : std::true_type {};
-template <concepts::Iterable I> struct UsesDefaultEqOp<I> : std::false_type {};
-template <std::floating_point F> struct UsesDefaultEqOp<F> : std::false_type {};
-}
-
-namespace gabe::utils::concepts {
-template <typename T> concept UsesDefaultEqOp = math::UsesDefaultEqOp<T>::value && EqualComparable<T>;
-}
-
-namespace gabe::utils::math {
 template <concepts::UsesDefaultEqOp Lhs, concepts::UsesDefaultEqOp Rhs> struct Equals<Lhs, Rhs> {
   auto operator()(Lhs const& lhs, Rhs const& rhs) const -> bool { return lhs == rhs; }
 };
@@ -43,9 +33,6 @@ template <std::floating_point L, std::floating_point R> struct Equals<L, R> {
 
 template <concepts::Iterable L, concepts::Iterable R> struct Equals<L, R> {
   auto operator()(L const& lhs, R const& rhs) const -> bool {
-    if (lhs.size() != rhs.size()) {
-      return false;
-    }
     auto lhsIt = lhs.begin();
     auto rhsIt = rhs.begin();
     for (; lhsIt != lhs.end() && rhsIt != rhs.end(); ++lhsIt, ++rhsIt) {
@@ -54,8 +41,20 @@ template <concepts::Iterable L, concepts::Iterable R> struct Equals<L, R> {
         return false;
       }
     }
-    if (lhsIt != lhs.end() || rhsIt != rhs.end()) {
+    return true;
+  }
+};
+
+template <concepts::RandomAccessContainer L, concepts::RandomAccessContainer R> struct Equals<L, R> {
+  auto operator()(L const& lhs, R const& rhs) const -> bool {
+    if (lhs.size() != rhs.size()) {
       return false;
+    }
+    for (Size idx = 0; idx < lhs.size(); ++idx) {
+      auto partialRes = Equals<>()(lhs[idx], rhs[idx]);
+      if (!partialRes) {
+        return false;
+      }
     }
     return true;
   }

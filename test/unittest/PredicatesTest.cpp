@@ -48,7 +48,10 @@ TEST(PredicatesTest, Equal) {
   auto mtrx1 = larray(larray(1.0f, 2.000002, 3));
   auto mtrx2 = larray(larray(1.00000001f, 2, 3.0000005));
   auto mtrx3 = larray(larray(1.001f, 2, 3));
-  Equals<>()(mtrx1, mtrx2);
   ASSERT_TRUE(Equals<>()(mtrx1, mtrx2));
   ASSERT_FALSE(Equals<>()(mtrx1, mtrx3));
+
+  auto sizedCont1 = std::array<double, 3> {1, 2, 3};
+  auto sizedCont2 = std::array<double, 4> {1, 2, 3, 4};
+  ASSERT_FALSE(Equals<>()(sizedCont1, sizedCont2));
 }
