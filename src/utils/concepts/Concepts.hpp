@@ -5,6 +5,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "utils/math/linearArray/LinearArrayTraits.hpp"
 #include <concepts>
 #include <iterator>
 #include <type_traits>
@@ -47,5 +48,11 @@ template <concepts::RandomAccessContainer C> struct UsesDefaultEqOp<C> : std::fa
 
 template <typename T>
 concept UsesDefaultEqOp = impl::UsesDefaultEqOp<T>::value && EqualComparable<T>;
+
+template <typename T>
+concept IntegralType = std::integral<T> || std::floating_point<T>;
+
+template <typename T>
+concept LinearArrayType = gabe::utils::math::linearArray::impl::IsLinearArray<T>::value;
 
 } // namespace gabe::utils::concepts

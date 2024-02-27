@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "utils/concepts/Concepts.hpp"
 #include <cmath>
 
 namespace gabe::utils::math {
@@ -48,6 +49,44 @@ template <> struct IdentityFunction<void> {
   template <typename InputType> auto derive(InputType&& input) const {
     return IdentityFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
   }
+};
+
+
+template <typename InputType = void> struct MeanSquaredErrorFunction {};
+
+template <> struct MeanSquaredErrorFunction<void> {
+  static constexpr auto isCostFunction = true;
+
+  template <typename InputType> auto operator()(InputType&& in, InputType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(in),
+                                                                      std::forward<InputType>(target));
+  }
+
+  template <typename InputType> auto derive(InputType&& in, InputType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(in),
+                                                                             std::forward<InputType>(target));
+  }
+};
+
+template <concepts::IntegralType InputType> struct MeanSquaredErrorFunction<InputType> {
+  static constexpr auto isCostFunction = true;
+
+  auto operator()(InputType const& in, InputType const& target) const { return (target - in) * (target - in) / 2; }
+
+  auto derive(InputType const& in, InputType const& target) const { return (in - target); }
+};
+
+template <concepts::LinearArrayType InputType> struct MeanSquaredErrorFunction<InputType> {
+  static constexpr auto isCostFunction = true;
+
+  auto operator()(InputType const& in, InputType const& target) const {
+    auto divider = [](typename InputType::UnderlyingType const& val) {
+      return val / static_cast<typename InputType::UnderlyingType>(2);
+    };
+    return ((target - in) * (target - in)).project(divider);
+  }
+
+  auto derive(InputType const& in, InputType const& target) const { return (in - target); }
 };
 
 

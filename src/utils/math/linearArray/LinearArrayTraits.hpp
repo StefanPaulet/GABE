@@ -15,6 +15,9 @@ namespace linearArray::impl {
 template <typename> struct IsLinearArray : std::false_type {};
 template <typename T, Size fs, Size... rs> struct IsLinearArray<LinearArray<T, fs, rs...>> : std::true_type {};
 
+template <typename> struct IsLinearColumnArray : std::false_type {};
+template <typename T, Size colSize> struct IsLinearColumnArray<LinearArray<T, colSize, 1>> : std::true_type {};
+
 template <typename> struct IsMalformedLinearArray : std::false_type {};
 template <typename T, Size s> struct IsMalformedLinearArray<LinearArray<T, s>> :
     std::bool_constant<IsLinearArray<T>::value> {};
@@ -26,9 +29,9 @@ template <Size... rs, Size s> struct PackPush<SizePack<rs...>, s> {
   using type = SizePack<s, rs...>;
 };
 
-template <typename> struct GetSizePackOfMLA {
+template <typename T> struct GetSizePackOfMLA {
   using type = SizePack<>;
-  using inner_type = void;
+  using inner_type = T;
 };
 
 template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
