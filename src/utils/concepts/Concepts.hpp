@@ -5,6 +5,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "utils/math/function/FunctionTraits.hpp"
 #include "utils/math/linearArray/LinearArrayTraits.hpp"
 #include <concepts>
 #include <iterator>

@@ -166,6 +166,39 @@ template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<
   out << "]";
   return out;
 }
+
+template <typename FD, concepts::IntegralType V> auto operator+(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) + value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator-(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) - value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator*(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) * value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator/(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) / value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator+(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value + std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator-(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value - std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator*(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value * std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator/(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value / std::forward<T>(val); });
+}
+
 } // namespace linearArray::impl
 
 

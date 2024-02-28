@@ -5,6 +5,7 @@
 #pragma once
 
 #include "LayerTraits.hpp"
+#include <functional>
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
 
@@ -17,14 +18,21 @@ private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
 
 public:
+  using LayerFunction = ActivationFunction;
+
   Layer() = default;
   Layer(Layer const&) = default;
   Layer(Layer&&) noexcept = default;
   explicit Layer(InnerLinearArray const& neurons) : _neurons(neurons) {}
 
   auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
-    _neurons = input.project(*static_cast<ActivationFunction*>(this));
-    return _neurons;
+    return input.project(*static_cast<ActivationFunction*>(this));
+  }
+
+  auto backPropagate(InnerLinearArray const& input) -> InnerLinearArray {
+    return input.project([this]<typename T>(T&& value) {
+      return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
+    });
   }
 
   auto const& neurons() const { return _neurons; }
@@ -32,6 +40,23 @@ public:
 
 private:
   InnerLinearArray _neurons;
+};
+
+template <typename DataType, typename ActivationFunction, typename CostFunction, typename Dim>
+class OutputLayer : public Layer<DataType, ActivationFunction, Dim>, private CostFunction {
+private:
+  using Layer = Layer<DataType, ActivationFunction, Dim>;
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, Layer::dimension>;
+  using Layer::backPropagate;
+
+public:
+  using LayerFunction = CostFunction;
+  using Layer::feedForward;
+
+  auto backPropagate(InnerLinearArray const& input, InnerLinearArray const& target)
+      -> std::pair<InnerLinearArray, InnerLinearArray> {
+    return {backPropagate(input), (*static_cast<CostFunction*>(this)).derive(feedForward(input), target)};
+  }
 };
 
 namespace impl {
@@ -67,6 +92,7 @@ private:
   using Input = utils::math::LinearColumnArray<DataType, flDim>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
+  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer<DataType, flDim, slDim>::biases;
@@ -104,6 +130,7 @@ private:
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
+  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
 
@@ -122,6 +149,15 @@ public:
   }
 
   auto feedForward(Input const& input) { return SecondLayerType().feedForward(weights().product(input) + biases()); }
+  auto backPropagate(Input const& input, Input const& target) {
+    static_assert(utils::math::impl::is_cost_function<typename SecondLayerType::LayerFunction>::value,
+                  "Final layer must have a cost function");
+
+    auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
+    auto activationGradient = std::get<0>(rezPair);
+    auto costGradient = std::get<1>(rezPair) * -1;
+    biases() = activationGradient * costGradient;
+  }
 };
 } // namespace impl
 
