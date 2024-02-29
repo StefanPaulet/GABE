@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 namespace gabe::utils::math::impl {
 template <typename, typename = void> struct is_callable : std::false_type {};
 template <typename T> struct is_callable<T, std::void_t<decltype(std::declval<T>()())>> : std::true_type {};

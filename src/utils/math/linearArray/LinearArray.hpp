@@ -49,22 +49,22 @@ public:
   friend auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
 
   auto& operator+=(LinearArrayGenericOps const& rhs) {
-    *this = *this + rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) + *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator-=(LinearArrayGenericOps const& rhs) {
-    *this = *this - rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) - *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator*=(LinearArrayGenericOps const& rhs) {
-    *this = *this * rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) * *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator/=(LinearArrayGenericOps const& rhs) {
-    *this = *this / rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) / *static_cast<D const*>(&rhs);
     return *this;
   }
 

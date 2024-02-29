@@ -9,15 +9,16 @@ using namespace gabe::nn;
 using namespace gabe::utils::math;
 using linearArray::larray;
 } // namespace
-
 int main() {
-  NeuralNetwork<float, SizedLayer<3, InputLayer>,
-                SizedLayer<3, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+  NeuralNetwork<float, SizedLayer<2, InputLayer>, SizedLayer<2, Layer, IdentityFunction<>>,
+                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
       nn;
-  auto input = larray(larray(1.0f, 1, 1));
-  auto target = larray(larray(2.0f, 0, 0));
-  nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
-  std::cout << nn.biases<0>() << '\n';
-  nn.backPropagate(input.transpose(), target.transpose());
-  std::cout << nn.biases<0>() << '\n';
+  auto input = larray(larray(2.f, 3));
+  auto target = larray(larray(1.f));
+  nn.weights<0>() = larray(larray(.11f, .21f), larray(.12f, .08f));
+  nn.weights<1>() = larray(larray(.14f, .15f));
+  nn.backPropagate(input.transpose(), target.transpose(), 0.05f);
+  nn.biases<0>() = larray(larray(.0f, .0f)).transpose();
+  nn.biases<1>() = larray(larray(.0f));
+  nn.feedForward(input.transpose());
 }

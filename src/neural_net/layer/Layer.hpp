@@ -23,7 +23,6 @@ public:
   Layer() = default;
   Layer(Layer const&) = default;
   Layer(Layer&&) noexcept = default;
-  explicit Layer(InnerLinearArray const& neurons) : _neurons(neurons) {}
 
   auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
     return input.project(*static_cast<ActivationFunction*>(this));
@@ -34,12 +33,6 @@ public:
       return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
     });
   }
-
-  auto const& neurons() const { return _neurons; }
-  auto& neurons() { return _neurons; }
-
-private:
-  InnerLinearArray _neurons;
 };
 
 template <typename DataType, typename ActivationFunction, typename CostFunction, typename Dim>
@@ -71,9 +64,7 @@ public:
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
-  auto const& weights() const { return _weights; }
   auto& biases() { return _biases; }
-  auto const& biases() const { return _biases; }
 
 private:
   InnerLinearMatrix _weights {};
@@ -95,8 +86,13 @@ private:
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
+  auto& weights() {
+    return static_cast<LayerPairContainer<DataType, flDim, slDim>*>(static_cast<void*>(this))->weights();
+  }
+
+  auto& biases() {
+    return static_cast<LayerPairContainer<DataType, flDim, slDim>*>(static_cast<void*>(this))->biases();
+  }
 
 
 public:
@@ -118,6 +114,19 @@ public:
 
   auto feedForward(Input const& input) {
     return NextLayerPair::feedForward(SecondLayerType().feedForward(weights().product(input) + biases()));
+  }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
+    auto z_value = weights().product(input) + biases();
+    auto nextLayerGradient =
+        NextLayerPair::backPropagate(SecondLayerType().feedForward(z_value), target, learning_rate);
+    auto currentLayerGradient = nextLayerGradient * SecondLayerType().backPropagate(z_value);
+
+    auto returnGradient = currentLayerGradient.transpose().product(weights()).transpose();
+    biases() -= currentLayerGradient * learning_rate;
+    weights() -= currentLayerGradient.product(input.transpose()) * learning_rate;
+    return returnGradient;
   }
 };
 
@@ -149,14 +158,20 @@ public:
   }
 
   auto feedForward(Input const& input) { return SecondLayerType().feedForward(weights().product(input) + biases()); }
-  auto backPropagate(Input const& input, Input const& target) {
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
     static_assert(utils::math::impl::is_cost_function<typename SecondLayerType::LayerFunction>::value,
                   "Final layer must have a cost function");
-
     auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
-    auto activationGradient = std::get<0>(rezPair);
-    auto costGradient = std::get<1>(rezPair) * -1;
-    biases() = activationGradient * costGradient;
+    auto endLayerGradient = std::get<0>(rezPair) * std::get<1>(rezPair);
+
+    auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
+
+    biases() -= endLayerGradient * learning_rate;
+    weights() -= endLayerGradient.product(input.transpose()) * learning_rate;
+
+    return returnGradient;
   }
 };
 } // namespace impl
