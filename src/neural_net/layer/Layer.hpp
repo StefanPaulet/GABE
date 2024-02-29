@@ -63,8 +63,9 @@ public:
   LayerPairContainer(LayerPairContainer const&) = default;
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
-  auto& weights() { return _weights; }
-  auto& biases() { return _biases; }
+  template <typename T> auto& weights() { return _weights; }
+
+  template <typename T> auto& biases() { return _biases; }
 
 private:
   InnerLinearMatrix _weights {};
@@ -86,14 +87,8 @@ private:
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  auto& weights() {
-    return static_cast<LayerPairContainer<DataType, flDim, slDim>*>(static_cast<void*>(this))->weights();
-  }
-
-  auto& biases() {
-    return static_cast<LayerPairContainer<DataType, flDim, slDim>*>(static_cast<void*>(this))->biases();
-  }
-
+  auto& weights() { return LayerPairContainer<DataType, flDim, slDim>::template weights<LayerPair>(); }
+  auto& biases() { return LayerPairContainer<DataType, flDim, slDim>::template biases<LayerPair>(); }
 
 public:
   template <Size idx> auto& weights() {
@@ -142,9 +137,8 @@ private:
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
+  auto& weights() { return LayerPairContainer<DataType, flDim, slDim>::template weights<LayerPair>(); }
+  auto& biases() { return LayerPairContainer<DataType, flDim, slDim>::template biases<LayerPair>(); }
 
 public:
   template <Size idx> auto& weights() {
