@@ -53,7 +53,7 @@ public:
 };
 
 namespace impl {
-template <typename DataType, Size flSize, Size slSize> class LayerPairContainer {
+template <typename DataType, Size flSize, Size slSize, typename DerivedClass> class LayerPairContainer {
 protected:
   using InnerLinearMatrix = typename utils::math::LinearMatrix<DataType, slSize, flSize>;
   using InnerLinearArray = typename utils::math::LinearColumnArray<DataType, slSize>;
@@ -63,9 +63,9 @@ public:
   LayerPairContainer(LayerPairContainer const&) = default;
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
-  template <typename T> auto& weights() { return _weights; }
+  auto& weights() { return _weights; }
 
-  template <typename T> auto& biases() { return _biases; }
+  auto& biases() { return _biases; }
 
 private:
   InnerLinearMatrix _weights {};
@@ -74,7 +74,8 @@ private:
 
 template <typename DataType, typename FirstLayer, typename SecondLayer, typename... RemainingLayers> class LayerPair :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
-                              NDLType<SecondLayer>::template Type<DataType>::dimension>,
+                              NDLType<SecondLayer>::template Type<DataType>::dimension,
+                              LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>,
     public LayerPair<DataType, SecondLayer, RemainingLayers...> {
 
 private:
@@ -87,8 +88,8 @@ private:
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  auto& weights() { return LayerPairContainer<DataType, flDim, slDim>::template weights<LayerPair>(); }
-  auto& biases() { return LayerPairContainer<DataType, flDim, slDim>::template biases<LayerPair>(); }
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -128,7 +129,8 @@ public:
 template <typename DataType, typename FirstLayer, typename SecondLayer>
 class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
-                              NDLType<SecondLayer>::template Type<DataType>::dimension> {
+                              NDLType<SecondLayer>::template Type<DataType>::dimension,
+                              LayerPair<DataType, FirstLayer, SecondLayer>> {
 private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
@@ -137,8 +139,8 @@ private:
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  auto& weights() { return LayerPairContainer<DataType, flDim, slDim>::template weights<LayerPair>(); }
-  auto& biases() { return LayerPairContainer<DataType, flDim, slDim>::template biases<LayerPair>(); }
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
 
 public:
   template <Size idx> auto& weights() {
