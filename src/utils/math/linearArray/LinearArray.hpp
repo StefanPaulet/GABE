@@ -28,6 +28,8 @@ public:
   auto const& data() const { return _data; }
   constexpr auto size() const { return s; }
 
+  using UnderlyingType = typename linearArray::impl::GetSizePackOfMLA<DataType>::inner_type;
+
 private:
   std::array<DataType, s> _data;
 };
@@ -47,22 +49,22 @@ public:
   friend auto operator/(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs) -> FD;
 
   auto& operator+=(LinearArrayGenericOps const& rhs) {
-    *this = *this + rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) + *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator-=(LinearArrayGenericOps const& rhs) {
-    *this = *this - rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) - *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator*=(LinearArrayGenericOps const& rhs) {
-    *this = *this * rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) * *static_cast<D const*>(&rhs);
     return *this;
   }
 
   auto& operator/=(LinearArrayGenericOps const& rhs) {
-    *this = *this / rhs;
+    *static_cast<D*>(this) = *static_cast<D*>(this) / *static_cast<D const*>(&rhs);
     return *this;
   }
 
@@ -164,6 +166,39 @@ template <typename FD> auto operator<<(std::ostream& out, LinearArrayGenericOps<
   out << "]";
   return out;
 }
+
+template <typename FD, concepts::IntegralType V> auto operator+(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) + value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator-(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) - value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator*(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) * value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator/(LinearArrayGenericOps<FD> const& arr, V value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) / value; });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator+(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value + std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator-(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value - std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator*(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value * std::forward<T>(val); });
+}
+
+template <typename FD, concepts::IntegralType V> auto operator/(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+  return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value / std::forward<T>(val); });
+}
+
 } // namespace linearArray::impl
 
 
@@ -176,6 +211,7 @@ template <typename DataType, Size first_size, Size... remaining_sizes> class Lin
 
 public:
   using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
+  using typename linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::UnderlyingType;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -192,6 +228,7 @@ template <typename DataType, Size line_size, Size col_size> class LinearArray<Da
 
 public:
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
+  using typename linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::UnderlyingType;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -282,6 +319,7 @@ template <typename DataType, Size size> class LinearArray<DataType, size> :
 
 public:
   using linearArray::impl::LinearArrayContainer<DataType, size>::data;
+  using typename linearArray::impl::LinearArrayContainer<DataType, size>::UnderlyingType;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "LayerTraits.hpp"
+#include <functional>
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
 
@@ -17,25 +18,42 @@ private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
 
 public:
+  using LayerFunction = ActivationFunction;
+
   Layer() = default;
   Layer(Layer const&) = default;
   Layer(Layer&&) noexcept = default;
-  explicit Layer(InnerLinearArray const& neurons) : _neurons(neurons) {}
 
   auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
-    _neurons = input.project(*static_cast<ActivationFunction*>(this));
-    return _neurons;
+    return input.project(*static_cast<ActivationFunction*>(this));
   }
 
-  auto const& neurons() const { return _neurons; }
-  auto& neurons() { return _neurons; }
+  auto backPropagate(InnerLinearArray const& input) -> InnerLinearArray {
+    return input.project([this]<typename T>(T&& value) {
+      return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
+    });
+  }
+};
 
+template <typename DataType, typename ActivationFunction, typename CostFunction, typename Dim>
+class OutputLayer : public Layer<DataType, ActivationFunction, Dim>, private CostFunction {
 private:
-  InnerLinearArray _neurons;
+  using Layer = Layer<DataType, ActivationFunction, Dim>;
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, Layer::dimension>;
+  using Layer::backPropagate;
+
+public:
+  using LayerFunction = CostFunction;
+  using Layer::feedForward;
+
+  auto backPropagate(InnerLinearArray const& input, InnerLinearArray const& target)
+      -> std::pair<InnerLinearArray, InnerLinearArray> {
+    return {backPropagate(input), (*static_cast<CostFunction*>(this)).derive(feedForward(input), target)};
+  }
 };
 
 namespace impl {
-template <typename DataType, Size flSize, Size slSize> class LayerPairContainer {
+template <typename DataType, Size flSize, Size slSize, typename DerivedClass> class LayerPairContainer {
 protected:
   using InnerLinearMatrix = typename utils::math::LinearMatrix<DataType, slSize, flSize>;
   using InnerLinearArray = typename utils::math::LinearColumnArray<DataType, slSize>;
@@ -46,9 +64,8 @@ public:
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
-  auto const& weights() const { return _weights; }
+
   auto& biases() { return _biases; }
-  auto const& biases() const { return _biases; }
 
 private:
   InnerLinearMatrix _weights {};
@@ -57,7 +74,8 @@ private:
 
 template <typename DataType, typename FirstLayer, typename SecondLayer, typename... RemainingLayers> class LayerPair :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
-                              NDLType<SecondLayer>::template Type<DataType>::dimension>,
+                              NDLType<SecondLayer>::template Type<DataType>::dimension,
+                              LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>,
     public LayerPair<DataType, SecondLayer, RemainingLayers...> {
 
 private:
@@ -67,11 +85,11 @@ private:
   using Input = utils::math::LinearColumnArray<DataType, flDim>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
+  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
-
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -93,22 +111,36 @@ public:
   auto feedForward(Input const& input) {
     return NextLayerPair::feedForward(SecondLayerType().feedForward(weights().product(input) + biases()));
   }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
+    auto z_value = weights().product(input) + biases();
+    auto nextLayerGradient =
+        NextLayerPair::backPropagate(SecondLayerType().feedForward(z_value), target, learning_rate);
+    auto currentLayerGradient = nextLayerGradient * SecondLayerType().backPropagate(z_value);
+
+    auto returnGradient = currentLayerGradient.transpose().product(weights()).transpose();
+    biases() -= currentLayerGradient * learning_rate;
+    weights() -= currentLayerGradient.product(input.transpose()) * learning_rate;
+    return returnGradient;
+  }
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer>
 class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
-                              NDLType<SecondLayer>::template Type<DataType>::dimension> {
+                              NDLType<SecondLayer>::template Type<DataType>::dimension,
+                              LayerPair<DataType, FirstLayer, SecondLayer>> {
 private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
+  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-
-  using LayerPairContainer<DataType, flDim, slDim>::biases;
-  using LayerPairContainer<DataType, flDim, slDim>::weights;
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
+  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -122,6 +154,21 @@ public:
   }
 
   auto feedForward(Input const& input) { return SecondLayerType().feedForward(weights().product(input) + biases()); }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
+    static_assert(utils::math::impl::is_cost_function<typename SecondLayerType::LayerFunction>::value,
+                  "Final layer must have a cost function");
+    auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
+    auto endLayerGradient = std::get<0>(rezPair) * std::get<1>(rezPair);
+
+    auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
+
+    biases() -= endLayerGradient * learning_rate;
+    weights() -= endLayerGradient.product(input.transpose()) * learning_rate;
+
+    return returnGradient;
+  }
 };
 } // namespace impl
 

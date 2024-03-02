@@ -54,3 +54,34 @@ TEST(NeuralNetwork, ForwardPropagating) {
   auto expected2 = larray(larray(0.5f, 0.5f, 0.5f)).transpose();
   ASSERT_EQ(rez2, expected2);
 }
+
+TEST(NeuralNetwork, BackPropagation) {
+  NeuralNetwork<float, SizedLayer<3, InputLayer>,
+                SizedLayer<3, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn;
+  auto input = larray(larray(1.0f, 1, 1)).transpose();
+  auto target = larray(larray(2.0f, 0, 0)).transpose();
+  auto learningRate = 0.05f;
+  nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
+  nn.backPropagate(input, target, learningRate);
+
+
+  ASSERT_EQ(nn.weights<0>(), larray(larray(.95f, .95f, .95f), larray(.85f, .85f, .85f), larray(.85f, .85f, .85f)));
+  ASSERT_EQ(nn.biases<0>(), larray(larray(-.05f, -.15f, -.15f)).transpose());
+
+
+  NeuralNetwork<float, SizedLayer<2, InputLayer>, SizedLayer<2, Layer, IdentityFunction<>>,
+                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn1;
+  auto input1 = larray(larray(2.f, 3)).transpose();
+  auto target1 = larray(larray(1.f)).transpose();
+  nn1.weights<0>() = larray(larray(.11f, .21f), larray(.12f, .08f));
+  nn1.weights<1>() = larray(larray(.14f, .15f));
+
+  auto weight11Target = larray(larray(.12132f, .22698f), larray(.13213f, .09820f));
+  auto weight12Target = larray(larray(.174383f, .169416f));
+
+  nn1.backPropagate(input1, target1, 0.05f);
+  ASSERT_EQ(nn1.weights<0>(), weight11Target);
+  ASSERT_EQ(nn1.weights<1>(), weight12Target);
+}

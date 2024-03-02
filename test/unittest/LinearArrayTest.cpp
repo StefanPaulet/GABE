@@ -46,8 +46,13 @@ TEST(LinnearArrayTest, Addition) {
   auto d_arr2 = larray(3.2, 0.38, 1);
   auto d_arr3 = d_arr1 + d_arr2;
   auto d_arr4 = larray(5.5, 4.9, 4.2);
-
   ASSERT_EQ(d_arr3, d_arr4);
+
+  auto eq_arr1 = larray(1, 2, 3);
+  auto eq_arr2 = larray(2, 3, 4);
+  auto eq_arr3 = larray(3, 5, 7);
+  eq_arr2 += eq_arr1;
+  ASSERT_EQ(eq_arr2, eq_arr3);
 }
 
 TEST(LinnearArrayTest, Substraction) {
@@ -65,6 +70,12 @@ TEST(LinnearArrayTest, Substraction) {
   auto d_arr3 = d_arr1 - d_arr2;
   auto d_arr4 = larray(0.79, 2.83, -6.3);
   ASSERT_EQ(d_arr3, d_arr4);
+
+  auto eq_arr1 = larray(5, 5, 5);
+  auto eq_arr2 = larray(2, 3, 4);
+  auto eq_arr3 = larray(-3, -2, -1);
+  eq_arr2 -= eq_arr1;
+  ASSERT_EQ(eq_arr2, eq_arr3);
 }
 
 TEST(LinearArrayTest, Multiplication) {
@@ -82,6 +93,12 @@ TEST(LinearArrayTest, Multiplication) {
   auto d_arr3 = d_arr1 * d_arr2;
   auto d_arr4 = larray(0.23, -4.29, 1.3125);
   ASSERT_EQ(d_arr3, d_arr4);
+
+  auto eq_arr1 = larray(1, 2, 3);
+  auto eq_arr2 = larray(3, 2, 3);
+  auto eq_arr3 = larray(3, 4, 9);
+  eq_arr2 *= eq_arr1;
+  ASSERT_EQ(eq_arr2, eq_arr3);
 }
 
 TEST(LinnearArrayTest, Division) {
@@ -99,6 +116,12 @@ TEST(LinnearArrayTest, Division) {
   auto d_arr3 = d_arr1 / d_arr2;
   auto d_arr4 = larray(1.7, 4, 3.81);
   ASSERT_EQ(d_arr3, d_arr4);
+
+  auto eq_arr1 = larray(3, 5, 4);
+  auto eq_arr2 = larray(10, 15, 12);
+  auto eq_arr3 = larray(3, 3, 3);
+  eq_arr2 /= eq_arr1;
+  ASSERT_EQ(eq_arr2, eq_arr3);
 }
 
 TEST(LinearArrayTest, DotProduct) {

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "utils/concepts/Concepts.hpp"
 #include <cmath>
 
 namespace gabe::utils::math {
@@ -48,6 +49,48 @@ template <> struct IdentityFunction<void> {
   template <typename InputType> auto derive(InputType&& input) const {
     return IdentityFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
   }
+};
+
+
+template <typename InputType = void, typename TargetType = void> struct MeanSquaredErrorFunction {};
+
+template <> struct MeanSquaredErrorFunction<void, void> {
+  static constexpr auto isCostFunction = true;
+
+  template <typename InputType, typename TargetType = InputType>
+  auto operator()(InputType&& in, TargetType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>, std::remove_cvref_t<TargetType>>()(
+        std::forward<InputType>(in), std::forward<TargetType>(target));
+  }
+
+  template <typename InputType, typename TargetType = InputType>
+  auto derive(InputType&& in, TargetType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>, std::remove_cvref_t<TargetType>>().derive(
+        std::forward<InputType>(in), std::forward<TargetType>(target));
+  }
+};
+
+template <concepts::IntegralType InputType, concepts::IntegralType TargetType>
+struct MeanSquaredErrorFunction<InputType, TargetType> {
+  static constexpr auto isCostFunction = true;
+
+  auto operator()(InputType const& in, TargetType const& target) const { return (target - in) * (target - in) / 2; }
+
+  auto derive(InputType const& in, InputType const& target) const { return (in - target); }
+};
+
+template <concepts::LinearArrayType InputType, concepts::LinearArrayType TargetType>
+struct MeanSquaredErrorFunction<InputType, TargetType> {
+  static constexpr auto isCostFunction = true;
+
+  auto operator()(InputType const& in, TargetType const& target) const {
+    auto divider = [](typename InputType::UnderlyingType const& val) {
+      return val / static_cast<typename InputType::UnderlyingType>(2);
+    };
+    return ((target - in) * (target - in)).project(divider);
+  }
+
+  auto derive(InputType const& in, TargetType const& target) const { return (in - target); }
 };
 
 
