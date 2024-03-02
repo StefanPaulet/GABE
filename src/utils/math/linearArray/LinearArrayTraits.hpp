@@ -29,9 +29,9 @@ template <Size... rs, Size s> struct PackPush<SizePack<rs...>, s> {
   using type = SizePack<s, rs...>;
 };
 
-template <typename T> struct GetSizePackOfMLA {
+template <typename> struct GetSizePackOfMLA {
   using type = SizePack<>;
-  using inner_type = T;
+  using inner_type = void;
 };
 
 template <typename T, Size s> struct GetSizePackOfMLA<LinearArray<T, s>> {
