@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <numeric>
 #include <ostream>
 
 namespace gabe::utils::math {
@@ -87,13 +88,29 @@ public:
     for (auto& e : *static_cast<D*>(this)) {
       e.transform(std::forward<T>(transformer));
     }
-    return *this;
+    return *static_cast<D*>(this);
   }
 
   template <typename T> auto project(T&& transformer) const -> D {
     auto rez = *static_cast<D const*>(this);
     rez.transform(std::forward<T>(transformer));
     return rez;
+  }
+
+  template <typename R, typename A> auto accumulate(R initialValue, A&& accumulator) const {
+    R rez {initialValue};
+    for (auto const& e : *static_cast<D const*>(this)) {
+      rez = accumulator(rez, e.accumulate(initialValue, std::forward<A>(accumulator)));
+    }
+    return rez;
+  }
+
+  auto max() const {
+    auto currMax = (*static_cast<D const*>(this)->data().begin()).max();
+    for (auto const& e : static_cast<D const*>(this)->data()) {
+      currMax = std::max(currMax, e.max());
+    }
+    return currMax;
   }
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
@@ -181,19 +198,19 @@ template <typename FD, concepts::IntegralType V> auto operator/(LinearArrayGener
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) / value; });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator+(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator+(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value + std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator-(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator-(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value - std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator*(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator*(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value * std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator/(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator/(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value / std::forward<T>(val); });
 }
 
@@ -332,6 +349,8 @@ public:
     return sum;
   }
 
+  auto max() const -> DataType { return std::ranges::max(data()); }
+
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
@@ -348,6 +367,10 @@ public:
       e = std::forward<T>(transformer)(e);
     }
     return rez;
+  }
+
+  template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
+    return std::accumulate(data().begin(), data().end(), initialValue, accumulator);
   }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {

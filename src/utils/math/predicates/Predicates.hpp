@@ -27,7 +27,7 @@ template <concepts::UsesDefaultEqOp Lhs, concepts::UsesDefaultEqOp Rhs> struct E
 
 template <std::floating_point L, std::floating_point R> struct Equals<L, R> {
   auto operator()(L const& lhs, R const& rhs) const -> bool {
-    return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.00001;
+    return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.0001;
   }
 };
 

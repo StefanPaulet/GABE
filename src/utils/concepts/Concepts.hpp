@@ -27,10 +27,14 @@ concept Iterator = requires(I i) {
 } && std::copyable<I>;
 
 template <typename T>
-concept Iterable = Iterator<std::remove_cvref<decltype(std::declval<T>().begin)>>;
+concept Iterable = Iterator<std::remove_cvref_t<decltype(std::declval<T>().begin())>>;
 
 template <typename T>
-concept RandomAccessContainer = std::random_access_iterator<std::remove_cvref_t<decltype(std::declval<T>().begin())>>;
+concept RandomAccessContainer =
+    Iterable<T> && std::random_access_iterator<std::remove_cvref_t<decltype(std::declval<T>().begin())>>
+    && requires(T t, Size idx) {
+         { t[idx] } -> std::same_as<decltype(*t.begin())>;
+       };
 
 namespace impl {
 template <typename T, typename = void> struct UseFloatingEquals : std::false_type {};
