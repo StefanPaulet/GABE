@@ -4,11 +4,15 @@
 
 #include <neural_net/NeuralNetwork.hpp>
 #include <utils/concepts/Concepts.hpp>
+#include <utils/dataLoader/DataLoader.hpp>
 namespace {
-using namespace gabe::nn;
 using namespace gabe::utils::math;
-using namespace gabe::utils;
-using linearArray::larray;
+using namespace gabe::utils::dataLoader;
 } // namespace
 
-int main() {}
+
+int main() {
+  auto v = loadMNIST<LinearArray<float, 28 * 28>>("/mnt/SSD-SATA/Clion/GABE/datasets/mnist/train-images-idx3-ubyte",
+                                                  MNISTLoad::TRAIN);
+  std::cout << v[0] << '\n';
+}

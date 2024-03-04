@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstring>
 #include <numeric>
 #include <ostream>
 
@@ -97,8 +98,12 @@ public:
     return rez;
   }
 
-  template <typename R, typename A> auto accumulate(R initialValue, A&& accumulator) const {
-    R rez {initialValue};
+  template <typename R, typename A, typename T = D> auto accumulate(R initialValue, A&& accumulator) const ->
+      typename T::UnderlyingType {
+    static_assert(std::is_convertible_v<R, typename D::UnderlyingType>);
+
+    typename D::UnderlyingType rez(initialValue);
+
     for (auto const& e : *static_cast<D const*>(this)) {
       rez = accumulator(rez, e.accumulate(initialValue, std::forward<A>(accumulator)));
     }
@@ -249,6 +254,14 @@ public:
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
 
+  template <Size array_size> explicit LinearArray(std::array<DataType, array_size> const& arr) {
+    static_assert(col_size * line_size == array_size, "Non-matching size from one dimensional array to matrix");
+
+    for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
+      std::memcpy(data()[lineIdx].data().data(), arr.data() + lineIdx * col_size, col_size * sizeof(DataType));
+    }
+  }
+
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
@@ -370,7 +383,7 @@ public:
   }
 
   template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
-    return std::accumulate(data().begin(), data().end(), initialValue, accumulator);
+    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
   }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {

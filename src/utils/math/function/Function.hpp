@@ -130,8 +130,7 @@ template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType>
     auto maxValue = input.max();
     auto expArray = input.project([maxValue](InputType::UnderlyingType v) { return expf(v - maxValue); });
     auto sum =
-        expArray.accumulate(static_cast<InputType::UnderlyingType>(0),
-                            [](InputType::UnderlyingType lhs, InputType::UnderlyingType rhs) { return lhs + rhs; });
+        expArray.accumulate(0, [](InputType::UnderlyingType lhs, InputType::UnderlyingType rhs) { return lhs + rhs; });
     return expArray.transform([sum](InputType::UnderlyingType v) { return RoundFloat<>()(v / sum); });
   }
 

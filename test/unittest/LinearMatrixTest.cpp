@@ -29,6 +29,10 @@ TEST(LinearMatrixTest, Construction) {
       LinearColumnArray<int, 3> {{LinearArray<int, 1> {{1}}, LinearArray<int, 1> {{2}}, LinearArray<int, 1> {{3}}}};
   auto mtrx4 = larray(larray(1), larray(2), larray(3));
   ASSERT_EQ(colV, mtrx4);
+
+  auto mtrx_from_array = LinearMatrix<int, 2, 3> {std::array<int, 6> {1, 2, 3, 4, 5, 6}};
+  auto mtrx5 = larray(larray(1, 2, 3), larray(4, 5, 6));
+  ASSERT_EQ(mtrx_from_array, mtrx5);
 }
 
 TEST(LinearMatrixTest, Addition) {
