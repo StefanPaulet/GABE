@@ -13,7 +13,7 @@ using namespace gabe::utils::dataLoader;
 
 
 int main() {
-  auto v = loadMNIST<LinearArray<float, 28 * 28>>("/mnt/SSD-SATA/Clion/GABE/datasets/mnist/train-images-idx3-ubyte",
-                                                  MNISTLoad::TRAIN);
-  std::cout << v[0] << '\n';
+  auto v = loadMNIST<LinearArray<float, 28 * 28>>("/mnt/SSD-SATA/Clion/GABE/datasets/mnist/test", MNISTDataSet::TEST);
+  std::cout << v[0].data << '\n';
+  std::cout << v[0].label << '\n';
 }

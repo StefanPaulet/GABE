@@ -25,11 +25,11 @@ add_executable(unittests
     ${UNIT_TEST_SOURCES}
     UnitTest.cpp)
 
-add_executable(deepBackProp
+add_executable(highCostTest
     DeepBackPropagationTest.cpp)
 
 target_include_directories(unittests PRIVATE ../../src)
 target_link_libraries(unittests lib.gtest)
 
-target_include_directories(deepBackProp PRIVATE ../../src)
-target_link_libraries(deepBackProp lib.gtest)
+target_include_directories(highCostTest PRIVATE ../../src)
+target_link_libraries(highCostTest lib.gtest)
