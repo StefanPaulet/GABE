@@ -9,6 +9,7 @@ namespace {
 using namespace gabe::utils::math;
 using namespace gabe::utils::dataLoader;
 } // namespace
+#include <cstdint>
 
 
 int main() {
