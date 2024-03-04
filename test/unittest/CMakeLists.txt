@@ -26,7 +26,8 @@ add_executable(unittests
     UnitTest.cpp)
 
 add_executable(highCostTest
-    DeepBackPropagationTest.cpp)
+    DeepBackPropagationTest.cpp
+    DataLoaderTest.cpp)
 
 target_include_directories(unittests PRIVATE ../../src)
 target_link_libraries(unittests lib.gtest)
