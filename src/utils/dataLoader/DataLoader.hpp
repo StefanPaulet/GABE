@@ -6,8 +6,10 @@
 
 #include "types.hpp"
 #include "utils/concepts/Concepts.hpp"
+#include "utils/math/function/Function.hpp"
 #include <bitset>
 #include <fstream>
+#include <sstream>
 
 namespace gabe::utils::dataLoader {
 
@@ -75,10 +77,12 @@ template <typename T> auto loadMNISTLabels(FILE* dataStream, uint32 expectedImag
 }
 } // namespace impl
 
+template <typename T> using DataSet = std::vector<DataPoint<T>>;
+
 enum class MNISTDataSet { TEST, TRAIN };
 
 template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePath, MNISTDataSet loadFlag)
-    -> std::vector<DataPoint<R>> {
+    -> DataSet<R> {
   FILE* imagesIn = fopen((filePath + "/images").c_str(), "rb");
   FILE* labelsIn = fopen((filePath + "/labels").c_str(), "rb");
   auto expectedImageCount = loadFlag == MNISTDataSet::TRAIN ? 60000 : 10000;
@@ -97,6 +101,41 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
 
   fclose(imagesIn);
   fclose(labelsIn);
+  return rezVector;
+}
+
+template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string const& filePath, char delim = ',')
+    -> DataSet<R> {
+  DataSet<R> rezVector;
+
+  std::ifstream in {filePath};
+  auto* linePtr = new char[1024];
+  auto* wordPtr = new char[16];
+
+  while (in.getline(linePtr, 1024)) {
+    R data;
+
+    std::string line {linePtr};
+    auto lastDelimIdx = line.find_last_of(delim);
+    auto label = utils::math::StringToIntegral<typename R::UnderlyingType>()(line.substr(lastDelimIdx + 1));
+
+    std::stringstream lineString {line.substr(0, lastDelimIdx)};
+
+    Size idx = 0;
+    while (lineString.getline(wordPtr, 16, delim)) {
+      std::string word {wordPtr};
+      if (word.empty()) {
+        continue;
+      }
+      data[idx++] = utils::math::StringToIntegral<typename R::UnderlyingType>()(word);
+    }
+
+    rezVector.emplace_back(data, label);
+  }
+
+  delete[] linePtr;
+  delete[] wordPtr;
+
   return rezVector;
 }
 } // namespace gabe::utils::dataLoader

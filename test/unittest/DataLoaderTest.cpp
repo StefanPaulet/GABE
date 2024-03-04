@@ -36,3 +36,11 @@ TEST(DataLoader, LoadMNIST) {
   static_assert(std::is_same_v<decltype(mtrx_train[0].data), LinearArray<float, 28, 28>>);
   static_assert(std::is_same_v<decltype(mtrx_train[0].label), float>);
 }
+
+TEST(DataLoader, LoadDelimSeparatedFile) {
+  auto dataset =
+      loadDelimSeparatedFile<LinearArray<float, 7>>("/mnt/SSD-SATA/Clion/GABE/datasets/seeds/seeds_dataset.txt", '\t');
+  ASSERT_EQ(dataset.size(), 210);
+  static_assert(std::is_same_v<decltype(dataset[0].data), LinearArray<float, 7>>);
+  static_assert(std::is_same_v<decltype(dataset[0].label), float>);
+}

@@ -141,6 +141,17 @@ template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType>
 };
 
 
+template <typename = void> struct StringToIntegral {};
+
+template <std::integral T> struct StringToIntegral<T> {
+  auto operator()(std::string const& str) const -> T { return atoi(str.c_str()); }
+};
+
+template <std::floating_point T> struct StringToIntegral<T> {
+  auto operator()(std::string const& str) const -> T { return atof(str.c_str()); }
+};
+
+
 namespace func {
 template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;
 } // namespace func

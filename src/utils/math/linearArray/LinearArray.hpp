@@ -118,6 +118,10 @@ public:
     return currMax;
   }
 
+  constexpr auto total_size() const {
+    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
+  }
+
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
 
@@ -232,12 +236,11 @@ template <typename DataType, Size first_size, Size... remaining_sizes> class Lin
 public:
   using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-
-  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) : LinearArrayContainer(data) {}
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
@@ -249,6 +252,7 @@ template <typename DataType, Size line_size, Size col_size> class LinearArray<Da
 public:
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -264,9 +268,6 @@ public:
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
-
-  explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
-      LinearArrayContainer(other) {}
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
@@ -348,11 +349,11 @@ template <typename DataType, Size size> class LinearArray<DataType, size> :
 public:
   using linearArray::impl::LinearArrayContainer<DataType, size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<DataType, size> const& data) : LinearArrayContainer(data) {}
 
   auto dot(LinearArray const& other) const -> DataType {
     DataType sum = 0;
@@ -385,6 +386,8 @@ public:
   template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
     return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
   }
+
+  constexpr auto total_size() const { return size; }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();

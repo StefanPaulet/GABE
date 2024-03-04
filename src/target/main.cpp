@@ -10,7 +10,9 @@ using namespace gabe::utils::math;
 using namespace gabe::utils::dataLoader;
 } // namespace
 
-
 int main() {
-  auto v = loadMNIST<LinearArray<float, 28 * 28>>("/mnt/SSD-SATA/Clion/GABE/datasets/mnist/test", MNISTDataSet::TEST);
+  auto v =
+      loadDelimSeparatedFile<LinearArray<float, 7>>("/mnt/SSD-SATA/Clion/GABE/datasets/seeds/seeds_dataset.txt", '\t');
+  std::cout << v[0].data << '\n';
+  std::cout << v[0].label << '\n';
 }
