@@ -77,3 +77,19 @@ TEST(FunctionTest, MeanSquaredErrorTest) {
   ASSERT_EQ(msq(ld_arr1, ld_arr2), ld_exp);
   ASSERT_EQ(msq.derive(ld_arr1, ld_arr2), ld_derive_exp);
 }
+
+TEST(FunctionTest, Softmax) {
+  SoftmaxFunction<> sfm;
+
+  static_assert(decltype(sfm)::isActivationFunction, "Softmax is not an activation function");
+
+  auto arr1 = larray(-1.0, 0, 3, 5);
+  auto arr2 = larray(0.0022, 0.0059, 0.1182, 0.8737);
+  auto derive_sfm = larray(0.0022, 0.0059, 0.1042, 0.1103);
+  ASSERT_EQ(sfm(arr1), arr2);
+  ASSERT_EQ(sfm.derive(arr1), derive_sfm);
+
+  auto mtrx1 = larray(larray(6.0f, 2, 1), larray(4.0f, 2, 0));
+  auto mtrx2 = larray(larray(0.8466f, 0.0155f, 0.0057f), larray(0.1146f, 0.0155f, 0.0021f));
+  ASSERT_EQ(sfm(mtrx1), mtrx2);
+}

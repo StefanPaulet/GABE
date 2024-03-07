@@ -29,6 +29,10 @@ TEST(LinearMatrixTest, Construction) {
       LinearColumnArray<int, 3> {{LinearArray<int, 1> {{1}}, LinearArray<int, 1> {{2}}, LinearArray<int, 1> {{3}}}};
   auto mtrx4 = larray(larray(1), larray(2), larray(3));
   ASSERT_EQ(colV, mtrx4);
+
+  auto mtrx_from_array = LinearMatrix<int, 2, 3> {std::array<int, 6> {1, 2, 3, 4, 5, 6}};
+  auto mtrx5 = larray(larray(1, 2, 3), larray(4, 5, 6));
+  ASSERT_EQ(mtrx_from_array, mtrx5);
 }
 
 TEST(LinearMatrixTest, Addition) {
@@ -55,7 +59,7 @@ TEST(LinearMatrixTest, Multiplication) {
   ASSERT_EQ(mtrx3, mtrx4);
 }
 
-TEST(LinearMatrixTest, Divistion) {
+TEST(LinearMatrixTest, Division) {
   auto mtrx1 = larray(larray(10, 3, 2), larray(30, 25, 24));
   auto mtrx2 = larray(larray(3, 1, 2), larray(3, 5, 3));
   auto mtrx3 = mtrx1 / mtrx2;
@@ -103,4 +107,14 @@ TEST(LinearMatrixTest, Nul) {
   auto mtrx1 = SquareLinearMatrix<int, 3>::nul();
   auto mtrx2 = larray(larray(0, 0, 0), larray(0, 0, 0), larray(0, 0, 0));
   ASSERT_EQ(mtrx1, mtrx2);
+}
+
+TEST(LinearMatrixTest, Accumulate) {
+  auto accum_sum = [](int x, int y) { return x + y; };
+  auto accum_prod = [](int x, int y) { return x * y; };
+
+  auto mtrx1 = larray(larray(1, 2, 4), larray(2, 5, 2));
+  ASSERT_EQ(mtrx1.accumulate(0, accum_sum), 16);
+  ASSERT_EQ(mtrx1.accumulate(0, accum_prod), 0);
+  ASSERT_EQ(mtrx1.accumulate(1, accum_prod), 160);
 }

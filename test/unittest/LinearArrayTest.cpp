@@ -14,6 +14,9 @@ TEST(LinearArrayTest, Construction) {
   auto arr1 = larray(larray<int, float, int>(1, 2, 3), larray<float>(4, 5, 6));
   auto isCorrectType = std::is_same_v<decltype(arr1), LinearArray<float, 2, 3>>;
   ASSERT_TRUE(isCorrectType);
+  auto isUnderlyingType =
+      std::is_same_v<typename decltype(larray(larray(1, 2, 3), larray(4, 5, 6)))::UnderlyingType, int>;
+  ASSERT_TRUE(isUnderlyingType);
   (void) arr1;
 
   auto arr2 = LinearArray<int, 3>();
@@ -53,6 +56,14 @@ TEST(LinnearArrayTest, Addition) {
   auto eq_arr3 = larray(3, 5, 7);
   eq_arr2 += eq_arr1;
   ASSERT_EQ(eq_arr2, eq_arr3);
+
+  auto scalar = 1.32;
+  auto scalar_arr1 = larray(2.0, 3.12, 4.25);
+  auto scalar_arr2 = larray(3.32, 4.44, 5.57);
+  auto scalar_arr3 = scalar_arr1 + scalar;
+  ASSERT_EQ(scalar_arr2, scalar_arr3);
+  scalar_arr3 = scalar + scalar_arr1;
+  ASSERT_EQ(scalar_arr2, scalar_arr3);
 }
 
 TEST(LinnearArrayTest, Substraction) {
@@ -76,6 +87,15 @@ TEST(LinnearArrayTest, Substraction) {
   auto eq_arr3 = larray(-3, -2, -1);
   eq_arr2 -= eq_arr1;
   ASSERT_EQ(eq_arr2, eq_arr3);
+
+  auto scalar = 2.17;
+  auto scalar_arr1 = larray(1.2, 3.33, 2.18);
+  auto scalar_arr2 = larray(-0.97, 1.16, 0.01);
+  auto scalar_arr3 = larray(0.97, -1.16, -0.01);
+  auto scalar_arr4 = scalar_arr1 - scalar;
+  ASSERT_EQ(scalar_arr2, scalar_arr4);
+  scalar_arr4 = scalar - scalar_arr1;
+  ASSERT_EQ(scalar_arr3, scalar_arr4);
 }
 
 TEST(LinearArrayTest, Multiplication) {
@@ -99,6 +119,14 @@ TEST(LinearArrayTest, Multiplication) {
   auto eq_arr3 = larray(3, 4, 9);
   eq_arr2 *= eq_arr1;
   ASSERT_EQ(eq_arr2, eq_arr3);
+
+  auto scalar = 0.1;
+  auto scalar_arr1 = larray(2.13, 31.12, -0.52);
+  auto scalar_arr2 = larray(0.213, 3.112, -0.052);
+  auto scalar_arr3 = scalar_arr1 * scalar;
+  ASSERT_EQ(scalar_arr2, scalar_arr3);
+  scalar_arr3 = scalar * scalar_arr1;
+  ASSERT_EQ(scalar_arr2, scalar_arr3);
 }
 
 TEST(LinnearArrayTest, Division) {
@@ -122,6 +150,15 @@ TEST(LinnearArrayTest, Division) {
   auto eq_arr3 = larray(3, 3, 3);
   eq_arr2 /= eq_arr1;
   ASSERT_EQ(eq_arr2, eq_arr3);
+
+  auto scalar = 3;
+  auto scalar_arr1 = larray(1.2, 3.33, 2.16);
+  auto scalar_arr2 = larray(0.4, 1.11, 0.72);
+  auto scalar_arr3 = larray(2.5, 0.9009, 1.3888);
+  auto scalar_arr4 = scalar_arr1 / scalar;
+  ASSERT_EQ(scalar_arr2, scalar_arr4);
+  scalar_arr4 = scalar / scalar_arr1;
+  ASSERT_EQ(scalar_arr3, scalar_arr4);
 }
 
 TEST(LinearArrayTest, DotProduct) {
@@ -251,4 +288,22 @@ TEST(LinearArrayTest, Nul) {
   for (auto const& e : d_arr1) {
     ASSERT_DOUBLE_EQ(e, .0);
   }
+}
+
+TEST(LinearArrayTest, Accumulate) {
+  auto accum_sum = [](int x, int y) { return x + y; };
+  auto accum_prod = [](int x, int y) { return x * y; };
+
+  auto arr1 = larray(1, 2, 4);
+  ASSERT_EQ(arr1.accumulate(0, accum_sum), 7);
+  ASSERT_EQ(arr1.accumulate(0, accum_prod), 0);
+  ASSERT_EQ(arr1.accumulate(1, accum_prod), 8);
+}
+
+TEST(LinearArrayTest, Max) {
+  auto arr1 = larray(1, 2, -3);
+  ASSERT_EQ(arr1.max(), 2);
+
+  auto d_arr1 = larray(0.1, 0.32, 0.23);
+  ASSERT_EQ(d_arr1.max(), 0.32);
 }

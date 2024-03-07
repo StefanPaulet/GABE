@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstring>
+#include <numeric>
 #include <ostream>
 
 namespace gabe::utils::math {
@@ -87,13 +89,37 @@ public:
     for (auto& e : *static_cast<D*>(this)) {
       e.transform(std::forward<T>(transformer));
     }
-    return *this;
+    return *static_cast<D*>(this);
   }
 
   template <typename T> auto project(T&& transformer) const -> D {
     auto rez = *static_cast<D const*>(this);
     rez.transform(std::forward<T>(transformer));
     return rez;
+  }
+
+  template <typename R, typename A, typename T = D> auto accumulate(R initialValue, A&& accumulator) const ->
+      typename T::UnderlyingType {
+    static_assert(std::is_convertible_v<R, typename D::UnderlyingType>);
+
+    typename D::UnderlyingType rez(initialValue);
+
+    for (auto const& e : *static_cast<D const*>(this)) {
+      rez = accumulator(rez, e.accumulate(initialValue, std::forward<A>(accumulator)));
+    }
+    return rez;
+  }
+
+  auto max() const {
+    auto currMax = (*static_cast<D const*>(this)->data().begin()).max();
+    for (auto const& e : static_cast<D const*>(this)->data()) {
+      currMax = std::max(currMax, e.max());
+    }
+    return currMax;
+  }
+
+  constexpr auto total_size() const {
+    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
   }
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
@@ -181,19 +207,19 @@ template <typename FD, concepts::IntegralType V> auto operator/(LinearArrayGener
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return std::forward<T>(val) / value; });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator+(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator+(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value + std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator-(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator-(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value - std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator*(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator*(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value * std::forward<T>(val); });
 }
 
-template <typename FD, concepts::IntegralType V> auto operator/(V arr, LinearArrayGenericOps<FD> const& value) -> FD {
+template <typename FD, concepts::IntegralType V> auto operator/(V value, LinearArrayGenericOps<FD> const& arr) -> FD {
   return static_cast<FD const*>(&arr)->project([value]<typename T>(T&& val) { return value / std::forward<T>(val); });
 }
 
@@ -210,12 +236,11 @@ template <typename DataType, Size first_size, Size... remaining_sizes> class Lin
 public:
   using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-
-  explicit LinearArray(std::array<InnerLinearArray, first_size> const& data) : LinearArrayContainer(data) {}
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
@@ -227,16 +252,22 @@ template <typename DataType, Size line_size, Size col_size> class LinearArray<Da
 public:
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
 
+  template <Size array_size> explicit LinearArray(std::array<DataType, array_size> const& arr) {
+    static_assert(col_size * line_size == array_size, "Non-matching size from one dimensional array to matrix");
+
+    for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
+      std::memcpy(data()[lineIdx].data().data(), arr.data() + lineIdx * col_size, col_size * sizeof(DataType));
+    }
+  }
+
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
-
-  explicit LinearArray(std::array<LinearArray<DataType, col_size>, line_size> const& other) :
-      LinearArrayContainer(other) {}
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
@@ -318,11 +349,11 @@ template <typename DataType, Size size> class LinearArray<DataType, size> :
 public:
   using linearArray::impl::LinearArrayContainer<DataType, size>::data;
   using UnderlyingType = DataType;
+  using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
-  explicit LinearArray(std::array<DataType, size> const& data) : LinearArrayContainer(data) {}
 
   auto dot(LinearArray const& other) const -> DataType {
     DataType sum = 0;
@@ -331,6 +362,8 @@ public:
     }
     return sum;
   }
+
+  auto max() const -> DataType { return std::ranges::max(data()); }
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
@@ -349,6 +382,12 @@ public:
     }
     return rez;
   }
+
+  template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
+    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
+  }
+
+  constexpr auto total_size() const { return size; }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();

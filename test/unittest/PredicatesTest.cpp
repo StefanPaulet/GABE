@@ -5,6 +5,7 @@
 #include "utils/math/predicates/Predicates.hpp"
 #include "utils/math/linearArray/LinearArray.hpp"
 #include "gtest/gtest.h"
+#include <list>
 
 namespace {
 using namespace gabe::utils::math;
@@ -44,6 +45,13 @@ TEST(PredicatesTest, Equal) {
   std::array<double, 3> arr3 {2.000001, 3, 4};
   ASSERT_FALSE(Equals<>()(arr1, arr2));
   ASSERT_TRUE(Equals<>()(arr1, arr3));
+
+  auto l1 = std::list<int> {1, 2, 3};
+  auto l2 = std::list<int> {1, 2, 3};
+  auto l3 = std::list<int> {2, 4, 5};
+  Equals<>()(l1, l2);
+  ASSERT_TRUE(Equals<>()(l1, l2));
+  ASSERT_FALSE(Equals<>()(l1, l3));
 
   auto mtrx1 = larray(larray(1.0f, 2.000002, 3));
   auto mtrx2 = larray(larray(1.00000001f, 2, 3.0000005));

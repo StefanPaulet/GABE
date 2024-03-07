@@ -3,22 +3,15 @@
 //
 
 #include <neural_net/NeuralNetwork.hpp>
-
+#include <utils/concepts/Concepts.hpp>
+#include <utils/dataLoader/DataLoader.hpp>
 namespace {
-using namespace gabe::nn;
 using namespace gabe::utils::math;
-using linearArray::larray;
+using namespace gabe::utils::dataLoader;
 } // namespace
+
 int main() {
-  NeuralNetwork<float, SizedLayer<2, InputLayer>, SizedLayer<2, Layer, IdentityFunction<>>,
-                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
-      nn;
-  auto input = larray(larray(2.f, 3));
-  auto target = larray(larray(1.f));
-  nn.weights<0>() = larray(larray(.11f, .21f), larray(.12f, .08f));
-  nn.weights<1>() = larray(larray(.14f, .15f));
-  nn.backPropagate(input.transpose(), target.transpose(), 0.05f);
-  nn.biases<0>() = larray(larray(.0f, .0f)).transpose();
-  nn.biases<1>() = larray(larray(.0f));
-  nn.feedForward(input.transpose());
+  auto v = loadDelimSeparatedFile<LinearArray<float, 7>>("../test/featuretest/datasets/seeds/seeds_dataset.txt", '\t');
+  std::cout << v[0].data << '\n';
+  std::cout << v[0].label << '\n';
 }

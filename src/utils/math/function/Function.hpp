@@ -9,6 +9,22 @@
 
 namespace gabe::utils::math {
 
+template <typename = void> struct RoundFloat {};
+
+template <> struct RoundFloat<void> {
+  template <typename InputType> auto operator()(InputType&& input) const -> InputType {
+    return RoundFloat<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  }
+};
+
+template <std::floating_point InputType> struct RoundFloat<InputType> {
+  auto operator()(InputType input) const -> InputType {
+    constexpr auto precision = 10000;
+    return roundf(input * precision) / precision;
+  }
+};
+
+
 template <typename = void> struct SigmoidFunction {};
 
 template <std::floating_point InputType> struct SigmoidFunction<InputType> {
@@ -16,7 +32,7 @@ template <std::floating_point InputType> struct SigmoidFunction<InputType> {
   auto operator()(InputType const& input) const -> double {
     return static_cast<InputType>(1) / (static_cast<InputType>(1) + std::exp(-input));
   }
-  auto derive(InputType const& input) const -> double {
+  auto derive(InputType input) const -> double {
     auto aux = operator()(input);
     return aux * (static_cast<InputType>(1) - aux);
   }
@@ -24,7 +40,6 @@ template <std::floating_point InputType> struct SigmoidFunction<InputType> {
 
 template <> struct SigmoidFunction<void> {
   static constexpr auto isActivationFunction = true;
-  static constexpr auto isTransparent = true;
 
   template <typename InputType> auto operator()(InputType&& input) const {
     return SigmoidFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
@@ -74,9 +89,9 @@ template <concepts::IntegralType InputType, concepts::IntegralType TargetType>
 struct MeanSquaredErrorFunction<InputType, TargetType> {
   static constexpr auto isCostFunction = true;
 
-  auto operator()(InputType const& in, TargetType const& target) const { return (target - in) * (target - in) / 2; }
+  auto operator()(InputType in, TargetType target) const { return (target - in) * (target - in) / 2; }
 
-  auto derive(InputType const& in, InputType const& target) const { return (in - target); }
+  auto derive(InputType in, InputType target) const { return (in - target); }
 };
 
 template <concepts::LinearArrayType InputType, concepts::LinearArrayType TargetType>
@@ -91,6 +106,49 @@ struct MeanSquaredErrorFunction<InputType, TargetType> {
   }
 
   auto derive(InputType const& in, TargetType const& target) const { return (in - target); }
+};
+
+
+template <typename = void> struct SoftmaxFunction {};
+
+template <> struct SoftmaxFunction<void> {
+  static constexpr auto isActivationFunction = true;
+
+  template <typename InputType> auto operator()(InputType&& input) const {
+    return SoftmaxFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  }
+
+  template <typename InputType> auto derive(InputType&& input) const {
+    return SoftmaxFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  }
+};
+
+template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType> {
+  static constexpr auto isActivationFunction = true;
+
+  auto operator()(InputType const& input) const -> InputType {
+    auto maxValue = input.max();
+    auto expArray = input.project([maxValue](InputType::UnderlyingType v) { return expf(v - maxValue); });
+    auto sum =
+        expArray.accumulate(0, [](InputType::UnderlyingType lhs, InputType::UnderlyingType rhs) { return lhs + rhs; });
+    return expArray.transform([sum](InputType::UnderlyingType v) { return RoundFloat<>()(v / sum); });
+  }
+
+  auto derive(InputType const& input) const -> InputType {
+    auto aux = operator()(input);
+    return aux * (InputType::unit() - aux);
+  }
+};
+
+
+template <typename = void> struct StringToIntegral {};
+
+template <std::integral T> struct StringToIntegral<T> {
+  auto operator()(std::string const& str) const -> T { return atoi(str.c_str()); }
+};
+
+template <std::floating_point T> struct StringToIntegral<T> {
+  auto operator()(std::string const& str) const -> T { return atof(str.c_str()); }
 };
 
 
