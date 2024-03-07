@@ -60,4 +60,6 @@ concept IntegralType = std::integral<T> || std::floating_point<T>;
 template <typename T>
 concept LinearArrayType = gabe::utils::math::linearArray::impl::IsLinearArray<T>::value;
 
+template <typename T>
+concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 } // namespace gabe::utils::concepts

@@ -113,7 +113,7 @@ template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string c
   auto* wordPtr = new char[16];
 
   while (in.getline(linePtr, 1024)) {
-    R data;
+    std::array<typename R::UnderlyingType, R().size()> data;
 
     std::string line {linePtr};
     auto lastDelimIdx = line.find_last_of(delim);
@@ -130,7 +130,7 @@ template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string c
       data[idx++] = utils::math::StringToIntegral<typename R::UnderlyingType>()(word);
     }
 
-    rezVector.emplace_back(data, label);
+    rezVector.emplace_back(R {data}, label);
   }
 
   delete[] linePtr;

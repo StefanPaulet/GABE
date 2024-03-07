@@ -5,6 +5,7 @@
 #pragma once
 
 #include "LayerTraits.hpp"
+#include "utils/concepts/Concepts.hpp"
 #include <functional>
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
@@ -32,6 +33,30 @@ public:
     return input.project([this]<typename T>(T&& value) {
       return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
     });
+  }
+};
+
+template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename Dim>
+class Layer<DataType, ActivationFunction, Dim> : private ActivationFunction {
+public:
+  static const Size dimension = Dim::size;
+
+private:
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
+
+public:
+  using LayerFunction = ActivationFunction;
+
+  Layer() = default;
+  Layer(Layer const&) = default;
+  Layer(Layer&&) noexcept = default;
+
+  auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
+    return (*static_cast<ActivationFunction*>(this))(input);
+  }
+
+  auto backPropagate(InnerLinearArray const& input) -> InnerLinearArray {
+    return static_cast<ActivationFunction*>(this)->derive(input);
   }
 };
 

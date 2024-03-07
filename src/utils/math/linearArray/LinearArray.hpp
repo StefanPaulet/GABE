@@ -270,10 +270,20 @@ public:
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
-    static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
+    static_assert(line_size == col_size || line_size == 1
+                  || col_size == 1 && "Unit matrix exists only on square matrices and row/column vectors");
+
     auto result = LinearArray();
-    for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
-      result[lineIdx][lineIdx] = unit;
+    if constexpr (line_size == col_size) {
+      for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
+        result[lineIdx][lineIdx] = unit;
+      }
+    } else {
+      for (auto& l : result.data()) {
+        for (auto& e : l.data()) {
+          e = unit;
+        }
+      }
     }
     return result;
   }
