@@ -97,9 +97,15 @@ TEST(LinearMatrixTest, Convolve) {
   ASSERT_EQ(mtrx2, rez);
 }
 
-TEST(LinearMatrixTest, Unit) {
-  auto mtrx1 = SquareLinearMatrix<int, 3>::unit();
+TEST(LinearMatrixTest, Identity) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::identity();
   auto mtrx2 = larray(larray(1, 0, 0), larray(0, 1, 0), larray(0, 0, 1));
+  ASSERT_EQ(mtrx1, mtrx2);
+}
+
+TEST(LinearMatrixTest, Unit) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::unit(2);
+  auto mtrx2 = larray(larray(2, 2, 2), larray(2, 2, 2), larray(2, 2, 2));
   ASSERT_EQ(mtrx1, mtrx2);
 }
 

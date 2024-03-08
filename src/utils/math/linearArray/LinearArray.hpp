@@ -122,11 +122,24 @@ public:
     return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
   }
 
+  template <typename T = D> auto set(typename T::UnderlyingType value, Size idx) {
+    static_cast<D*>(this)->data()[idx] = static_cast<D*>(this)->data()[idx]->unit(value);
+  }
+
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
 
   auto begin() const { return static_cast<D const*>(this)->data().begin(); }
   auto end() const { return static_cast<D const*>(this)->data().end(); }
+
+  template <typename T = D> static constexpr auto unit(typename T::UnderlyingType const& unit = 1) {
+    D result {};
+    auto row_value = result.data()[0].unit() * unit;
+    for (auto& e : result.data()) {
+      e = row_value;
+    }
+    return result;
+  }
 };
 
 template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
@@ -253,6 +266,7 @@ public:
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
   using LinearArrayContainer::LinearArrayContainer;
+  using linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>>::unit;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -269,21 +283,12 @@ public:
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
-  static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
-    static_assert(line_size == col_size || line_size == 1
-                  || col_size == 1 && "Unit matrix exists only on square matrices and row/column vectors");
+  static constexpr auto identity(DataType const& unit = 1) -> LinearArray {
+    static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
 
     auto result = LinearArray();
-    if constexpr (line_size == col_size) {
-      for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
-        result[lineIdx][lineIdx] = unit;
-      }
-    } else {
-      for (auto& l : result.data()) {
-        for (auto& e : l.data()) {
-          e = unit;
-        }
-      }
+    for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
+      result[lineIdx][lineIdx] = unit;
     }
     return result;
   }
@@ -398,6 +403,8 @@ public:
   }
 
   constexpr auto total_size() const { return size; }
+
+  auto set(DataType value, Size idx) { this->data()[idx] = value; }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();
