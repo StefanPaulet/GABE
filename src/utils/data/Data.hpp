@@ -20,13 +20,16 @@ public:
   explicit DataSet(std::vector<DataPoint<T>> const& data) : _data(data) {}
 
   auto normalize() {
-    auto normalizer = [](DataPoint<T>& arr) {
-      auto min = arr.data.min();
-      auto max = arr.data.max();
-      auto transformer = [min, max](typename T::UnderlyingType value) { return (value - min) / (max - min); };
-      arr.data.transform(transformer);
-    };
 
+    auto min = _data[0].data;
+    auto max = _data[0].data;
+    for (auto const& e : _data) {
+      min = min.maximize(e.data, std::less<typename T::UnderlyingType> {});
+      max = max.maximize(e.data, std::greater<typename T::UnderlyingType> {});
+    }
+    auto diff = max - min;
+
+    auto normalizer = [min, diff](DataPoint<T>& arr) { arr.data = (arr.data - min) / diff; };
     std::ranges::for_each(_data, normalizer);
   }
 

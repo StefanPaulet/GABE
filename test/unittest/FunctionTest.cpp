@@ -93,3 +93,42 @@ TEST(FunctionTest, Softmax) {
   auto mtrx2 = larray(larray(0.8466f, 0.0155f, 0.0057f), larray(0.1146f, 0.0155f, 0.0021f));
   ASSERT_EQ(sfm(mtrx1), mtrx2);
 }
+
+TEST(FunctionTest, StringToIntegral) {
+  std::string integer = "1234";
+  ASSERT_EQ(1234, StringToIntegral<int> {}(integer));
+
+  std::string floating = "432.2";
+  ASSERT_TRUE(Equals<> {}(432.2, StringToIntegral<double> {}(floating)));
+
+  std::string neg_integer = "-1864";
+  ASSERT_EQ(-1864, StringToIntegral<int> {}(neg_integer));
+
+  std::string neg_floating = "-22.34";
+  ASSERT_TRUE(Equals<> {}(-22.34, StringToIntegral<double> {}(neg_floating)));
+}
+
+TEST(FunctionTest, OneHotEncoder) {
+  OneHotEncoder<int, LinearArray<int, 3, 1>> ohe;
+
+  auto arr1 = larray(larray(1, 0, 0)).transpose();
+  auto arr2 = ohe(0);
+  ASSERT_EQ(arr1, arr2);
+
+  auto sub_one = [](int value) { return value - 1; };
+  OneHotEncoder<int, LinearArray<int, 3, 1>, decltype(sub_one)> ohe1;
+  auto arr3 = ohe1(1);
+  ASSERT_EQ(arr1, arr3);
+}
+
+TEST(FunctionTest, SoftMaxDecoder) {
+  SoftMaxDecoder<int, LinearArray<double, 3, 1>> smd;
+  auto darr1 = larray(larray(0.3, 0.4, 0.3)).transpose();
+  auto val = 1;
+  ASSERT_EQ(smd(darr1), val);
+
+  auto add_one = [](int value) { return value + 1; };
+  SoftMaxDecoder<int, LinearArray<double, 3, 1>, decltype(add_one)> smd1;
+  auto val1 = 2;
+  ASSERT_EQ(smd1(darr1), val1);
+}

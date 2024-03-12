@@ -198,7 +198,6 @@ public:
                   "Final layer must have a cost function");
     auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
     auto endLayerGradient = std::get<0>(rezPair) * std::get<1>(rezPair);
-
     auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
 
     biases() -= endLayerGradient * learning_rate;

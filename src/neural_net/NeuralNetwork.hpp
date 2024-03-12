@@ -20,10 +20,10 @@ public:
   using impl::LayerPair<DataType, InputLayer, Layers...>::backPropagate;
   using impl::LayerPair<DataType, InputLayer, Layers...>::feedForward;
 
-  auto randomize_weights() {
-    auto transformer = [](DataType) {
+  auto randomize_weights(double lower_end, double higher_end) {
+    auto transformer = [lower_end, higher_end](DataType) {
       static std::random_device randomDevice {};
-      static std::uniform_real_distribution dist(-0.1, 0.1);
+      static std::uniform_real_distribution dist(lower_end, higher_end);
       return dist(randomDevice);
     };
 
@@ -45,7 +45,6 @@ public:
     double error = .0;
     for (auto const& e : dataSet.data()) {
       auto rez = feedForward(e.data);
-      std::cout << rez << " " << e.label << " " << labelDecoder(rez) << '\n';
       if (labelDecoder(rez) != e.label) {
         error += static_cast<DataType>(1) / dataSet.data().size();
       }

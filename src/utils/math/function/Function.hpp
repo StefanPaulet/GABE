@@ -148,11 +148,11 @@ template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType>
 template <typename = void> struct StringToIntegral {};
 
 template <std::integral T> struct StringToIntegral<T> {
-  auto operator()(std::string const& str) const -> T { return atoi(str.c_str()); }
+  auto operator()(std::string const& str) const -> T { return strtol(str.c_str(), nullptr, 10); }
 };
 
 template <std::floating_point T> struct StringToIntegral<T> {
-  auto operator()(std::string const& str) const -> T { return atof(str.c_str()); }
+  auto operator()(std::string const& str) const -> T { return strtod(str.c_str(), nullptr); }
 };
 
 template <std::integral T, concepts::LinearArrayType OutputArrayType, typename LabelTransform = IdentityFunction<>>
@@ -166,7 +166,7 @@ struct OneHotEncoder {
   }
 };
 
-template <std::integral T, concepts::LinearArrayType InputArrayType, typename LabelTransform = IdentityFunction<>>
+template <std::integral T, concepts::LinearColumnArrayType InputArrayType, typename LabelTransform = IdentityFunction<>>
 struct SoftMaxDecoder {
   auto operator()(InputArrayType const& input) -> T {
     auto max = input[0][0];

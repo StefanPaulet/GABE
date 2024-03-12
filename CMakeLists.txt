@@ -46,3 +46,4 @@ target_include_directories(
 include(FetchContent)
 enable_testing()
 add_subdirectory(test/unittest)
+add_subdirectory(test/featuretest)
