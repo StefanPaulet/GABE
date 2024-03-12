@@ -110,6 +110,16 @@ public:
     return rez;
   }
 
+  template <typename P> auto maximize(LinearArrayGenericOps const& other, P&& predicate) const -> D {
+    auto otherArr = static_cast<D const*>(&other)->data();
+    auto rez = *static_cast<D const*>(this);
+    auto& rezData = rez.data();
+    for (auto idx = 0; idx < otherArr.size(); ++idx) {
+      rezData[idx] = rezData[idx].maximize(otherArr[idx], std::forward<P>(predicate));
+    }
+    return rez;
+  }
+
   auto max() const {
     auto currMax = (*static_cast<D const*>(this)->data().begin()).max();
     for (auto const& e : static_cast<D const*>(this)->data()) {
@@ -118,12 +128,16 @@ public:
     return currMax;
   }
 
-  constexpr auto total_size() const {
-    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
+  auto min() const {
+    auto currMin = (*static_cast<D const*>(this)->data().begin()).min();
+    for (auto const& e : static_cast<D const*>(this)->data()) {
+      currMin = std::min(currMin, e.min());
+    }
+    return currMin;
   }
 
-  template <typename T = D> auto set(typename T::UnderlyingType value, Size idx) {
-    static_cast<D*>(this)->data()[idx] = static_cast<D*>(this)->data()[idx]->unit(value);
+  constexpr auto total_size() const {
+    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
   }
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
@@ -379,6 +393,7 @@ public:
   }
 
   auto max() const -> DataType { return std::ranges::max(data()); }
+  auto min() const -> DataType { return std::ranges::min(data()); }
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
@@ -404,7 +419,17 @@ public:
 
   constexpr auto total_size() const { return size; }
 
-  auto set(DataType value, Size idx) { this->data()[idx] = value; }
+  template <typename P> auto maximize(LinearArray const& other, P&& predicate) const -> LinearArray {
+    LinearArray rez {};
+    for (auto idx = 0; idx < size; ++idx) {
+      if (std::forward<P>(predicate)(data()[idx], other[idx])) {
+        rez[idx] = data()[idx];
+      } else {
+        rez[idx] = other[idx];
+      }
+    }
+    return rez;
+  }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();

@@ -89,8 +89,12 @@ public:
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
-
   auto& biases() { return _biases; }
+
+  template <typename T> auto randomize_weights(T&& transformer) -> void {
+    _weights.transform(std::forward<T>(transformer));
+    _biases.transform(std::forward<T>(transformer));
+  }
 
 private:
   InnerLinearMatrix _weights {};
@@ -108,13 +112,15 @@ private:
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using Input = utils::math::LinearColumnArray<DataType, flDim>;
+  using LayerPairContainer =
+      LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
+  using LayerPairContainer::biases;
+  using LayerPairContainer::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -149,6 +155,11 @@ public:
     weights() -= currentLayerGradient.product(input.transpose()) * learning_rate;
     return returnGradient;
   }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    LayerPairContainer::randomize_weights(std::forward<T>(transformer));
+    NextLayerPair::randomize_weights(std::forward<T>(transformer));
+  }
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer>
@@ -160,12 +171,13 @@ private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
+  using LayerPairContainer = LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer>>;
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
+  using LayerPairContainer::biases;
+  using LayerPairContainer::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -193,6 +205,10 @@ public:
     weights() -= endLayerGradient.product(input.transpose()) * learning_rate;
 
     return returnGradient;
+  }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    LayerPairContainer::randomize_weights(std::forward<T>(transformer));
   }
 };
 } // namespace impl
