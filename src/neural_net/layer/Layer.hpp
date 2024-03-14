@@ -5,6 +5,7 @@
 #pragma once
 
 #include "LayerTraits.hpp"
+#include "utils/concepts/Concepts.hpp"
 #include <functional>
 #include <utils/math/function/Function.hpp>
 #include <utils/math/linearArray/LinearArray.hpp>
@@ -32,6 +33,30 @@ public:
     return input.project([this]<typename T>(T&& value) {
       return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
     });
+  }
+};
+
+template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename Dim>
+class Layer<DataType, ActivationFunction, Dim> : private ActivationFunction {
+public:
+  static const Size dimension = Dim::size;
+
+private:
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
+
+public:
+  using LayerFunction = ActivationFunction;
+
+  Layer() = default;
+  Layer(Layer const&) = default;
+  Layer(Layer&&) noexcept = default;
+
+  auto feedForward(InnerLinearArray const& input) -> InnerLinearArray {
+    return (*static_cast<ActivationFunction*>(this))(input);
+  }
+
+  auto backPropagate(InnerLinearArray const& input) -> InnerLinearArray {
+    return static_cast<ActivationFunction*>(this)->derive(input);
   }
 };
 
@@ -64,8 +89,12 @@ public:
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
-
   auto& biases() { return _biases; }
+
+  template <typename T> auto randomize_weights(T&& transformer) -> void {
+    _weights.transform(std::forward<T>(transformer));
+    _biases.transform(std::forward<T>(transformer));
+  }
 
 private:
   InnerLinearMatrix _weights {};
@@ -83,13 +112,15 @@ private:
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using Input = utils::math::LinearColumnArray<DataType, flDim>;
+  using LayerPairContainer =
+      LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
+  using LayerPairContainer::biases;
+  using LayerPairContainer::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -124,6 +155,11 @@ public:
     weights() -= currentLayerGradient.product(input.transpose()) * learning_rate;
     return returnGradient;
   }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    LayerPairContainer::randomize_weights(std::forward<T>(transformer));
+    NextLayerPair::randomize_weights(std::forward<T>(transformer));
+  }
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer>
@@ -135,12 +171,13 @@ private:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
+  using LayerPairContainer = LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer>>;
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::biases;
-  using LayerPairContainer<DataType, flDim, slDim, LayerPair>::weights;
+  using LayerPairContainer::biases;
+  using LayerPairContainer::weights;
 
 public:
   template <Size idx> auto& weights() {
@@ -161,13 +198,16 @@ public:
                   "Final layer must have a cost function");
     auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
     auto endLayerGradient = std::get<0>(rezPair) * std::get<1>(rezPair);
-
     auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
 
     biases() -= endLayerGradient * learning_rate;
     weights() -= endLayerGradient.product(input.transpose()) * learning_rate;
 
     return returnGradient;
+  }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    LayerPairContainer::randomize_weights(std::forward<T>(transformer));
   }
 };
 } // namespace impl

@@ -6,17 +6,13 @@
 
 #include "types.hpp"
 #include "utils/concepts/Concepts.hpp"
+#include "utils/data/Data.hpp"
 #include "utils/math/function/Function.hpp"
 #include <bitset>
 #include <fstream>
 #include <sstream>
 
-namespace gabe::utils::dataLoader {
-
-template <concepts::LinearArrayType DataPointType> struct DataPoint {
-  DataPointType data {};
-  typename DataPointType::UnderlyingType label {};
-};
+namespace gabe::utils::data {
 
 namespace impl {
 template <concepts::LinearArrayType R> auto loadMNISTData(FILE* dataStream, uint32 expectedImageCount)
@@ -77,15 +73,13 @@ template <typename T> auto loadMNISTLabels(FILE* dataStream, uint32 expectedImag
 }
 } // namespace impl
 
-template <typename T> using DataSet = std::vector<DataPoint<T>>;
+enum class MNISTDataSetType { TEST, TRAIN };
 
-enum class MNISTDataSet { TEST, TRAIN };
-
-template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePath, MNISTDataSet loadFlag)
+template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePath, MNISTDataSetType loadFlag)
     -> DataSet<R> {
   FILE* imagesIn = fopen((filePath + "/images").c_str(), "rb");
   FILE* labelsIn = fopen((filePath + "/labels").c_str(), "rb");
-  auto expectedImageCount = loadFlag == MNISTDataSet::TRAIN ? 60000 : 10000;
+  auto expectedImageCount = loadFlag == MNISTDataSetType::TRAIN ? 60000 : 10000;
 
   auto labelsVector = impl::loadMNISTLabels<typename R::UnderlyingType>(labelsIn, expectedImageCount);
   auto dataVector = impl::loadMNISTData<R>(imagesIn, expectedImageCount);
@@ -101,7 +95,7 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
 
   fclose(imagesIn);
   fclose(labelsIn);
-  return rezVector;
+  return DataSet<R> {rezVector};
 }
 
 template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string const& filePath, char delim = ',')
@@ -113,7 +107,7 @@ template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string c
   auto* wordPtr = new char[16];
 
   while (in.getline(linePtr, 1024)) {
-    R data;
+    std::array<typename R::UnderlyingType, R().size()> data;
 
     std::string line {linePtr};
     auto lastDelimIdx = line.find_last_of(delim);
@@ -130,7 +124,7 @@ template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string c
       data[idx++] = utils::math::StringToIntegral<typename R::UnderlyingType>()(word);
     }
 
-    rezVector.emplace_back(data, label);
+    rezVector.data().emplace_back(R {data}, label);
   }
 
   delete[] linePtr;
@@ -138,4 +132,4 @@ template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string c
 
   return rezVector;
 }
-} // namespace gabe::utils::dataLoader
+} // namespace gabe::utils::data

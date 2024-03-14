@@ -5,6 +5,8 @@
 #pragma once
 
 #include "utils/concepts/Concepts.hpp"
+#include <algorithm>
+#include <cassert>
 #include <cmath>
 
 namespace gabe::utils::math {
@@ -113,6 +115,7 @@ template <typename = void> struct SoftmaxFunction {};
 
 template <> struct SoftmaxFunction<void> {
   static constexpr auto isActivationFunction = true;
+  static constexpr auto isContainerFunction = true;
 
   template <typename InputType> auto operator()(InputType&& input) const {
     return SoftmaxFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
@@ -125,6 +128,7 @@ template <> struct SoftmaxFunction<void> {
 
 template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType> {
   static constexpr auto isActivationFunction = true;
+  static constexpr auto isContainerFunction = true;
 
   auto operator()(InputType const& input) const -> InputType {
     auto maxValue = input.max();
@@ -144,11 +148,37 @@ template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType>
 template <typename = void> struct StringToIntegral {};
 
 template <std::integral T> struct StringToIntegral<T> {
-  auto operator()(std::string const& str) const -> T { return atoi(str.c_str()); }
+  auto operator()(std::string const& str) const -> T { return strtol(str.c_str(), nullptr, 10); }
 };
 
 template <std::floating_point T> struct StringToIntegral<T> {
-  auto operator()(std::string const& str) const -> T { return atof(str.c_str()); }
+  auto operator()(std::string const& str) const -> T { return strtod(str.c_str(), nullptr); }
+};
+
+template <std::integral T, concepts::LinearArrayType OutputArrayType, typename LabelTransform = IdentityFunction<>>
+struct OneHotEncoder {
+  auto operator()(T value) -> OutputArrayType {
+    OutputArrayType rez = OutputArrayType::nul();
+    auto transformedValue = LabelTransform()(value);
+    assert(transformedValue <= rez.size() && "Cannot one-hot encode a value which doesn't fit in the output array");
+    rez[transformedValue] = rez[transformedValue].unit();
+    return rez;
+  }
+};
+
+template <std::integral T, concepts::LinearColumnArrayType InputArrayType, typename LabelTransform = IdentityFunction<>>
+struct SoftMaxDecoder {
+  auto operator()(InputArrayType const& input) -> T {
+    auto max = input[0][0];
+    Size maxIdx = 0;
+    for (auto idx = 0; idx < input.size(); ++idx) {
+      if (max < input[idx][0]) {
+        maxIdx = idx;
+        max = input[idx][0];
+      }
+    }
+    return LabelTransform()(maxIdx);
+  }
 };
 
 

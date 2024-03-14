@@ -110,12 +110,30 @@ public:
     return rez;
   }
 
+  template <typename P> auto maximize(LinearArrayGenericOps const& other, P&& predicate) const -> D {
+    auto otherArr = static_cast<D const*>(&other)->data();
+    auto rez = *static_cast<D const*>(this);
+    auto& rezData = rez.data();
+    for (auto idx = 0; idx < otherArr.size(); ++idx) {
+      rezData[idx] = rezData[idx].maximize(otherArr[idx], std::forward<P>(predicate));
+    }
+    return rez;
+  }
+
   auto max() const {
     auto currMax = (*static_cast<D const*>(this)->data().begin()).max();
     for (auto const& e : static_cast<D const*>(this)->data()) {
       currMax = std::max(currMax, e.max());
     }
     return currMax;
+  }
+
+  auto min() const {
+    auto currMin = (*static_cast<D const*>(this)->data().begin()).min();
+    for (auto const& e : static_cast<D const*>(this)->data()) {
+      currMin = std::min(currMin, e.min());
+    }
+    return currMin;
   }
 
   constexpr auto total_size() const {
@@ -127,6 +145,15 @@ public:
 
   auto begin() const { return static_cast<D const*>(this)->data().begin(); }
   auto end() const { return static_cast<D const*>(this)->data().end(); }
+
+  template <typename T = D> static constexpr auto unit(typename T::UnderlyingType const& unit = 1) {
+    D result {};
+    auto row_value = result.data()[0].unit() * unit;
+    for (auto& e : result.data()) {
+      e = row_value;
+    }
+    return result;
+  }
 };
 
 template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
@@ -253,6 +280,7 @@ public:
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
   using LinearArrayContainer::LinearArrayContainer;
+  using linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, line_size, col_size>>::unit;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
@@ -269,8 +297,9 @@ public:
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
-  static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
+  static constexpr auto identity(DataType const& unit = 1) -> LinearArray {
     static_assert(line_size == col_size && "Unit matrix exists only on square matrices");
+
     auto result = LinearArray();
     for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
       result[lineIdx][lineIdx] = unit;
@@ -364,6 +393,7 @@ public:
   }
 
   auto max() const -> DataType { return std::ranges::max(data()); }
+  auto min() const -> DataType { return std::ranges::min(data()); }
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
@@ -388,6 +418,18 @@ public:
   }
 
   constexpr auto total_size() const { return size; }
+
+  template <typename P> auto maximize(LinearArray const& other, P&& predicate) const -> LinearArray {
+    LinearArray rez {};
+    for (auto idx = 0; idx < size; ++idx) {
+      if (std::forward<P>(predicate)(data()[idx], other[idx])) {
+        rez[idx] = data()[idx];
+      } else {
+        rez[idx] = other[idx];
+      }
+    }
+    return rez;
+  }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();

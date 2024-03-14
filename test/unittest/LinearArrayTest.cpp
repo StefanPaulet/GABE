@@ -307,3 +307,23 @@ TEST(LinearArrayTest, Max) {
   auto d_arr1 = larray(0.1, 0.32, 0.23);
   ASSERT_EQ(d_arr1.max(), 0.32);
 }
+
+TEST(LinearArrayTest, Min) {
+  auto arr1 = larray(1, 2, -3);
+  ASSERT_EQ(arr1.min(), -3);
+
+  auto d_arr1 = larray(0.1, 0.32, 0.23);
+  ASSERT_EQ(d_arr1.min(), 0.1);
+}
+
+TEST(LinearArrayTest, Maximize) {
+  auto arr1 = larray(1, 2, 3);
+  auto arr2 = larray(0, 2, 4);
+  auto arr3 = larray(1, 2, 4);
+  auto arr4 = larray(0, 2, 3);
+
+  auto arr5 = arr1.maximize(arr2, std::less<int> {});
+  auto arr6 = arr1.maximize(arr2, std::greater<int> {});
+  ASSERT_EQ(arr5, arr4);
+  ASSERT_EQ(arr6, arr3);
+}

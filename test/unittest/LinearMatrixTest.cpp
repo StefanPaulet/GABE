@@ -97,9 +97,15 @@ TEST(LinearMatrixTest, Convolve) {
   ASSERT_EQ(mtrx2, rez);
 }
 
-TEST(LinearMatrixTest, Unit) {
-  auto mtrx1 = SquareLinearMatrix<int, 3>::unit();
+TEST(LinearMatrixTest, Identity) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::identity();
   auto mtrx2 = larray(larray(1, 0, 0), larray(0, 1, 0), larray(0, 0, 1));
+  ASSERT_EQ(mtrx1, mtrx2);
+}
+
+TEST(LinearMatrixTest, Unit) {
+  auto mtrx1 = SquareLinearMatrix<int, 3>::unit(2);
+  auto mtrx2 = larray(larray(2, 2, 2), larray(2, 2, 2), larray(2, 2, 2));
   ASSERT_EQ(mtrx1, mtrx2);
 }
 
@@ -117,4 +123,32 @@ TEST(LinearMatrixTest, Accumulate) {
   ASSERT_EQ(mtrx1.accumulate(0, accum_sum), 16);
   ASSERT_EQ(mtrx1.accumulate(0, accum_prod), 0);
   ASSERT_EQ(mtrx1.accumulate(1, accum_prod), 160);
+}
+
+TEST(LinearMatrixTest, Max) {
+  auto mtrx1 = larray(larray(1, 5, 9), larray(2, 3, 4));
+  ASSERT_EQ(9, mtrx1.max());
+
+  auto dmtrx1 = larray(larray(0.1, 0.5, -0.2), larray(0.3, 0.7, -0.4));
+  ASSERT_DOUBLE_EQ(0.7, dmtrx1.max());
+}
+
+TEST(LinearMatrixTest, Min) {
+  auto mtrx1 = larray(larray(1, 5, 9), larray(2, 3, 4));
+  ASSERT_EQ(1, mtrx1.min());
+
+  auto dmtrx1 = larray(larray(0.1, 0.5, -0.2), larray(0.3, 0.7, -0.4));
+  ASSERT_DOUBLE_EQ(-0.4, dmtrx1.min());
+}
+
+TEST(LinearMatrixTest, Maximize) {
+  auto mtrx1 = larray(larray(1, 2, 3), larray(-1, -2, -3));
+  auto mtrx2 = larray(larray(2, 0, 6), larray(0, -1, -2));
+  auto mtrx3 = larray(larray(2, 2, 6), larray(0, -1, -2));
+  auto mtrx4 = larray(larray(1, 0, 3), larray(-1, -2, -3));
+
+  auto mtrx5 = mtrx1.maximize(mtrx2, std::less<int> {});
+  auto mtrx6 = mtrx1.maximize(mtrx2, std::greater<int> {});
+  ASSERT_EQ(mtrx5, mtrx4);
+  ASSERT_EQ(mtrx6, mtrx3);
 }

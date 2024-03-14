@@ -3,15 +3,14 @@
 //
 
 #include <neural_net/NeuralNetwork.hpp>
+#include <random>
 #include <utils/concepts/Concepts.hpp>
-#include <utils/dataLoader/DataLoader.hpp>
+#include <utils/data/dataLoader/DataLoader.hpp>
 namespace {
 using namespace gabe::utils::math;
-using namespace gabe::utils::dataLoader;
+using namespace gabe::utils::data;
+using namespace gabe::nn;
+using linearArray::larray;
 } // namespace
 
-int main() {
-  auto v = loadDelimSeparatedFile<LinearArray<float, 7>>("../test/featuretest/datasets/seeds/seeds_dataset.txt", '\t');
-  std::cout << v[0].data << '\n';
-  std::cout << v[0].label << '\n';
-}
+int main() {}
