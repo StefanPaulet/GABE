@@ -65,5 +65,8 @@ concept LinearColumnArrayType =
     LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsLinearColumnArray<T>::value;
 
 template <typename T>
+concept LinearMatrixType = LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsLinearMatrix<T>::value;
+
+template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 } // namespace gabe::utils::concepts

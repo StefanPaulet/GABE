@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "layer/ConvolutionalLayer.hpp"
 #include "layer/Layer.hpp"
 #include "utils/data/Data.hpp"
 #include <random>

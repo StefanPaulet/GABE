@@ -359,6 +359,27 @@ public:
     }
     return rez;
   }
+
+  template <Size stride, Size conv_line_size, Size conv_col_size>
+  auto stridedConvolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
+      -> LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)> {
+    auto rez =
+        LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)>();
+
+    auto add = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
+      for (Size convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
+        for (Size convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
+          rez[rezLIdx][rezCIdx] += data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
+        }
+      }
+    };
+    for (Size lineIdx = 0, rezLine = 0; lineIdx < line_size - conv_line_size + 1; lineIdx += stride, ++rezLine) {
+      for (Size colIdx = 0, rezCol = 0; colIdx < col_size - conv_col_size + 1; colIdx += stride, ++rezCol) {
+        add(rezLine, rezCol, lineIdx, colIdx);
+      }
+    }
+    return rez;
+  }
 };
 
 template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
@@ -368,6 +389,7 @@ template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<
 
 template <typename DataType, Size colSize> using LinearColumnArray = LinearMatrix<DataType, colSize, 1>;
 template <typename DataType, Size lineSize> using LinearLineArray = LinearMatrix<DataType, 1, lineSize>;
+template <typename DataType, Size size> using Kernel = SquareLinearMatrix<DataType, size>;
 
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public linearArray::impl::LinearArrayContainer<DataType, size>,

@@ -97,6 +97,15 @@ TEST(LinearMatrixTest, Convolve) {
   ASSERT_EQ(mtrx2, rez);
 }
 
+TEST(LinearMatrixTest, Strided) {
+  auto mtrx1 = larray(larray(2, 3, 7, 4, 6, 2, 9, 0), larray(6, 6, 9, 8, 7, 4, 3, 0), larray(3, 4, 8, 3, 8, 9, 7, 0),
+                      larray(7, 8, 3, 6, 6, 3, 4, 0), larray(4, 2, 1, 8, 2, 5, 6, 0));
+  auto kern1 = larray(larray(3, 4, 4), larray(1, 0, 2), larray(-1, 0, 3));
+  auto rez = larray(larray(91, 100, 88), larray(69, 88, 118));
+  auto mtrx2 = mtrx1.template stridedConvolve<2>(kern1);
+  ASSERT_EQ(mtrx2, rez);
+}
+
 TEST(LinearMatrixTest, Identity) {
   auto mtrx1 = SquareLinearMatrix<int, 3>::identity();
   auto mtrx2 = larray(larray(1, 0, 0), larray(0, 1, 0), larray(0, 0, 1));
