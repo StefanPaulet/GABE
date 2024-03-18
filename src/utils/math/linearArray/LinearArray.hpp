@@ -20,6 +20,8 @@ template <typename DataType, Size s> class LinearArrayContainer {
   static_assert(s != 0, "Size of linear array must not be 0");
 
 public:
+  static constexpr auto first_size = s;
+
   LinearArrayContainer() = default;
   LinearArrayContainer(LinearArrayContainer const&) = default;
   LinearArrayContainer(LinearArrayContainer&&) noexcept = default;
@@ -257,12 +259,16 @@ template <typename DataType, Size first_size, Size... remaining_sizes> class Lin
     public linearArray::impl::LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
     public linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
 
+public:
   using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
+  using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
+  using UnderlyingType = DataType;
+
+private:
   using LinearArrayContainer = linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>;
 
 public:
-  using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
-  using UnderlyingType = DataType;
+  using LinearArrayContainer::first_size;
   using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;

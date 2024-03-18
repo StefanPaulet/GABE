@@ -20,6 +20,7 @@ private:
 
 public:
   using LayerFunction = ActivationFunction;
+  using OutputType = InnerLinearArray;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -46,6 +47,7 @@ private:
 
 public:
   using LayerFunction = ActivationFunction;
+  using OutputType = InnerLinearArray;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -99,6 +101,25 @@ public:
 private:
   InnerLinearMatrix _weights {};
   InnerLinearArray _biases {};
+};
+
+template <typename DataType, Size kernelSize, Size depth,
+          gabe::utils::concepts::ConvolutionalLayerPairType DerivedClass>
+class LayerPairContainer<DataType, kernelSize, depth, DerivedClass> {
+protected:
+  using InnerKernel = typename utils::math::Kernel<DataType, kernelSize>;
+  using InnerBiases = typename utils::math::LinearArray<DataType, depth>;
+  using InnerKernelArray = typename utils::math::LinearArray<DataType, depth, kernelSize, kernelSize>;
+
+public:
+  LayerPairContainer() = default;
+  LayerPairContainer(LayerPairContainer const&) = default;
+  LayerPairContainer(LayerPairContainer&&) noexcept = default;
+
+  auto& weights() { return _weights; }
+
+private:
+  InnerKernelArray _weights {};
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer, typename... RemainingLayers> class LayerPair :
@@ -210,12 +231,42 @@ public:
     LayerPairContainer::randomize_weights(std::forward<T>(transformer));
   }
 };
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
+          gabe::utils::concepts::ConvolutionalLayerType SecondLayer, typename... RemainingLayers>
+class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
+    public LayerPair<DataType,
+                     typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>,
+                     RemainingLayers...>,
+    public LayerPairContainer<
+        DataType, SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+        SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
+        LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>> {
+private:
+  using SecondLayerType =
+      typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>;
+  using Input = typename FirstLayer::template OutputType<DataType>;
+  using LayerPairContainer = LayerPairContainer<
+      DataType, SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+      SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
+      LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
+  using LayerPairContainer::weights;
+
+public:
+  template <Size idx> auto& weights() {
+    static_assert(idx == 0, "Request for weights beyond last layer");
+    return weights();
+  }
+
+  auto feedForward(Input const& input) { return SecondLayerType().feedForward(input, weights()); }
+};
 } // namespace impl
 
 template <typename DataType, typename Dim> struct InputLayer :
     Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {
   using Layer<DataType, utils::math::IdentityFunction<DataType>, Dim>::Layer;
 };
+
 
 template <Size s, typename N> auto&& weights(N&& neuralNet) noexcept {
   return std::forward<N>(neuralNet).template weights<s>();

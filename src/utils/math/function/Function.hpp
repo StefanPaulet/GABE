@@ -181,6 +181,16 @@ struct SoftMaxDecoder {
   }
 };
 
+template <concepts::LinearMatrixType InputType, concepts::LinearMatrixType KernelType, Size = 0, typename = void>
+struct ConvolutionFunction {
+  auto operator()(InputType const& in, KernelType const& kernel) { return in.convolve(kernel); }
+};
+
+template <concepts::LinearMatrixType InputType, concepts::LinearMatrixType KernelType, Size stride>
+struct ConvolutionFunction<InputType, KernelType, stride, std::enable_if_t<stride != 0, void>> {
+  auto operator()(InputType const& in, KernelType const& kernel) { return in.template stridedConvolve<stride>(kernel); }
+};
+
 
 namespace func {
 template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;
