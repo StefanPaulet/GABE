@@ -8,8 +8,12 @@
 #include <types.hpp>
 
 namespace gabe::nn {
-
 template <Size, Size, Size> class ConvolutionalLayer;
+
+namespace impl {
+template <typename, typename, typename, typename, typename> class ConvolutionalLayer;
+} // namespace impl
+
 
 template <Size, Size> class ConvolutionalInputLayer;
 
@@ -35,8 +39,11 @@ template <typename T> struct NDLType<T, false> {
 
 template <typename, typename = void> struct IsConvolutionalLayer : std::false_type {};
 template <Size depth, Size kernelSize, Size stride>
-struct IsConvolutionalLayer<ConvolutionalLayer<depth, kernelSize, stride>> : std::true_type {};
+struct IsConvolutionalLayer<gabe::nn::ConvolutionalLayer<depth, kernelSize, stride>> : std::true_type {};
 template <Size inputSize, Size depthSize> struct IsConvolutionalLayer<ConvolutionalInputLayer<inputSize, depthSize>> :
+    std::true_type {};
+template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename StrideDim>
+struct IsConvolutionalLayer<ConvolutionalLayer<DataType, InputType, DepthDim, KernelDim, StrideDim>> :
     std::true_type {};
 
 } // namespace impl

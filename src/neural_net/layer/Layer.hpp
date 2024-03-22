@@ -127,8 +127,7 @@ template <typename DataType, typename FirstLayer, typename SecondLayer, typename
                               NDLType<SecondLayer>::template Type<DataType>::dimension,
                               LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>,
     public LayerPair<DataType, SecondLayer, RemainingLayers...> {
-
-private:
+protected:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
@@ -136,7 +135,6 @@ private:
   using LayerPairContainer =
       LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer::biases;
@@ -187,13 +185,12 @@ class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
                               NDLType<SecondLayer>::template Type<DataType>::dimension,
                               LayerPair<DataType, FirstLayer, SecondLayer>> {
-private:
+protected:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using LayerPairContainer = LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer>>;
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
-  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer::biases;
@@ -228,6 +225,46 @@ public:
 
   template <typename T> auto randomize_weights(T&& transformer) {
     LayerPairContainer::randomize_weights(std::forward<T>(transformer));
+  }
+};
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer,
+          typename... RemainingLayers>
+class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
+    public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                     SecondLayer, RemainingLayers...> {
+private:
+  using FlattenedFirstLayer = SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>;
+  using UnderlyingLayerPair = LayerPair<DataType, FlattenedFirstLayer, SecondLayer, RemainingLayers...>;
+  using Input = typename FirstLayer::OutputType;
+  using typename UnderlyingLayerPair::SecondLayerType;
+
+public:
+  using UnderlyingLayerPair::biases;
+  using UnderlyingLayerPair::weights;
+
+  auto feedForward(Input const& input) {
+    return SecondLayerType().feedForward((weights().product(input) + biases()).flatten);
+  }
+};
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer>
+class LayerPair<DataType, FirstLayer, SecondLayer> :
+    public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                     SecondLayer> {
+private:
+  using FlattenedFirstLayer = SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>;
+  using UnderlyingLayerPair = LayerPair<DataType, FlattenedFirstLayer, SecondLayer>;
+  using Input = typename FirstLayer::template OutputType<DataType>;
+  using typename UnderlyingLayerPair::SecondLayerType;
+
+public:
+  using UnderlyingLayerPair::biases;
+  using UnderlyingLayerPair::weights;
+
+  auto feedForward(Input const& input) {
+    decltype(weights().transpose()) flattenedInput {input.flatten()};
+    return SecondLayerType().feedForward((weights().product(flattenedInput) + biases()));
   }
 };
 

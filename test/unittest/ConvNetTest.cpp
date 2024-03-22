@@ -37,6 +37,6 @@ TEST(ConvolutionalNeuralNetwork, FeedForward) {
 
   auto in = larray(larray(larray(5, 4, 3, 2), larray(1, 0, 0, 1), larray(2, 2, 2, 2), larray(-2, 4, 3, 1)));
   auto exp = larray(larray(40));
-  //  auto rez = nn.feedForward(in);
+  auto rez = nn.feedForward(in);
   //  ASSERT_EQ(exp, rez);
 }

@@ -313,6 +313,9 @@ public:
     }
   }
 
+  template <Size array_size> explicit LinearArray(LinearArray<DataType, array_size> const& lArr) :
+      LinearArray(lArr.data()) {}
+
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 
