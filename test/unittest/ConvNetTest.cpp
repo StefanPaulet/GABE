@@ -30,13 +30,15 @@ TEST(ConvolutionalNeuratNetwork, Construction) {
 }
 
 TEST(ConvolutionalNeuralNetwork, FeedForward) {
-  NeuralNetwork<int, ConvolutionalInputLayer<4, 1>, ConvolutionalLayer<1, 3, 1>, SizedLayer<1, Layer, ReluFunction<>>>
+  NeuralNetwork<int, ConvolutionalInputLayer<4, 1>, ConvolutionalLayer<1, 3, 1>, SizedLayer<1, Layer, ReluFunction<>>,
+                SizedLayer<1, Layer, IdentityFunction<>>>
       nn;
   nn.weights<0>() = larray(larray(larray(1, 0, 1), larray(1, 0, 1), larray(1, 0, 1)));
   nn.weights<1>() = larray(larray(1, 1, 1, 1));
+  nn.weights<2>() = larray(larray(1));
 
   auto in = larray(larray(larray(5, 4, 3, 2), larray(1, 0, 0, 1), larray(2, 2, 2, 2), larray(-2, 4, 3, 1)));
   auto exp = larray(larray(40));
   auto rez = nn.feedForward(in);
-  //  ASSERT_EQ(exp, rez);
+  ASSERT_EQ(exp, rez);
 }

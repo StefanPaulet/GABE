@@ -228,44 +228,64 @@ public:
   }
 };
 
+template <typename B, typename D, typename DataType, typename FirstLayer, typename SecondLayer>
+class ConvolutionalLayerPairFlattener {
+  using Input = typename FirstLayer::template OutputType<DataType>;
+
+public:
+  auto feedForward(Input const& input) {
+    decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
+    return static_cast<D*>(static_cast<B*>(this))->feedForward(flattenedInput);
+  }
+};
+
 template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer,
           typename... RemainingLayers>
 class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
     public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
-                     SecondLayer, RemainingLayers...> {
+                     SecondLayer, RemainingLayers...>,
+    public ConvolutionalLayerPairFlattener<
+        LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>,
+        LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                  SecondLayer, RemainingLayers...>,
+        DataType, FirstLayer, SecondLayer> {
 private:
-  using FlattenedFirstLayer = SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>;
-  using UnderlyingLayerPair = LayerPair<DataType, FlattenedFirstLayer, SecondLayer, RemainingLayers...>;
-  using Input = typename FirstLayer::OutputType;
-  using typename UnderlyingLayerPair::SecondLayerType;
+  using Flattener = ConvolutionalLayerPairFlattener<
+      LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>,
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer,
+                RemainingLayers...>,
+      DataType, FirstLayer, SecondLayer>;
+  using InnerLayerPair =
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer,
+                RemainingLayers...>;
 
 public:
-  using UnderlyingLayerPair::biases;
-  using UnderlyingLayerPair::weights;
-
-  auto feedForward(Input const& input) {
-    return SecondLayerType().feedForward((weights().product(input) + biases()).flatten);
-  }
+  using Flattener::feedForward;
+  using InnerLayerPair::biases;
+  using InnerLayerPair::weights;
 };
 
 template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer>
 class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
-                     SecondLayer> {
+                     SecondLayer>,
+    public ConvolutionalLayerPairFlattener<
+        LayerPair<DataType, FirstLayer, SecondLayer>,
+        LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                  SecondLayer>,
+        DataType, FirstLayer, SecondLayer> {
 private:
-  using FlattenedFirstLayer = SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>;
-  using UnderlyingLayerPair = LayerPair<DataType, FlattenedFirstLayer, SecondLayer>;
-  using Input = typename FirstLayer::template OutputType<DataType>;
-  using typename UnderlyingLayerPair::SecondLayerType;
+  using Flattener = ConvolutionalLayerPairFlattener<
+      LayerPair<DataType, FirstLayer, SecondLayer>,
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer>,
+      DataType, FirstLayer, SecondLayer>;
+  using InnerLayerPair =
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer>;
 
 public:
-  using UnderlyingLayerPair::biases;
-  using UnderlyingLayerPair::weights;
-
-  auto feedForward(Input const& input) {
-    decltype(weights().transpose()) flattenedInput {input.flatten()};
-    return SecondLayerType().feedForward((weights().product(flattenedInput) + biases()));
-  }
+  using Flattener::feedForward;
+  using InnerLayerPair::biases;
+  using InnerLayerPair::weights;
 };
 
 template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
