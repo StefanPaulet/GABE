@@ -136,7 +136,6 @@ private:
   using LayerPairContainer =
       LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
   using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
@@ -148,7 +147,7 @@ public:
     if constexpr (idx == 0) {
       return weights();
     } else {
-      return static_cast<InnerLayerPair*>(this)->template weights<idx - 1>();
+      return static_cast<NextLayerPair*>(this)->template weights<idx - 1>();
     }
   }
 
@@ -156,7 +155,7 @@ public:
     if constexpr (idx == 0) {
       return biases();
     } else {
-      return static_cast<InnerLayerPair*>(this)->template biases<idx - 1>();
+      return static_cast<NextLayerPair*>(this)->template biases<idx - 1>();
     }
   }
 
@@ -251,14 +250,20 @@ private:
       SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
       LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using LayerPairContainer::weights;
+  using NextLayerPair = LayerPair<DataType, SecondLayerType, RemainingLayers...>;
 
 public:
   template <Size idx> auto& weights() {
-    static_assert(idx == 0, "Request for weights beyond last layer");
-    return weights();
+    if constexpr (idx == 0) {
+      return weights();
+    } else {
+      return static_cast<NextLayerPair*>(this)->template weights<idx - 1>();
+    }
   }
 
-  auto feedForward(Input const& input) { return SecondLayerType().feedForward(input, weights()); }
+  auto feedForward(Input const& input) {
+    return NextLayerPair::feedForward(SecondLayerType().feedForward(input, weights()));
+  }
 };
 } // namespace impl
 

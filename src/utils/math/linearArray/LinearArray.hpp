@@ -28,9 +28,9 @@ public:
   explicit LinearArrayContainer(std::array<DataType, s> const& data) : _data(data) {}
   auto operator=(LinearArrayContainer const&) -> LinearArrayContainer& = default;
 
-  auto& data() { return _data; }
-  auto const& data() const { return _data; }
-  constexpr auto size() const { return s; }
+  constexpr auto& data() { return _data; }
+  constexpr auto const& data() const { return _data; }
+  static constexpr auto size() { return s; }
 
 private:
   std::array<DataType, s> _data;
@@ -138,15 +138,24 @@ public:
     return currMin;
   }
 
-  constexpr auto total_size() const {
-    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
-  }
+  static constexpr auto total_size() { return D::size() * D::InnerLinearArray::total_size(); }
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
 
   auto begin() const { return static_cast<D const*>(this)->data().begin(); }
   auto end() const { return static_cast<D const*>(this)->data().end(); }
+
+  constexpr auto flatten() const {
+    LinearArray<typename D::UnderlyingType, total_size()> rez;
+    auto data = static_cast<D const*>(this)->data();
+    for (auto idx = 0; idx < data.size(); ++idx) {
+      auto flatData = data[idx].flatten();
+      std::memcpy(rez.data().data() + idx * flatData.size(), flatData.data().data(),
+                  flatData.size() * sizeof(typename D::UnderlyingType));
+    }
+    return rez;
+  }
 
   template <typename T = D> static constexpr auto unit(typename T::UnderlyingType const& unit = 1) {
     D result {};
@@ -274,6 +283,9 @@ public:
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
+
+  auto operator=(LinearArray const& other) -> LinearArray& = default;
+  auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
@@ -283,6 +295,7 @@ template <typename DataType, Size line_size, Size col_size> class LinearArray<Da
   using LinearArrayContainer = linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>;
 
 public:
+  using InnerLinearArray = LinearArray<DataType, col_size>;
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
   using LinearArrayContainer::LinearArrayContainer;
@@ -445,7 +458,7 @@ public:
     return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
   }
 
-  constexpr auto total_size() const { return size; }
+  static constexpr auto total_size() { return size; }
 
   template <typename P> auto maximize(LinearArray const& other, P&& predicate) const -> LinearArray {
     LinearArray rez {};
@@ -458,6 +471,8 @@ public:
     }
     return rez;
   }
+
+  constexpr auto flatten() -> LinearArray { return LinearArray {*this}; }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();

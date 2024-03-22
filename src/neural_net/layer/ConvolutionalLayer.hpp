@@ -56,8 +56,8 @@ public:
 
 template <Size depth, Size kernelSize, Size stride> struct ConvolutionalLayer {
   template <typename DataType, typename InputType> using Type =
-      impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>, gabe::nn::impl::Dimension<depth>,
-                               gabe::nn::impl::Dimension<depth>>;
+      impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>,
+                               gabe::nn::impl::Dimension<kernelSize>, gabe::nn::impl::Dimension<stride>>;
 };
 
 template <Size inputSize, Size depthSize> class ConvolutionalInputLayer {
