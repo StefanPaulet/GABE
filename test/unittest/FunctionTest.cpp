@@ -132,3 +132,14 @@ TEST(FunctionTest, SoftMaxDecoder) {
   auto val1 = 2;
   ASSERT_EQ(smd1(darr1), val1);
 }
+
+TEST(FunctionTest, Relu) {
+  ReluFunction<> rf;
+  auto arr1 = larray(1, -5, 3);
+  auto arr2 = larray(1, 0, 3);
+  ASSERT_EQ(arr1.transform(rf), arr2);
+
+  auto darr1 = larray(-1.3, 2.22, 3.4);
+  auto darr2 = larray(0, 2.22, 3.4);
+  ASSERT_EQ(darr1.transform(rf), darr2);
+}

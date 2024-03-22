@@ -191,6 +191,32 @@ struct ConvolutionFunction<InputType, KernelType, stride, std::enable_if_t<strid
   auto operator()(InputType const& in, KernelType const& kernel) { return in.template stridedConvolve<stride>(kernel); }
 };
 
+template <typename = void> struct ReluFunction {};
+template <> struct ReluFunction<void> {
+  static constexpr auto isActivationFunction = true;
+
+  template <typename InputType> auto operator()(InputType&& in) {
+    return ReluFunction<std::remove_cvref_t<InputType>> {}(std::forward<InputType>(in));
+  }
+
+  template <typename InputType> auto derive(InputType&& in) {
+    return ReluFunction<std::remove_cvref_t<InputType>> {}.derive(std::forward<InputType>(in));
+  }
+};
+
+template <concepts::IntegralType T> struct ReluFunction<T> {
+  static constexpr auto isActivationFunction = true;
+
+  auto operator()(T value) -> T { return std::max(value, static_cast<T>(0)); }
+
+  auto derive(T value) -> T {
+    if (value <= static_cast<T>(0)) {
+      return 0;
+    }
+    return 1;
+  }
+};
+
 
 namespace func {
 template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;
