@@ -8,28 +8,23 @@
 #include "utils/math/linearArray/LinearArray.hpp"
 namespace gabe::nn {
 namespace impl {
-template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename StrideDim>
-class ConvolutionalLayer :
-    private utils::math::ConvolutionFunction<typename InputType::InnerLinearArray,
-                                             utils::math::Kernel<DataType, KernelDim::size>, StrideDim::size> {
+template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename ConvolutionFunction>
+class ConvolutionalLayer : private ConvolutionFunction {
 public:
   static constexpr Size kernelSize = KernelDim::size;
-  static constexpr Size stride = StrideDim::size;
   static constexpr Size depth = DepthDim::size;
-  static constexpr Size input_depth = InputType::first_size;
+  static constexpr Size input_depth = InputType::size();
 
 private:
   using KernelType = utils::math::Kernel<DataType, kernelSize>;
-  using KernelArrayType = utils::math::LinearArray<DataType, depth, kernelSize, kernelSize>;
-  using ActivationFunction = utils::math::ConvolutionFunction<typename InputType::InnerLinearArray, KernelType, stride>;
+  using KernelArrayType = utils::math::LinearArray<DataType, depth, input_depth, kernelSize, kernelSize>;
 
 public:
   static constexpr auto outputSize =
-      std::invoke_result_t<ActivationFunction, typename InputType::InnerLinearArray, KernelType> {}.size();
-  static constexpr Size dimension = input_depth * depth * outputSize * outputSize;
+      std::invoke_result_t<ConvolutionFunction, InputType, typename KernelArrayType::InnerLinearArray> {}.size();
 
-  template <typename = void> using OutputType =
-      utils::math::LinearArray<DataType, input_depth * depth, outputSize, outputSize>;
+  template <typename = void> using OutputType = utils::math::LinearArray<DataType, depth, outputSize, outputSize>;
+  static constexpr Size dimension = OutputType<>::total_size();
 
   ConvolutionalLayer() = default;
   ConvolutionalLayer(ConvolutionalLayer const&) = default;
@@ -38,26 +33,46 @@ public:
   auto feedForward(InputType const& input, KernelArrayType const& kernels) -> OutputType<> {
     OutputType<> rez {};
     auto idx = 0;
-    for (auto const& mtrx : input) {
-      for (auto const& kernel : kernels) {
-        rez[idx++] = static_cast<ActivationFunction*>(this)->operator()(mtrx, kernel);
-      }
+    for (auto const& kernel : kernels) {
+      rez[idx++] = static_cast<ConvolutionFunction*>(this)->operator()(input, kernel);
     }
     return rez;
   }
 
   auto backPropagate(ConvolutionalLayer const& input) {
     return input.project([this]<typename T>(T&& value) {
-      return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
+      return static_cast<ConvolutionFunction*>(this)->derive(std::forward<T>(value));
     });
   }
 };
+
+template <Size depth, Size kernelSize, typename D> struct BaseConvolutionalLayer {
+  static constexpr bool isConvolutionalLayer = true;
+
+  template <typename DataType, typename InputType, typename T = D> using Type =
+      impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>,
+                               gabe::nn::impl::Dimension<kernelSize>,
+                               typename T::template ConvFunction<DataType, InputType>>;
+};
+
 } // namespace impl
 
-template <Size depth, Size kernelSize, Size stride> struct ConvolutionalLayer {
-  template <typename DataType, typename InputType> using Type =
-      impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>,
-                               gabe::nn::impl::Dimension<kernelSize>, gabe::nn::impl::Dimension<stride>>;
+template <Size depth, Size kernelSize> struct ConvolutionalLayer :
+    impl::BaseConvolutionalLayer<depth, kernelSize, ConvolutionalLayer<depth, kernelSize>> {
+  template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::SimpleConvolutionFunction<
+      InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
+
+  template <typename DataType, typename InputType> using Type = impl::BaseConvolutionalLayer<
+      depth, kernelSize, ConvolutionalLayer<depth, kernelSize>>::template Type<DataType, InputType, ConvolutionalLayer>;
+};
+
+template <Size depth, Size kernelSize, Size stride> struct StridedConvolutionalLayer :
+    impl::BaseConvolutionalLayer<depth, kernelSize, StridedConvolutionalLayer<depth, kernelSize, stride>> {
+  template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::StridedConvolutionFunction<
+      stride, InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
+
+  template <typename DataType, typename InputType> using Type = impl::BaseConvolutionalLayer<
+      depth, kernelSize, StridedConvolutionalLayer>::template Type<DataType, InputType, StridedConvolutionalLayer>;
 };
 
 template <Size inputSize, Size depthSize> class ConvolutionalInputLayer {

@@ -103,18 +103,16 @@ private:
   InnerLinearArray _biases {};
 };
 
-template <typename DataType, Size kernelSize, Size depth,
+template <typename DataType, Size inputDepth, Size kernelSize, Size depth,
           gabe::utils::concepts::ConvolutionalLayerPairType DerivedClass>
-class LayerPairContainer<DataType, kernelSize, depth, DerivedClass> {
+class ConvolutionalLayerPairContainer {
 protected:
-  using InnerKernel = typename utils::math::Kernel<DataType, kernelSize>;
-  using InnerBiases = typename utils::math::LinearArray<DataType, depth>;
-  using InnerKernelArray = typename utils::math::LinearArray<DataType, depth, kernelSize, kernelSize>;
+  using InnerKernelArray = typename utils::math::LinearArray<DataType, depth, inputDepth, kernelSize, kernelSize>;
 
 public:
-  LayerPairContainer() = default;
-  LayerPairContainer(LayerPairContainer const&) = default;
-  LayerPairContainer(LayerPairContainer&&) noexcept = default;
+  ConvolutionalLayerPairContainer() = default;
+  ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer const&) = default;
+  ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
 
@@ -294,19 +292,21 @@ class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
     public LayerPair<DataType,
                      typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>,
                      RemainingLayers...>,
-    public LayerPairContainer<
-        DataType, SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+    public ConvolutionalLayerPairContainer<
+        DataType, FirstLayer::template OutputType<DataType>::size(),
+        SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
         SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
         LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>> {
 private:
   using SecondLayerType =
       typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>;
   using Input = typename FirstLayer::template OutputType<DataType>;
-  using LayerPairContainer = LayerPairContainer<
-      DataType, SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+  using InnerContainer = ConvolutionalLayerPairContainer<
+      DataType, FirstLayer::template OutputType<DataType>::size(),
+      SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
       SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
       LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
-  using LayerPairContainer::weights;
+  using InnerContainer::weights;
   using NextLayerPair = LayerPair<DataType, SecondLayerType, RemainingLayers...>;
 
 public:

@@ -74,10 +74,16 @@ template <typename T>
 concept LinearMatrixType = LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsLinearMatrix<T>::value;
 
 template <typename T>
+concept DeepLinearMatrixType = LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsDeepLinearMatrix<T>::value;
+
+template <typename T>
 concept ConvolutionalLayerType = nn::impl::IsConvolutionalLayer<T>::value;
 
 template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
+
+template <typename T>
+concept ConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
 
 namespace impl {
 template <typename, typename = void> struct IsConvolutionalLayerPair : std::false_type {};
