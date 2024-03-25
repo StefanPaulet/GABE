@@ -142,4 +142,7 @@ TEST(FunctionTest, Relu) {
   auto darr1 = larray(-1.3, 2.22, 3.4);
   auto darr2 = larray(0, 2.22, 3.4);
   ASSERT_EQ(darr1.transform(rf), darr2);
+
+  ASSERT_EQ(rf.derive(5), 1);
+  ASSERT_EQ(rf.derive(-3), 0);
 }

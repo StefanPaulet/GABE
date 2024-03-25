@@ -362,28 +362,8 @@ public:
     return rez;
   }
 
-  template <Size conv_line_size, Size conv_col_size>
+  template <Size conv_line_size, Size conv_col_size, Size stride = 1>
   auto convolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
-      -> LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1> {
-    auto rez = LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1>();
-
-    auto add = [&](int lineIdx, int colIdx) {
-      for (int convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
-        for (int convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
-          rez[lineIdx][colIdx] += data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
-        }
-      }
-    };
-    for (int lineIdx = 0; lineIdx < line_size - conv_line_size + 1; ++lineIdx) {
-      for (int colIdx = 0; colIdx < col_size - conv_col_size + 1; ++colIdx) {
-        add(lineIdx, colIdx);
-      }
-    }
-    return rez;
-  }
-
-  template <Size stride, Size conv_line_size, Size conv_col_size>
-  auto stridedConvolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
       -> LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)> {
     auto rez =
         LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)>();
@@ -398,6 +378,32 @@ public:
     for (Size lineIdx = 0, rezLine = 0; lineIdx < line_size - conv_line_size + 1; lineIdx += stride, ++rezLine) {
       for (Size colIdx = 0, rezCol = 0; colIdx < col_size - conv_col_size + 1; colIdx += stride, ++rezCol) {
         add(rezLine, rezCol, lineIdx, colIdx);
+      }
+    }
+    return rez;
+  }
+
+  template <Size stride, Size cls, Size ccs> auto stridedConvolve(LinearArray<DataType, cls, ccs> const& kernel) const {
+    return convolve<cls, ccs, stride>(kernel);
+  }
+
+  auto flip() const -> LinearArray {
+    static_assert(line_size == col_size && "Only square matrices can be flipped");
+    LinearArray rez {};
+    for (auto lIdx = 0; lIdx < this->size(); ++lIdx) {
+      for (auto cIdx = 0; cIdx < this->size(); ++cIdx) {
+        rez[lIdx][cIdx] = (*this)[this->size() - lIdx - 1][this->size() - cIdx - 1];
+      }
+    }
+    return rez;
+  }
+
+  template <Size dilation> auto dilate() const
+      -> LinearArray<DataType, line_size + dilation*(line_size - 1), col_size + dilation*(col_size - 1)> {
+    LinearArray<DataType, line_size + dilation*(line_size - 1), col_size + dilation*(col_size - 1)> rez {};
+    for (Size rezLIdx = 0, lIdx = 0; lIdx < line_size; ++lIdx, rezLIdx += dilation + 1) {
+      for (Size rezCIdx = 0, cIdx = 0; cIdx < col_size; ++cIdx, rezCIdx += dilation + 1) {
+        rez[rezLIdx][rezCIdx] = data()[lIdx][cIdx];
       }
     }
     return rez;

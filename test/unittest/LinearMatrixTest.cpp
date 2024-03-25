@@ -119,7 +119,7 @@ TEST(LinearMatrixTest, Unit) {
 }
 
 TEST(LinearMatrixTest, Nul) {
-  auto mtrx1 = SquareLinearMatrix<int, 3>::nul();
+  auto mtrx1 = LinearMatrix<int, 3, 3>::nul();
   auto mtrx2 = larray(larray(0, 0, 0), larray(0, 0, 0), larray(0, 0, 0));
   ASSERT_EQ(mtrx1, mtrx2);
 }
@@ -160,4 +160,19 @@ TEST(LinearMatrixTest, Maximize) {
   auto mtrx6 = mtrx1.maximize(mtrx2, std::greater<int> {});
   ASSERT_EQ(mtrx5, mtrx4);
   ASSERT_EQ(mtrx6, mtrx3);
+}
+
+TEST(LinearMatrixTest, Flip) {
+  auto mtrx1 = larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9));
+  auto mtrx2 = larray(larray(9, 8, 7), larray(6, 5, 4), larray(3, 2, 1));
+  auto mtrx3 = mtrx1.flip();
+  ASSERT_EQ(mtrx2, mtrx3);
+}
+
+TEST(LinearMatrixTest, Dilate) {
+  auto mtrx1 = larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9));
+  auto mtrx2 = larray(larray(1, 0, 2, 0, 3), larray(0, 0, 0, 0, 0), larray(4, 0, 5, 0, 6), larray(0, 0, 0, 0, 0),
+                      larray(7, 0, 8, 0, 9));
+  auto mtrx3 = mtrx1.dilate<1>();
+  ASSERT_EQ(mtrx2, mtrx3);
 }
