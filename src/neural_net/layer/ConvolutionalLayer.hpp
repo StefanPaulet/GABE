@@ -11,17 +11,17 @@ namespace impl {
 template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename ConvolutionFunction>
 class ConvolutionalLayer : private ConvolutionFunction {
 public:
-  static constexpr Size kernelSize = KernelDim::size;
-  static constexpr Size depth = DepthDim::size;
-  static constexpr Size input_depth = InputType::size();
+  static constexpr Size kernelSize = KernelDim::size();
+  static constexpr Size depth = DepthDim::size();
+  static constexpr Size inputDepth = InputType::size();
 
 private:
   using KernelType = utils::math::Kernel<DataType, kernelSize>;
-  using KernelArrayType = utils::math::LinearArray<DataType, depth, input_depth, kernelSize, kernelSize>;
+  using KernelArrayType = utils::math::LinearArray<DataType, depth, inputDepth, kernelSize, kernelSize>;
 
 public:
   static constexpr auto outputSize =
-      std::invoke_result_t<ConvolutionFunction, InputType, typename KernelArrayType::InnerLinearArray> {}.size();
+      std::invoke_result_t<ConvolutionFunction, InputType, typename KernelArrayType::InnerLinearArray>::size();
 
   template <typename = void> using OutputType = utils::math::LinearArray<DataType, depth, outputSize, outputSize>;
   static constexpr Size dimension = OutputType<>::total_size();
@@ -34,7 +34,7 @@ public:
     OutputType<> rez {};
     auto idx = 0;
     for (auto const& kernel : kernels) {
-      rez[idx++] = static_cast<ConvolutionFunction*>(this)->operator()(input, kernel);
+      rez[idx++] = (static_cast<ConvolutionFunction&>(*this))(input, kernel);
     }
     return rez;
   }

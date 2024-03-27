@@ -13,7 +13,7 @@
 namespace gabe::nn {
 template <typename DataType, typename ActivationFunction, typename Dim> class Layer : private ActivationFunction {
 public:
-  static const Size dimension = Dim::size;
+  static const Size dimension = Dim::size();
 
 private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
@@ -40,7 +40,7 @@ public:
 template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename Dim>
 class Layer<DataType, ActivationFunction, Dim> : private ActivationFunction {
 public:
-  static const Size dimension = Dim::size;
+  static const Size dimension = Dim::size();
 
 private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;

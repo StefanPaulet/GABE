@@ -19,7 +19,7 @@ template <Size, Size> class ConvolutionalInputLayer;
 
 namespace impl {
 template <Size s> struct Dimension {
-  static constexpr auto size = s;
+  static constexpr auto size() { return s; }
 };
 template <template <typename...> typename LayerType, typename... Params> struct NDL {
   template <typename DataType> using Type = LayerType<DataType, Params...>;

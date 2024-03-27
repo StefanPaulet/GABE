@@ -189,14 +189,12 @@ struct ConvolutionFunction {
   static_assert(InputType::size() == KernelType::size(), "Cannot convolve a matrix with a kernel of different depth");
 
   auto operator()(InputType const& in, KernelType const& kernel) const {
-    constexpr auto rezLineSize = decltype(std::declval<ConvType>().convolve(
+    using ConvResultType = decltype(std::declval<ConvType>().convolve(
         std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>(),
-        std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()))::size();
-    constexpr auto rezColumnSize =
-        decltype(std::declval<ConvType>().convolve(
-            std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>(),
-            std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()))::total_size()
-        / rezLineSize;
+        std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()));
+
+    constexpr auto rezLineSize = ConvResultType::size();
+    constexpr auto rezColumnSize = ConvResultType::total_size() / rezLineSize;
 
     LinearArray<typename InputType::UnderlyingType, rezLineSize, rezColumnSize> result {};
     for (auto idx = 0; idx < InputType::size(); ++idx) {

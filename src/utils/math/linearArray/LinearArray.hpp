@@ -20,8 +20,6 @@ template <typename DataType, Size s> class LinearArrayContainer {
   static_assert(s != 0, "Size of linear array must not be 0");
 
 public:
-  static constexpr auto first_size = s;
-
   LinearArrayContainer() = default;
   LinearArrayContainer(LinearArrayContainer const&) = default;
   LinearArrayContainer(LinearArrayContainer&&) noexcept = default;
@@ -277,7 +275,6 @@ private:
   using LinearArrayContainer = linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>;
 
 public:
-  using LinearArrayContainer::first_size;
   using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
@@ -362,11 +359,12 @@ public:
     return rez;
   }
 
-  template <Size conv_line_size, Size conv_col_size, Size stride = 1>
+  template <Size conv_line_size, Size conv_col_size, Size stride = 1,
+            Size rlSize = (line_size - conv_line_size) / stride + 1,
+            Size rcSize = (col_size - conv_col_size) / stride + 1>
   auto convolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
-      -> LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)> {
-    auto rez =
-        LinearArray<DataType, ((line_size - conv_line_size) / stride + 1), ((col_size - conv_col_size) / stride + 1)>();
+      -> LinearArray<DataType, rlSize, rcSize> {
+    auto rez = LinearArray<DataType, rlSize, rcSize>();
 
     auto add = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
       for (Size convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
@@ -398,9 +396,10 @@ public:
     return rez;
   }
 
-  template <Size dilation> auto dilate() const
-      -> LinearArray<DataType, line_size + dilation*(line_size - 1), col_size + dilation*(col_size - 1)> {
-    LinearArray<DataType, line_size + dilation*(line_size - 1), col_size + dilation*(col_size - 1)> rez {};
+  template <Size dilation, Size rlSize = line_size + dilation*(line_size - 1),
+            Size rcSize = col_size + dilation*(col_size - 1)>
+  auto dilate() const -> LinearArray<DataType, rlSize, rcSize> {
+    LinearArray<DataType, rlSize, rcSize> rez {};
     for (Size rezLIdx = 0, lIdx = 0; lIdx < line_size; ++lIdx, rezLIdx += dilation + 1) {
       for (Size rezCIdx = 0, cIdx = 0; cIdx < col_size; ++cIdx, rezCIdx += dilation + 1) {
         rez[rezLIdx][rezCIdx] = data()[lIdx][cIdx];
