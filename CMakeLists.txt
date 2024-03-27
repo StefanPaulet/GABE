@@ -43,6 +43,8 @@ target_include_directories(
     src
 )
 
+target_link_libraries(main "-lX11 -lXtst")
+
 include(FetchContent)
 enable_testing()
 add_subdirectory(test/unittest)
