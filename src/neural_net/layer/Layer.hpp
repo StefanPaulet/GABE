@@ -13,13 +13,14 @@
 namespace gabe::nn {
 template <typename DataType, typename ActivationFunction, typename Dim> class Layer : private ActivationFunction {
 public:
-  static const Size dimension = Dim::size;
+  static const Size dimension = Dim::size();
 
 private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
 
 public:
   using LayerFunction = ActivationFunction;
+  using OutputType = InnerLinearArray;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -39,13 +40,14 @@ public:
 template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename Dim>
 class Layer<DataType, ActivationFunction, Dim> : private ActivationFunction {
 public:
-  static const Size dimension = Dim::size;
+  static const Size dimension = Dim::size();
 
 private:
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, dimension>;
 
 public:
   using LayerFunction = ActivationFunction;
+  using OutputType = InnerLinearArray;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -101,13 +103,29 @@ private:
   InnerLinearArray _biases {};
 };
 
+template <typename DataType, Size inputDepth, Size kernelSize, Size depth,
+          gabe::utils::concepts::ConvolutionalLayerPairType DerivedClass>
+class ConvolutionalLayerPairContainer {
+protected:
+  using InnerKernelArray = typename utils::math::LinearArray<DataType, depth, inputDepth, kernelSize, kernelSize>;
+
+public:
+  ConvolutionalLayerPairContainer() = default;
+  ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer const&) = default;
+  ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer&&) noexcept = default;
+
+  auto& weights() { return _weights; }
+
+private:
+  InnerKernelArray _weights {};
+};
+
 template <typename DataType, typename FirstLayer, typename SecondLayer, typename... RemainingLayers> class LayerPair :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
                               NDLType<SecondLayer>::template Type<DataType>::dimension,
                               LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>,
     public LayerPair<DataType, SecondLayer, RemainingLayers...> {
-
-private:
+protected:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
@@ -115,8 +133,6 @@ private:
   using LayerPairContainer =
       LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using InnerLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
-  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer::biases;
@@ -127,7 +143,7 @@ public:
     if constexpr (idx == 0) {
       return weights();
     } else {
-      return static_cast<InnerLayerPair*>(this)->template weights<idx - 1>();
+      return static_cast<NextLayerPair*>(this)->template weights<idx - 1>();
     }
   }
 
@@ -135,7 +151,7 @@ public:
     if constexpr (idx == 0) {
       return biases();
     } else {
-      return static_cast<InnerLayerPair*>(this)->template biases<idx - 1>();
+      return static_cast<NextLayerPair*>(this)->template biases<idx - 1>();
     }
   }
 
@@ -167,13 +183,12 @@ class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPairContainer<DataType, NDLType<FirstLayer>::template Type<DataType>::dimension,
                               NDLType<SecondLayer>::template Type<DataType>::dimension,
                               LayerPair<DataType, FirstLayer, SecondLayer>> {
-private:
+protected:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using LayerPairContainer = LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer>>;
   using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
-  using FirstLayerType = typename NDLType<FirstLayer>::template Type<DataType>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer::biases;
@@ -210,12 +225,110 @@ public:
     LayerPairContainer::randomize_weights(std::forward<T>(transformer));
   }
 };
+
+template <typename B, typename D, typename DataType, typename FirstLayer, typename SecondLayer>
+class ConvolutionalLayerPairFlattener {
+  using Input = typename FirstLayer::template OutputType<DataType>;
+
+public:
+  auto feedForward(Input const& input) {
+    decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
+    return static_cast<D*>(static_cast<B*>(this))->feedForward(flattenedInput);
+  }
+};
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer,
+          typename... RemainingLayers>
+class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
+    public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                     SecondLayer, RemainingLayers...>,
+    public ConvolutionalLayerPairFlattener<
+        LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>,
+        LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                  SecondLayer, RemainingLayers...>,
+        DataType, FirstLayer, SecondLayer> {
+private:
+  using Flattener = ConvolutionalLayerPairFlattener<
+      LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>,
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer,
+                RemainingLayers...>,
+      DataType, FirstLayer, SecondLayer>;
+  using InnerLayerPair =
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer,
+                RemainingLayers...>;
+
+public:
+  using Flattener::feedForward;
+  using InnerLayerPair::biases;
+  using InnerLayerPair::weights;
+};
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer>
+class LayerPair<DataType, FirstLayer, SecondLayer> :
+    public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                     SecondLayer>,
+    public ConvolutionalLayerPairFlattener<
+        LayerPair<DataType, FirstLayer, SecondLayer>,
+        LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
+                  SecondLayer>,
+        DataType, FirstLayer, SecondLayer> {
+private:
+  using Flattener = ConvolutionalLayerPairFlattener<
+      LayerPair<DataType, FirstLayer, SecondLayer>,
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer>,
+      DataType, FirstLayer, SecondLayer>;
+  using InnerLayerPair =
+      LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer>;
+
+public:
+  using Flattener::feedForward;
+  using InnerLayerPair::biases;
+  using InnerLayerPair::weights;
+};
+
+template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
+          gabe::utils::concepts::ConvolutionalLayerType SecondLayer, typename... RemainingLayers>
+class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
+    public LayerPair<DataType,
+                     typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>,
+                     RemainingLayers...>,
+    public ConvolutionalLayerPairContainer<
+        DataType, FirstLayer::template OutputType<DataType>::size(),
+        SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+        SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
+        LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>> {
+private:
+  using SecondLayerType =
+      typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>;
+  using Input = typename FirstLayer::template OutputType<DataType>;
+  using InnerContainer = ConvolutionalLayerPairContainer<
+      DataType, FirstLayer::template OutputType<DataType>::size(),
+      SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::kernelSize,
+      SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>::depth,
+      LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
+  using InnerContainer::weights;
+  using NextLayerPair = LayerPair<DataType, SecondLayerType, RemainingLayers...>;
+
+public:
+  template <Size idx> auto& weights() {
+    if constexpr (idx == 0) {
+      return weights();
+    } else {
+      return static_cast<NextLayerPair*>(this)->template weights<idx - 1>();
+    }
+  }
+
+  auto feedForward(Input const& input) {
+    return NextLayerPair::feedForward(SecondLayerType().feedForward(input, weights()));
+  }
+};
 } // namespace impl
 
 template <typename DataType, typename Dim> struct InputLayer :
     Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {
   using Layer<DataType, utils::math::IdentityFunction<DataType>, Dim>::Layer;
 };
+
 
 template <Size s, typename N> auto&& weights(N&& neuralNet) noexcept {
   return std::forward<N>(neuralNet).template weights<s>();

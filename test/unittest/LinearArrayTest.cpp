@@ -327,3 +327,39 @@ TEST(LinearArrayTest, Maximize) {
   ASSERT_EQ(arr5, arr4);
   ASSERT_EQ(arr6, arr3);
 }
+
+TEST(LinearArrayTest, Size) {
+  auto arr1 = LinearArray<int, 5> {};
+  ASSERT_EQ(arr1.size(), 5);
+
+  auto arr2 = LinearArray<int, 5, 3> {};
+  ASSERT_EQ(arr2.size(), 5);
+
+  auto arr3 = LinearArray<int, 3, 5> {};
+  ASSERT_EQ(arr3.size(), 3);
+}
+
+TEST(LinearArrayTest, TotalSize) {
+  auto arr1 = LinearArray<int, 7, 2> {};
+  ASSERT_EQ(arr1.total_size(), 14);
+
+  auto arr2 = LinearArray<int, 3, 3, 2> {};
+  ASSERT_EQ(arr2.total_size(), 18);
+}
+
+TEST(LinearArrayTest, Flatten) {
+  auto mtrx1 = LinearArray<int, 5, 3> {};
+  auto arr1 = LinearArray<int, 15> {};
+  auto arr2 = mtrx1.flatten();
+  static_assert(std::is_same_v<decltype(arr1), decltype(arr2)>);
+
+  auto mtrx2 = LinearArray<int, 1, 28, 3> {};
+  auto arr3 = LinearArray<int, 84> {};
+  auto arr4 = mtrx2.flatten();
+  static_assert(std::is_same_v<decltype(arr3), decltype(arr4)>);
+
+  (void) arr1;
+  (void) arr2;
+  (void) arr3;
+  (void) arr4;
+}

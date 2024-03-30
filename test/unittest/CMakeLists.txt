@@ -13,11 +13,12 @@ endif()
 
 set(
     UNIT_TEST_SOURCES
+    ConvNetTest.cpp
+    FunctionTest.cpp
+    LayerTest.cpp
     LinearArrayTest.cpp
     LinearMatrixTest.cpp
     NeuralNetTest.cpp
-    FunctionTest.cpp
-    LayerTest.cpp
     PredicatesTest.cpp
 )
 

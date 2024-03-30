@@ -132,3 +132,34 @@ TEST(FunctionTest, SoftMaxDecoder) {
   auto val1 = 2;
   ASSERT_EQ(smd1(darr1), val1);
 }
+
+TEST(FunctionTest, SimpleConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3, 4), larray(5, 6, 7, 8), larray(9, 10, 11, 12), larray(13, 14, 15, 16)));
+  auto mtrx2 = larray(larray(larray(2, 1, 3), larray(0, 0, 0), larray(-1, 2, -4)));
+  SimpleConvolutionFunction<decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(-20, -17), larray(-8, -5));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+}
+
+TEST(FunctionTest, StridedConvolutionFunction) {
+  auto mtrx1 =
+      larray(larray(larray(1, 2, 3, 4, 0), larray(5, 6, 7, 8, 0), larray(9, 10, 11, 12, 0), larray(13, 14, 15, 16, 0)));
+  auto mtrx2 = larray(larray(larray(2, 1, 3), larray(0, 0, 0), larray(-1, 2, -4)));
+  StridedConvolutionFunction<2, decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(-20, 23));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+}
+
+TEST(FunctionTest, Relu) {
+  ReluFunction<> rf;
+  auto arr1 = larray(1, -5, 3);
+  auto arr2 = larray(1, 0, 3);
+  ASSERT_EQ(arr1.transform(rf), arr2);
+
+  auto darr1 = larray(-1.3, 2.22, 3.4);
+  auto darr2 = larray(0, 2.22, 3.4);
+  ASSERT_EQ(darr1.transform(rf), darr2);
+
+  ASSERT_EQ(rf.derive(5), 1);
+  ASSERT_EQ(rf.derive(-3), 0);
+}

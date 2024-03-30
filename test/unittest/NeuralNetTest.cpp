@@ -28,7 +28,7 @@ TEST(NeuralNetwork, Construction) {
   (void) nn2;
 }
 
-TEST(NeuralNetwork, ForwardPropagating) {
+TEST(NeuralNetwork, ForwardPropagation) {
   NeuralNetwork<float, SizedLayer<3, InputLayer>, SizedLayer<3, Layer, IdentityFunction<>>> nn;
   auto input = larray(larray(1.0f, 2, 3));
   nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));

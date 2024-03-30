@@ -181,6 +181,74 @@ struct SoftMaxDecoder {
   }
 };
 
+namespace impl {
+template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType, typename ConvType>
+struct ConvolutionFunction {
+  static constexpr auto isConvolutionFunction = true;
+
+  static_assert(InputType::size() == KernelType::size(), "Cannot convolve a matrix with a kernel of different depth");
+
+  auto operator()(InputType const& in, KernelType const& kernel) const {
+    using ConvResultType = decltype(std::declval<ConvType>().convolve(
+        std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>(),
+        std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()));
+
+    constexpr auto rezLineSize = ConvResultType::size();
+    constexpr auto rezColumnSize = ConvResultType::total_size() / rezLineSize;
+
+    LinearArray<typename InputType::UnderlyingType, rezLineSize, rezColumnSize> result {};
+    for (auto idx = 0; idx < InputType::size(); ++idx) {
+      result += static_cast<ConvType const*>(this)->convolve(in[idx], kernel[idx]);
+    }
+    return result;
+  }
+};
+} // namespace impl
+
+template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
+struct SimpleConvolutionFunction :
+    impl::ConvolutionFunction<InputType, KernelType, SimpleConvolutionFunction<InputType, KernelType>> {
+  auto convolve(typename InputType::InnerLinearArray const& in,
+                typename KernelType::InnerLinearArray const& kernel) const {
+    return in.convolve(kernel);
+  }
+};
+
+template <Size stride, concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
+struct StridedConvolutionFunction :
+    impl::ConvolutionFunction<InputType, KernelType, StridedConvolutionFunction<stride, InputType, KernelType>> {
+  auto convolve(typename InputType::InnerLinearArray const& in,
+                typename KernelType::InnerLinearArray const& kernel) const {
+    return in.template stridedConvolve<stride>(kernel);
+  }
+};
+
+template <typename = void> struct ReluFunction {};
+template <> struct ReluFunction<void> {
+  static constexpr auto isActivationFunction = true;
+
+  template <typename InputType> auto operator()(InputType&& in) {
+    return ReluFunction<std::remove_cvref_t<InputType>> {}(std::forward<InputType>(in));
+  }
+
+  template <typename InputType> auto derive(InputType&& in) {
+    return ReluFunction<std::remove_cvref_t<InputType>> {}.derive(std::forward<InputType>(in));
+  }
+};
+
+template <concepts::IntegralType T> struct ReluFunction<T> {
+  static constexpr auto isActivationFunction = true;
+
+  auto operator()(T value) -> T { return std::max(value, static_cast<T>(0)); }
+
+  auto derive(T value) -> T {
+    if (value <= static_cast<T>(0)) {
+      return 0;
+    }
+    return 1;
+  }
+};
+
 
 namespace func {
 template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;
