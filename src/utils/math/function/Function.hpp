@@ -204,7 +204,7 @@ struct ConvolutionFunction {
   }
 };
 
-template <concepts::DeepLinearMatrixType InputType, Size poolSize, typename PoolType> struct PoolingFunction {
+template <concepts::DeepLinearMatrixType InputType, typename PoolType> struct PoolingFunction {
   static constexpr auto isPoolingFunction = true;
 
   auto operator()(InputType const& in) const {
@@ -242,15 +242,20 @@ struct StridedConvolutionFunction :
   }
 };
 
-template <concepts::DeepLinearMatrixType InputType, Size poolSize, Size stride> struct MaxPoolFunction :
-    impl::PoolingFunction<InputType, poolSize, MaxPoolFunction<InputType, poolSize, stride>> {
+namespace impl {
+template <concepts::DeepLinearMatrixType InputType, typename PoolDim, typename StrideDim> struct MaxPoolFunction :
+    impl::PoolingFunction<InputType, MaxPoolFunction<InputType, PoolDim, StrideDim>> {
   auto pool(typename InputType::InnerLinearArray const& in) const {
     auto predicate = [](typename InputType::UnderlyingType lhs, typename InputType::UnderlyingType rhs) {
       return lhs < rhs;
     };
-    return in.template pool<poolSize, poolSize, stride>(predicate);
+    return in.template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(predicate);
   }
 };
+} // namespace impl
+
+template <concepts::DeepLinearMatrixType InputType, Size poolSize, Size stride> struct MaxPoolFunction :
+    impl::MaxPoolFunction<InputType, gabe::nn::impl::Dimension<poolSize>, gabe::nn::impl::Dimension<stride>> {};
 
 template <typename = void> struct ReluFunction {};
 template <> struct ReluFunction<void> {

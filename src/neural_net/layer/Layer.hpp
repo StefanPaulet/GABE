@@ -237,7 +237,7 @@ public:
   }
 };
 
-template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer,
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer, typename SecondLayer,
           typename... RemainingLayers>
 class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
     public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
@@ -263,7 +263,7 @@ public:
   using InnerLayerPair::weights;
 };
 
-template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer, typename SecondLayer>
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer, typename SecondLayer>
 class LayerPair<DataType, FirstLayer, SecondLayer> :
     public LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>,
                      SecondLayer>,
@@ -286,7 +286,7 @@ public:
   using InnerLayerPair::weights;
 };
 
-template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
           gabe::utils::concepts::ConvolutionalLayerType SecondLayer, typename... RemainingLayers>
 class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
     public LayerPair<DataType,
@@ -321,6 +321,27 @@ public:
   auto feedForward(Input const& input) {
     return NextLayerPair::feedForward(SecondLayerType().feedForward(input, weights()));
   }
+};
+
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
+          gabe::utils::concepts::PoolingLayerType SecondLayer, typename... RemainingLayers>
+class LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...> :
+    public LayerPair<DataType,
+                     typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>,
+                     RemainingLayers...> {
+private:
+  using SecondLayerType =
+      typename SecondLayer::template Type<DataType, typename FirstLayer::template OutputType<DataType>>;
+  using Input = typename FirstLayer::template OutputType<DataType>;
+  using NextLayerPair = LayerPair<DataType, SecondLayerType, RemainingLayers...>;
+
+public:
+  template <Size idx> auto& weights() {
+    static_assert(idx != 0, "Cannot require weights for a pooling layer; there aren't any");
+    return static_cast<NextLayerPair*>(this)->template weights<idx - 1>();
+  }
+
+  auto feedForward(Input const& input) { return NextLayerPair::feedForward(SecondLayerType().feedForward(input)); }
 };
 } // namespace impl
 

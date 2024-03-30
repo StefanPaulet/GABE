@@ -80,6 +80,12 @@ template <typename T>
 concept ConvolutionalLayerType = nn::impl::IsConvolutionalLayer<T>::value;
 
 template <typename T>
+concept PoolingLayerType = nn::impl::IsPoolingLayer<T>::value;
+
+template <typename T>
+concept ThreeDimensionalLayerType = ConvolutionalLayerType<T> || PoolingLayerType<T>;
+
+template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 
 template <typename T>

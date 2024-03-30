@@ -16,7 +16,6 @@ public:
   static constexpr Size inputDepth = InputType::size();
 
 private:
-  using KernelType = utils::math::Kernel<DataType, kernelSize>;
   using KernelArrayType = utils::math::LinearArray<DataType, depth, inputDepth, kernelSize, kernelSize>;
 
 public:
@@ -55,6 +54,36 @@ template <Size depth, Size kernelSize, typename D> struct BaseConvolutionalLayer
                                typename T::template ConvFunction<DataType, InputType>>;
 };
 
+template <typename DataType, typename InputType, typename Dim, typename StrideDim, typename PoolingFunction>
+class PoolingLayer : private PoolingFunction {
+public:
+  static constexpr Size poolingSize = Dim::size();
+  static constexpr Size inputDepth = InputType::size();
+
+private:
+  using PoolingKernelType = utils::math::LinearArray<DataType, poolingSize, poolingSize>;
+
+public:
+  static constexpr auto outputSize = std::invoke_result_t<PoolingFunction, InputType>::InnerLinearArray::size();
+
+  template <typename = void> using OutputType = utils::math::LinearArray<DataType, inputDepth, outputSize, outputSize>;
+  static constexpr Size dimension = OutputType<>::total_size();
+
+  PoolingLayer() = default;
+  PoolingLayer(PoolingLayer const&) = default;
+  PoolingLayer(PoolingLayer&&) noexcept = default;
+
+  auto feedForward(InputType const& input) -> OutputType<> { return (static_cast<PoolingFunction&>(*this))(input); }
+};
+
+template <Size size, Size stride, typename D> struct BasePoolingLayer {
+  static constexpr bool isPoolingLayer = true;
+
+  template <typename DataType, typename InputType, typename T = D> using Type =
+      impl::PoolingLayer<DataType, InputType, gabe::nn::impl::Dimension<size>, gabe::nn::impl::Dimension<stride>,
+                         typename T::template PoolingFunction<InputType>>;
+};
+
 } // namespace impl
 
 template <Size depth, Size kernelSize> struct ConvolutionalLayer :
@@ -80,6 +109,15 @@ public:
   template <typename, typename> using Type = ConvolutionalInputLayer;
 
   template <typename DataType> using OutputType = utils::math::LinearArray<DataType, depthSize, inputSize, inputSize>;
+};
+
+template <Size size, Size stride> struct MaxPoolLayer :
+    impl::BasePoolingLayer<size, stride, MaxPoolLayer<size, stride>> {
+
+  template <typename InputType> using PoolingFunction =
+      gabe::utils::math::impl::MaxPoolFunction<InputType, impl::Dimension<size>, impl::Dimension<stride>>;
+  template <typename DataType, typename InputType> using Type =
+      impl::BasePoolingLayer<size, stride, MaxPoolLayer>::template Type<DataType, InputType>;
 };
 
 } // namespace gabe::nn

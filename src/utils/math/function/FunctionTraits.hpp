@@ -23,4 +23,7 @@ template <typename T> struct is_container_function<T, std::void_t<decltype(T::is
 template <typename, typename = void> struct is_convolution_function : std::false_type {};
 template <typename T> struct is_convolution_function<T, std::void_t<decltype(T::isConvolutionFunction)>> :
     std::true_type {};
+
+template <typename, typename = void> struct is_pooling_function : std::false_type {};
+template <typename T> struct is_pooling_function<T, std::void_t<decltype(T::isPoolingFunction)>> : std::true_type {};
 } // namespace gabe::utils::math::impl
