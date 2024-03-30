@@ -203,6 +203,25 @@ struct ConvolutionFunction {
     return result;
   }
 };
+
+template <concepts::DeepLinearMatrixType InputType, Size poolSize, typename PoolType> struct PoolingFunction {
+  static constexpr auto isPoolingFunction = true;
+
+  auto operator()(InputType const& in) const {
+    using PoolResultType = decltype(std::declval<PoolType>().pool(
+        std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>()));
+
+    constexpr auto rezLineDepth = InputType::size();
+    constexpr auto rezLineSize = PoolResultType::size();
+    constexpr auto rezColumnSize = PoolResultType::total_size() / rezLineSize;
+
+    LinearArray<typename InputType::UnderlyingType, rezLineDepth, rezLineSize, rezColumnSize> result {};
+    for (auto idx = 0; idx < InputType::size(); ++idx) {
+      result[idx] = static_cast<PoolType const*>(this)->pool(in[idx]);
+    }
+    return result;
+  }
+};
 } // namespace impl
 
 template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
@@ -220,6 +239,16 @@ struct StridedConvolutionFunction :
   auto convolve(typename InputType::InnerLinearArray const& in,
                 typename KernelType::InnerLinearArray const& kernel) const {
     return in.template stridedConvolve<stride>(kernel);
+  }
+};
+
+template <concepts::DeepLinearMatrixType InputType, Size poolSize, Size stride> struct MaxPoolFunction :
+    impl::PoolingFunction<InputType, poolSize, MaxPoolFunction<InputType, poolSize, stride>> {
+  auto pool(typename InputType::InnerLinearArray const& in) const {
+    auto predicate = [](typename InputType::UnderlyingType lhs, typename InputType::UnderlyingType rhs) {
+      return lhs < rhs;
+    };
+    return in.template pool<poolSize, poolSize, stride>(predicate);
   }
 };
 

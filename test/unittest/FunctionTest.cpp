@@ -163,3 +163,10 @@ TEST(FunctionTest, Relu) {
   ASSERT_EQ(rf.derive(5), 1);
   ASSERT_EQ(rf.derive(-3), 0);
 }
+
+TEST(FunctionTest, MaxPoolFuncion) {
+  auto mtrx1 = larray(larray(larray(2, 2, 7, 3), larray(9, 4, 6, 1), larray(8, 5, 2, 4), larray(3, 1, 2, 6)));
+  auto mtrx2 = larray(larray(larray(9, 7), larray(8, 6)));
+  MaxPoolFunction<decltype(mtrx1), 2, 2> mpf;
+  ASSERT_EQ(mpf(mtrx1), mtrx2);
+}

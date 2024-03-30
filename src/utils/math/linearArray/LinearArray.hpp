@@ -364,7 +364,7 @@ public:
             Size rcSize = (col_size - conv_col_size) / stride + 1>
   auto convolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
       -> LinearArray<DataType, rlSize, rcSize> {
-    auto rez = LinearArray<DataType, rlSize, rcSize>();
+    auto rez = LinearArray<DataType, rlSize, rcSize> {};
 
     auto add = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
       for (Size convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
@@ -406,6 +406,35 @@ public:
       }
     }
     return rez;
+  }
+
+  template <Size pool_line_size, Size pool_col_size, typename PoolingPredicate, Size stride = 1,
+            Size rlSize = (line_size - pool_line_size) / stride + 1,
+            Size rcSize = (col_size - pool_col_size) / stride + 1>
+  auto __pool(PoolingPredicate&& predicate) const -> LinearArray<DataType, rlSize, rcSize> {
+    LinearArray<DataType, rlSize, rcSize> rez {};
+
+    auto localPool = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
+      DataType currentMax = data()[lineIdx][colIdx];
+      for (Size lIdx = 0; lIdx < pool_line_size; ++lIdx) {
+        for (Size cIdx = 0; cIdx < pool_col_size; ++cIdx) {
+          currentMax =
+              std::max(currentMax, data()[lineIdx + lIdx][colIdx + cIdx], std::forward<PoolingPredicate>(predicate));
+        }
+      }
+      rez[rezLIdx][rezCIdx] = currentMax;
+    };
+    for (Size lineIdx = 0, rezLine = 0; lineIdx < line_size - pool_line_size + 1; lineIdx += stride, ++rezLine) {
+      for (Size colIdx = 0, rezCol = 0; colIdx < col_size - pool_col_size + 1; colIdx += stride, ++rezCol) {
+        localPool(rezLine, rezCol, lineIdx, colIdx);
+      }
+    }
+    return rez;
+  }
+
+  template <Size pool_line_size, Size pool_col_size, Size stride, typename PoolingPredicate>
+  auto pool(PoolingPredicate&& predicate) const {
+    return __pool<pool_line_size, pool_col_size, PoolingPredicate, stride>(std::forward<PoolingPredicate>(predicate));
   }
 };
 
