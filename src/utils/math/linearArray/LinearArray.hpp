@@ -436,6 +436,17 @@ public:
   auto pool(PoolingPredicate&& predicate) const {
     return __pool<pool_line_size, pool_col_size, PoolingPredicate, stride>(std::forward<PoolingPredicate>(predicate));
   }
+
+  template <Size line_pad_size, Size col_pad_size, Size rlSize = line_size + 2 * line_pad_size,
+            Size rcSize = col_size + 2 * col_pad_size>
+  auto pad() const {
+    LinearArray<DataType, rlSize, rcSize> result {};
+    for (auto lIdx = line_pad_size; lIdx < rlSize - line_pad_size; ++lIdx) {
+      std::memcpy(result[lIdx].data().data() + col_pad_size, data()[lIdx - line_pad_size].data().data(),
+                  col_size * sizeof(DataType));
+    }
+    return result;
+  }
 };
 
 template <typename DataType, Size line_size, Size col_size> using LinearMatrix =
