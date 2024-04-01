@@ -10,7 +10,7 @@
 namespace gabe::nn {
 
 namespace impl {
-template <typename, typename, typename, typename, typename> class ConvolutionalLayer;
+template <typename, typename, typename, typename, typename, typename> class ConvolutionalLayer;
 
 template <typename, typename, typename, typename, typename> class PoolingLayer;
 } // namespace impl
@@ -43,8 +43,8 @@ template <typename T> struct IsConvolutionalLayer<T, std::void_t<decltype(T::isC
     std::true_type {};
 template <Size inputSize, Size depthSize> struct IsConvolutionalLayer<ConvolutionalInputLayer<inputSize, depthSize>> :
     std::true_type {};
-template <typename D, typename I, typename DD, typename KD, typename CF>
-struct IsConvolutionalLayer<ConvolutionalLayer<D, I, DD, KD, CF>> : std::true_type {};
+template <typename D, typename I, typename DD, typename KD, typename CF, typename AF>
+struct IsConvolutionalLayer<ConvolutionalLayer<D, I, DD, KD, CF, AF>> : std::true_type {};
 
 template <typename, typename = void> struct IsPoolingLayer : std::false_type {};
 template <typename T> struct IsPoolingLayer<T, std::void_t<decltype(T::isPoolingLayer)>> : std::true_type {};

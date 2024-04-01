@@ -8,8 +8,9 @@
 #include "utils/math/linearArray/LinearArray.hpp"
 namespace gabe::nn {
 namespace impl {
-template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename ConvolutionFunction>
-class ConvolutionalLayer : private ConvolutionFunction {
+template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename ConvolutionFunction,
+          typename ActivationFunction>
+class ConvolutionalLayer : private ConvolutionFunction, private ActivationFunction {
 public:
   static constexpr Size kernelSize = KernelDim::size();
   static constexpr Size depth = DepthDim::size();
@@ -33,7 +34,8 @@ public:
     OutputType<> rez {};
     auto idx = 0;
     for (auto const& kernel : kernels) {
-      rez[idx++] = (static_cast<ConvolutionFunction&>(*this))(input, kernel);
+      rez[idx++] =
+          (static_cast<ConvolutionFunction&>(*this))(input, kernel).transform(*static_cast<ActivationFunction*>(this));
     }
     return rez;
   }
@@ -45,13 +47,13 @@ public:
   }
 };
 
-template <Size depth, Size kernelSize, typename D> struct BaseConvolutionalLayer {
+template <Size depth, Size kernelSize, typename ActivationFunction, typename D> struct BaseConvolutionalLayer {
   static constexpr bool isConvolutionalLayer = true;
 
   template <typename DataType, typename InputType, typename T = D> using Type =
       impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>,
                                gabe::nn::impl::Dimension<kernelSize>,
-                               typename T::template ConvFunction<DataType, InputType>>;
+                               typename T::template ConvFunction<DataType, InputType>, ActivationFunction>;
 };
 
 template <typename DataType, typename InputType, typename Dim, typename StrideDim, typename PoolingFunction>
@@ -86,22 +88,27 @@ template <Size size, Size stride, typename D> struct BasePoolingLayer {
 
 } // namespace impl
 
-template <Size depth, Size kernelSize> struct ConvolutionalLayer :
-    impl::BaseConvolutionalLayer<depth, kernelSize, ConvolutionalLayer<depth, kernelSize>> {
+template <Size depth, Size kernelSize, typename ActivationFunction> struct ConvolutionalLayer :
+    impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                 ConvolutionalLayer<depth, kernelSize, ActivationFunction>> {
   template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::SimpleConvolutionFunction<
       InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
 
-  template <typename DataType, typename InputType> using Type = impl::BaseConvolutionalLayer<
-      depth, kernelSize, ConvolutionalLayer<depth, kernelSize>>::template Type<DataType, InputType, ConvolutionalLayer>;
+  template <typename DataType, typename InputType> using Type =
+      impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                   ConvolutionalLayer<depth, kernelSize, ActivationFunction>>::
+          template Type<DataType, InputType, ConvolutionalLayer>;
 };
 
-template <Size depth, Size kernelSize, Size stride> struct StridedConvolutionalLayer :
-    impl::BaseConvolutionalLayer<depth, kernelSize, StridedConvolutionalLayer<depth, kernelSize, stride>> {
+template <Size depth, Size kernelSize, Size stride, typename ActivationFunction> struct StridedConvolutionalLayer :
+    impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                 StridedConvolutionalLayer<depth, kernelSize, stride, ActivationFunction>> {
   template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::StridedConvolutionFunction<
       stride, InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
 
-  template <typename DataType, typename InputType> using Type = impl::BaseConvolutionalLayer<
-      depth, kernelSize, StridedConvolutionalLayer>::template Type<DataType, InputType, StridedConvolutionalLayer>;
+  template <typename DataType, typename InputType> using Type =
+      impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction, StridedConvolutionalLayer>::template Type<
+          DataType, InputType, StridedConvolutionalLayer>;
 };
 
 template <Size inputSize, Size depthSize> class ConvolutionalInputLayer {
