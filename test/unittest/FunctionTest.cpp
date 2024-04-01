@@ -139,6 +139,12 @@ TEST(FunctionTest, SimpleConvolutionFunction) {
   SimpleConvolutionFunction<decltype(mtrx1), decltype(mtrx2)> scf;
   auto rez = larray(larray(-20, -17), larray(-8, -5));
   ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+
+  auto mtrx3 = larray(larray(larray(1, 2, 3), larray(3, 4, 5), larray(5, 6, 7)));
+  auto mtrx4 = larray(larray(larray(1, 0, 0), larray(0, 1, 0), larray(0, 0, 1)));
+  SimpleConvolutionFunction<decltype(mtrx3), decltype(mtrx4)> scf2;
+  auto rez2 = larray(larray(5, 7, 3), larray(9, 12, 7), larray(5, 9, 11));
+  ASSERT_EQ(scf2.fullyConvolve(mtrx3, mtrx4), rez2);
 }
 
 TEST(FunctionTest, StridedConvolutionFunction) {

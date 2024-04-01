@@ -184,23 +184,33 @@ struct SoftMaxDecoder {
 namespace impl {
 template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType, typename ConvType>
 struct ConvolutionFunction {
+private:
+  template <typename T = ConvType> using ConvResultType = typename T::ResultingConvolutionType;
+
+public:
   static constexpr auto isConvolutionFunction = true;
 
-  static_assert(InputType::size() == KernelType::size(), "Cannot convolve a matrix with a kernel of different depth");
-
   auto operator()(InputType const& in, KernelType const& kernel) const {
-    using ConvResultType = decltype(std::declval<ConvType>().convolve(
-        std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>(),
-        std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()));
 
-    constexpr auto rezLineSize = ConvResultType::size();
-    constexpr auto rezColumnSize = ConvResultType::total_size() / rezLineSize;
+    static constexpr auto rezLineSize = ConvResultType<>::size();
+    static constexpr auto rezColumnSize = ConvResultType<>::total_size() / rezLineSize;
+
+    static_assert(InputType::size() == KernelType::size(), "Cannot convolve a matrix with a kernel of different depth");
 
     LinearArray<typename InputType::UnderlyingType, rezLineSize, rezColumnSize> result {};
     for (auto idx = 0; idx < InputType::size(); ++idx) {
       result += static_cast<ConvType const*>(this)->convolve(in[idx], kernel[idx]);
     }
     return result;
+  }
+
+  template <typename T = ConvType>
+  auto derive(InputType const& in, typename T::ResultingConvolutionType const& nextLayerGradient) const {
+    return static_cast<ConvType const*>(this)->deriveConvolve(in, nextLayerGradient);
+  }
+
+  auto fullyConvolve(InputType const& in, KernelType const& kernel) const {
+    return static_cast<ConvType const*>(this)->paddedConvolve(in, kernel);
   }
 };
 
@@ -227,15 +237,49 @@ template <concepts::DeepLinearMatrixType InputType, typename PoolType> struct Po
 template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
 struct SimpleConvolutionFunction :
     impl::ConvolutionFunction<InputType, KernelType, SimpleConvolutionFunction<InputType, KernelType>> {
+  using ResultingConvolutionType =
+      decltype(std::declval<typename InputType::InnerLinearArray>().convolve(typename KernelType::InnerLinearArray {}));
+
   auto convolve(typename InputType::InnerLinearArray const& in,
                 typename KernelType::InnerLinearArray const& kernel) const {
     return in.convolve(kernel);
+  }
+
+  auto deriveConvolve(InputType const& in,
+                      decltype(std::declval<typename InputType::InnerLinearArray>().convolve(
+                          std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()))
+                          const& gradient) {
+    static_assert(InputType::size() == KernelType::size(),
+                  "Cannot compute simple convolution derivative on input and kernel of different depths");
+    KernelType result {};
+    for (auto idx = 0; idx < in.size(); ++idx) {
+      result[idx] = in[idx].convolve(gradient);
+    }
+  }
+
+  auto paddedConvolve(InputType const& in, KernelType const& kernel) const {
+    constexpr auto linePad = KernelType::InnerLinearArray::size() / 2;
+    constexpr auto colPad = KernelType::InnerLinearArray::InnerLinearArray::size() / 2;
+
+    using ResultingFeatureType =
+        decltype(std::declval<typename InputType::InnerLinearArray>().template pad<linePad, colPad>());
+    LinearArray<typename InputType::UnderlyingType, InputType::size(), ResultingFeatureType::size(),
+                ResultingFeatureType::InnerLinearArray::size()>
+        rez {};
+    for (auto idx = 0; idx < in.size(); ++idx) {
+      rez[idx] = in[idx].template pad<linePad, colPad>();
+    }
+    return SimpleConvolutionFunction<decltype(rez), KernelType> {}(rez, kernel);
   }
 };
 
 template <Size stride, concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
 struct StridedConvolutionFunction :
     impl::ConvolutionFunction<InputType, KernelType, StridedConvolutionFunction<stride, InputType, KernelType>> {
+  using ResultingConvolutionType =
+      decltype(std::declval<typename InputType::InnerLinearArray>().template stridedConvolve<stride>(
+          typename KernelType::InnerLinearArray {}));
+
   auto convolve(typename InputType::InnerLinearArray const& in,
                 typename KernelType::InnerLinearArray const& kernel) const {
     return in.template stridedConvolve<stride>(kernel);
