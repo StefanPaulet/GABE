@@ -34,15 +34,11 @@ public:
 
   [[nodiscard]] auto run() -> std::jthread {
     auto eventLoop = [this] {
-      sleep(2);
-      while (true) {
+      while (!stopped) {
         try {
           checkWindowState();
         } catch (window::DisplayOpeningException const& e) {
           log("Error: " + std::string(e.what()), OpState::FAILURE);
-        }
-        if (_eventQueue.empty()) {
-          break;
         }
         if (_windowState.focused == false || _eventQueue.empty()) {
           continue;
@@ -59,10 +55,13 @@ public:
 
   auto add_event(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
 
+  auto stop() { stopped = true; }
+
 private:
   struct WindowState {
     bool focused {true};
   };
+  bool volatile stopped {false};
   WindowState _windowState {};
   Window _window {};
   Display* _display;

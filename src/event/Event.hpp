@@ -15,7 +15,11 @@ struct Point {
   Point(int x, int y) : x {x}, y {y} {}
 
   auto operator+(Point const& other) const -> Point { return {x + other.x, y + other.y}; }
-
+  auto operator+=(Point const& other) -> Point& {
+    *this = *this + other;
+    return *this;
+  }
+  auto operator/(int value) const -> Point { return {x / value, y / value}; }
   int x;
   int y;
 };
@@ -42,14 +46,9 @@ public:
 
   auto solve(Display* display, Window window) noexcept(false) -> void override {
     _point = _point + translateCoordinates(display, window);
-
-    XRaiseWindow(display, window);
-    XFlush(display);
-
     XSetInputFocus(display, window, RevertToParent, CurrentTime);
     XFlush(display);
 
-    // Request mouse motion events for the window
     XSelectInput(display, window, PointerMotionMask);
     XFlush(display);
 
@@ -61,5 +60,46 @@ public:
 
 private:
   Point _point {};
+};
+
+class StrafeEvent : public Event {
+public:
+  StrafeEvent() = default;
+  StrafeEvent(StrafeEvent const&) = default;
+  StrafeEvent(StrafeEvent&&) noexcept = default;
+  explicit StrafeEvent(Point const& movement) : _totalMovement {movement} {}
+
+  auto solve(Display* display, Window window) noexcept(false) -> void override {
+    Window rootWindow;
+    Point rootPoint {};
+    Point windowPoint {};
+    unsigned int mask;
+
+    rootWindow = XRootWindow(display, DefaultScreen(display));
+
+    XQueryPointer(display, rootWindow, &rootWindow, &window, &rootPoint.x, &rootPoint.y, &windowPoint.x, &windowPoint.y,
+                  &mask);
+
+    XSelectInput(display, window, PointerMotionMask);
+    XFlush(display);
+
+
+    Point p = windowPoint;
+    for (auto idx = 0; idx < itCount; ++idx) {
+      p += _totalMovement / itCount;
+      XSelectInput(display, window, PointerMotionMask);
+      XFlush(display);
+
+      XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
+      XFlush(display);
+      usleep(100);
+    }
+
+    log(std::format("Treated strafe mouse event at x={}, y={}", windowPoint.x, windowPoint.y), OpState::INFO);
+  }
+
+private:
+  static constexpr auto itCount = 50;
+  Point _totalMovement {};
 };
 } // namespace gabe
