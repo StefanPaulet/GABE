@@ -40,10 +40,26 @@ public:
     return rez;
   }
 
-  auto backPropagate(ConvolutionalLayer const& input) {
+  auto backPropagate(InputType const& input, KernelArrayType const& kernels, OutputType<> const& nextLayerGradient) {
+    KernelArrayType kernelGradient {};
+    InputType inputGradient {};
+
+    for (auto idx = 0; idx < nextLayerGradient.size(); ++idx) {
+      kernelGradient[idx] = (static_cast<ConvolutionFunction*>(this))->derive(input, nextLayerGradient[idx]);
+    }
+
+    for (auto idx = 0; idx < kernels.size(); ++idx) {
+      typename KernelArrayType::InnerLinearArray flippedKernel = kernels[idx];
+      for (auto& feature : flippedKernel) {
+        feature = feature.flip();
+      }
+      inputGradient[idx] += (static_cast<ConvolutionFunction*>(*this))->fullyConvolve(nextLayerGradient, flippedKernel);
+    }
     return input.project([this]<typename T>(T&& value) {
       return static_cast<ConvolutionFunction*>(this)->derive(std::forward<T>(value));
     });
+
+    return std::make_pair(kernelGradient, inputGradient);
   }
 };
 
