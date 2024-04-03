@@ -69,10 +69,27 @@ TEST(ConvolutionalNeuralNetwork, SimpleBackPropagate) {
                 SizedLayer<1, Layer, ReluFunction<>>,
                 SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
       nn;
-  nn.weights<0>() = larray(larray(larray(larray(1.0, 0, 1), larray(1.0, 0, 1), larray(1.0, 0, 1))));
-  nn.weights<1>() = larray(larray(1.0, 1, 1, 1));
-  nn.weights<2>() = larray(larray(1.0));
+  nn.randomize_weights(-5, 5);
   auto in = larray(larray(larray(5.0, 4, 3, 2), larray(1.0, 0, 0, 1), larray(2.0, 2, 2, 2), larray(-2.0, 4, 3, 1)));
   auto target = larray(larray(50.0));
-  nn.backPropagate(in, target, 0.05);
+  for (auto idx = 0; idx < 200; ++idx) {
+    nn.backPropagate(in, target, 0.05);
+  }
+  auto learned = nn.feedForward(in);
+  ASSERT_EQ(learned, target);
+}
+
+TEST(ConvolutionalNeuralNetwork, PoolingBackPropagate) {
+  NeuralNetwork<double, ConvolutionalInputLayer<4, 1>, ConvolutionalLayer<1, 3, IdentityFunction<>>, MaxPoolLayer<2, 2>,
+                SizedLayer<1, Layer, ReluFunction<>>,
+                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn;
+  nn.randomize_weights(-5, 5);
+  auto in = larray(larray(larray(5.0, 4, 3, 2), larray(1.0, 0, 0, 1), larray(2.0, 2, 2, 2), larray(-2.0, 4, 3, 1)));
+  auto target = larray(larray(50.0));
+  for (auto idx = 0; idx < 200; ++idx) {
+    nn.backPropagate(in, target, 0.05);
+  }
+  auto learned = nn.feedForward(in);
+  ASSERT_EQ(learned, target);
 }

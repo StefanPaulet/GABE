@@ -364,7 +364,7 @@ public:
 
   template <typename TargetType>
   auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
-    auto nextLayerGradient = NextLayerPair::backPropagate(SecondLayerType().feedForward(input));
+    auto nextLayerGradient = NextLayerPair::backPropagate(SecondLayerType().feedForward(input), target, learningRate);
     return SecondLayerType().backPropagate(input, nextLayerGradient);
   }
 };

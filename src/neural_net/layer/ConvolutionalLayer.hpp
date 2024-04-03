@@ -8,9 +8,9 @@
 #include "utils/math/linearArray/LinearArray.hpp"
 namespace gabe::nn {
 namespace impl {
-template <typename DataType, typename InputType, typename DepthDim, typename KernelDim, typename ConvolutionFunction,
-          typename ActivationFunction>
-class ConvolutionalLayer : private ConvolutionFunction, private ActivationFunction {
+template <typename DataType, typename InputType, typename DepthDim, typename KernelDim,
+          template <typename, typename> typename GenericConvFunction, typename ActivationFunction>
+class ConvolutionalLayer : private ActivationFunction {
 public:
   static constexpr Size kernelSize = KernelDim::size();
   static constexpr Size depth = DepthDim::size();
@@ -18,6 +18,8 @@ public:
 
 private:
   using KernelArrayType = utils::math::LinearArray<DataType, depth, inputDepth, kernelSize, kernelSize>;
+  using KernelType = typename KernelArrayType::InnerLinearArray;
+  using ConvolutionFunction = GenericConvFunction<InputType, KernelType>;
 
 public:
   static constexpr auto outputSize =
@@ -34,8 +36,7 @@ public:
     OutputType<> rez {};
     auto idx = 0;
     for (auto const& kernel : kernels) {
-      rez[idx++] =
-          (static_cast<ConvolutionFunction&>(*this))(input, kernel).transform(*static_cast<ActivationFunction*>(this));
+      rez[idx++] = ConvolutionFunction {}(input, kernel).transform(*static_cast<ActivationFunction*>(this));
     }
     return rez;
   }
@@ -49,7 +50,7 @@ public:
     });
 
     for (auto idx = 0; idx < nextLayerGradient.size(); ++idx) {
-      kernelGradient[idx] = (static_cast<ConvolutionFunction const*>(this))->derive(input, nextLayerGradient[idx]);
+      kernelGradient[idx] = ConvolutionFunction {}.derive(input, nextLayerGradient[idx]);
     }
 
     for (auto idx = 0; idx < kernels.size(); ++idx) {
@@ -57,7 +58,9 @@ public:
       for (auto& feature : flippedKernel) {
         feature = feature.flip();
       }
-      inputGradient[idx] += (static_cast<ConvolutionFunction*>(this))->fullyConvolve(nextLayerGradient, flippedKernel);
+      inputGradient[idx] += GenericConvFunction<std::remove_cvref_t<decltype(flippedKernel)>,
+                                                std::remove_cvref_t<decltype(nextLayerGradient)>> {}
+                                .fullyConvolve(flippedKernel, nextLayerGradient);
     }
 
     return std::make_pair(kernelGradient, inputGradient);
@@ -69,8 +72,7 @@ template <Size depth, Size kernelSize, typename ActivationFunction, typename D> 
 
   template <typename DataType, typename InputType, typename T = D> using Type =
       impl::ConvolutionalLayer<DataType, InputType, gabe::nn::impl::Dimension<depth>,
-                               gabe::nn::impl::Dimension<kernelSize>,
-                               typename T::template ConvFunction<DataType, InputType>, ActivationFunction>;
+                               gabe::nn::impl::Dimension<kernelSize>, T::template ConvFunction, ActivationFunction>;
 };
 
 template <typename DataType, typename InputType, typename Dim, typename StrideDim, typename PoolingFunction>
@@ -94,8 +96,9 @@ public:
 
   auto feedForward(InputType const& input) -> OutputType<> { return (static_cast<PoolingFunction&>(*this))(input); }
   auto backPropagate(InputType const& input, OutputType<> const& nextLayerGradient) -> InputType {
-    input.project(
-        [this]<typename T>(T&& value) { return static_cast<PoolingFunction*>(this)->derive(std::forward<T>(value)); });
+    return input.project([this, &nextLayerGradient]<typename T>(T&& value) {
+      return static_cast<PoolingFunction*>(this)->derive(std::forward<T>(value), nextLayerGradient);
+    });
   }
 };
 
@@ -112,8 +115,8 @@ template <Size size, Size stride, typename D> struct BasePoolingLayer {
 template <Size depth, Size kernelSize, typename ActivationFunction> struct ConvolutionalLayer :
     impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
                                  ConvolutionalLayer<depth, kernelSize, ActivationFunction>> {
-  template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::SimpleConvolutionFunction<
-      InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
+  template <typename LhsType, typename RhsType> using ConvFunction =
+      gabe::utils::math::SimpleConvolutionFunction<LhsType, RhsType>;
 
   template <typename DataType, typename InputType> using Type =
       impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
@@ -124,8 +127,8 @@ template <Size depth, Size kernelSize, typename ActivationFunction> struct Convo
 template <Size depth, Size kernelSize, Size stride, typename ActivationFunction> struct StridedConvolutionalLayer :
     impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
                                  StridedConvolutionalLayer<depth, kernelSize, stride, ActivationFunction>> {
-  template <typename DataType, typename InputType> using ConvFunction = gabe::utils::math::StridedConvolutionFunction<
-      stride, InputType, gabe::utils::math::LinearArray<DataType, InputType::size(), kernelSize, kernelSize>>;
+  template <typename LhsType, typename RhsType> using ConvFunction =
+      gabe::utils::math::StridedConvolutionFunction<stride, LhsType, RhsType>;
 
   template <typename DataType, typename InputType> using Type =
       impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction, StridedConvolutionalLayer>::template Type<
