@@ -261,13 +261,14 @@ struct SimpleConvolutionFunction :
   auto deriveConvolve(InputType const& in,
                       decltype(std::declval<typename InputType::InnerLinearArray>().convolve(
                           std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()))
-                          const& gradient) {
+                          const& gradient) const {
     static_assert(InputType::size() == KernelType::size(),
                   "Cannot compute simple convolution derivative on input and kernel of different depths");
     KernelType result {};
     for (auto idx = 0; idx < in.size(); ++idx) {
       result[idx] = in[idx].convolve(gradient);
     }
+    return result;
   }
 
   auto paddedConvolve(InputType const& in, KernelType const& kernel) const {

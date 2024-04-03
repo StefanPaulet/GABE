@@ -49,7 +49,7 @@ public:
     });
 
     for (auto idx = 0; idx < nextLayerGradient.size(); ++idx) {
-      kernelGradient[idx] = (static_cast<ConvolutionFunction*>(this))->derive(input, nextLayerGradient[idx]);
+      kernelGradient[idx] = (static_cast<ConvolutionFunction const*>(this))->derive(input, nextLayerGradient[idx]);
     }
 
     for (auto idx = 0; idx < kernels.size(); ++idx) {
@@ -57,7 +57,7 @@ public:
       for (auto& feature : flippedKernel) {
         feature = feature.flip();
       }
-      inputGradient[idx] += (static_cast<ConvolutionFunction*>(*this))->fullyConvolve(nextLayerGradient, flippedKernel);
+      inputGradient[idx] += (static_cast<ConvolutionFunction*>(this))->fullyConvolve(nextLayerGradient, flippedKernel);
     }
 
     return std::make_pair(kernelGradient, inputGradient);

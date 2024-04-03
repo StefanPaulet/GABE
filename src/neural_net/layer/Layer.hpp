@@ -235,6 +235,14 @@ public:
     decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
     return static_cast<D*>(static_cast<B*>(this))->feedForward(flattenedInput);
   }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+    decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
+    auto rez = static_cast<D*>(static_cast<B*>(this))->backPropagate(flattenedInput, target, learningRate);
+    return Input {
+        static_cast<D*>(static_cast<B*>(this))->backPropagate(flattenedInput, target, learningRate).flatten()};
+  }
 };
 
 template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer, typename SecondLayer,
@@ -258,6 +266,7 @@ private:
                 RemainingLayers...>;
 
 public:
+  using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
   using InnerLayerPair::weights;
@@ -281,6 +290,7 @@ private:
       LayerPair<DataType, SizedLayer<FirstLayer::dimension, Layer, gabe::utils::math::IdentityFunction<>>, SecondLayer>;
 
 public:
+  using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
   using InnerLayerPair::weights;
@@ -321,6 +331,15 @@ public:
   auto feedForward(Input const& input) {
     return NextLayerPair::feedForward(SecondLayerType().feedForward(input, weights()));
   }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+    auto nextLayerGradient =
+        NextLayerPair::backPropagate(SecondLayerType().feedForward(input, weights()), target, learningRate);
+    auto [kernelGradient, currentLayerGradient] = SecondLayerType().backPropagate(input, weights(), nextLayerGradient);
+    weights() -= kernelGradient * learningRate;
+    return currentLayerGradient;
+  }
 };
 
 template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
@@ -342,6 +361,12 @@ public:
   }
 
   auto feedForward(Input const& input) { return NextLayerPair::feedForward(SecondLayerType().feedForward(input)); }
+
+  template <typename TargetType>
+  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+    auto nextLayerGradient = NextLayerPair::backPropagate(SecondLayerType().feedForward(input));
+    return SecondLayerType().backPropagate(input, nextLayerGradient);
+  }
 };
 } // namespace impl
 
