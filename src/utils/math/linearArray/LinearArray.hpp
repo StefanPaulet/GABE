@@ -281,6 +281,20 @@ public:
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
 
+  template <Size array_size> explicit LinearArray(std::array<DataType, array_size> const& arr) {
+    static_assert(LinearArray::total_size() == array_size, "Non-matching size from one dimensional array to matrix");
+
+    for (Size lineIdx = 0; lineIdx < first_size; ++lineIdx) {
+      std::array<DataType, LinearArray::total_size() / first_size> slicedArr {};
+      std::memcpy(slicedArr.data(), arr.data() + first_size * lineIdx,
+                  LinearArray::total_size() / first_size * sizeof(DataType));
+      data()[lineIdx] = InnerLinearArray {slicedArr};
+    }
+  }
+
+  template <Size array_size> explicit LinearArray(LinearArray<DataType, array_size> const& lArr) :
+      LinearArray(lArr.data()) {}
+
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 };

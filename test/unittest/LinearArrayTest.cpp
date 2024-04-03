@@ -358,6 +358,9 @@ TEST(LinearArrayTest, Flatten) {
   auto arr4 = mtrx2.flatten();
   static_assert(std::is_same_v<decltype(arr3), decltype(arr4)>);
 
+  auto arr5 = LinearArray<int, 2, 3, 14> {arr3};
+  ASSERT_EQ(arr5.flatten(), arr3);
+
   (void) arr1;
   (void) arr2;
   (void) arr3;
