@@ -175,4 +175,6 @@ TEST(FunctionTest, MaxPoolFuncion) {
   auto mtrx2 = larray(larray(larray(9, 7), larray(8, 6)));
   MaxPoolFunction<decltype(mtrx1), 2, 2> mpf;
   ASSERT_EQ(mpf(mtrx1), mtrx2);
+  auto mtrx3 = larray(larray(larray(0, 0, 1, 0), larray(1, 0, 0, 0), larray(1, 0, 0, 0), larray(0, 0, 0, 1)));
+  ASSERT_EQ(mpf.derive(mtrx1, mtrx2), mtrx3);
 }

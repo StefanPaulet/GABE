@@ -40,9 +40,13 @@ public:
     return rez;
   }
 
-  auto backPropagate(InputType const& input, KernelArrayType const& kernels, OutputType<> const& nextLayerGradient) {
+  auto backPropagate(InputType const& input, KernelArrayType const& kernels, OutputType<>& nextLayerGradient) {
     KernelArrayType kernelGradient {};
     InputType inputGradient {};
+
+    nextLayerGradient.transform([this]<typename T>(T&& value) {
+      return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
+    });
 
     for (auto idx = 0; idx < nextLayerGradient.size(); ++idx) {
       kernelGradient[idx] = (static_cast<ConvolutionFunction*>(this))->derive(input, nextLayerGradient[idx]);
@@ -55,9 +59,6 @@ public:
       }
       inputGradient[idx] += (static_cast<ConvolutionFunction*>(*this))->fullyConvolve(nextLayerGradient, flippedKernel);
     }
-    return input.project([this]<typename T>(T&& value) {
-      return static_cast<ConvolutionFunction*>(this)->derive(std::forward<T>(value));
-    });
 
     return std::make_pair(kernelGradient, inputGradient);
   }
@@ -92,6 +93,10 @@ public:
   PoolingLayer(PoolingLayer&&) noexcept = default;
 
   auto feedForward(InputType const& input) -> OutputType<> { return (static_cast<PoolingFunction&>(*this))(input); }
+  auto backPropagate(InputType const& input, OutputType<> const& nextLayerGradient) -> InputType {
+    input.project(
+        [this]<typename T>(T&& value) { return static_cast<PoolingFunction*>(this)->derive(std::forward<T>(value)); });
+  }
 };
 
 template <Size size, Size stride, typename D> struct BasePoolingLayer {

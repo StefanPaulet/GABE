@@ -215,19 +215,32 @@ public:
 };
 
 template <concepts::DeepLinearMatrixType InputType, typename PoolType> struct PoolingFunction {
+private:
+  template <typename T = PoolType> using ResultingPoolType = typename T::ResultingPoolType;
+
+public:
   static constexpr auto isPoolingFunction = true;
 
   auto operator()(InputType const& in) const {
-    using PoolResultType = decltype(std::declval<PoolType>().pool(
-        std::declval<std::add_lvalue_reference_t<typename InputType::InnerLinearArray>>()));
-
     constexpr auto rezLineDepth = InputType::size();
-    constexpr auto rezLineSize = PoolResultType::size();
-    constexpr auto rezColumnSize = PoolResultType::total_size() / rezLineSize;
+    constexpr auto rezLineSize = ResultingPoolType<>::size();
+    constexpr auto rezColSize = ResultingPoolType<>::InnerLinearArray::size();
 
-    LinearArray<typename InputType::UnderlyingType, rezLineDepth, rezLineSize, rezColumnSize> result {};
+    LinearArray<typename InputType::UnderlyingType, rezLineDepth, rezLineSize, rezColSize> result {};
     for (auto idx = 0; idx < InputType::size(); ++idx) {
       result[idx] = static_cast<PoolType const*>(this)->pool(in[idx]);
+    }
+    return result;
+  }
+
+  template <typename T = PoolType, Size rezLineSize = T::ResultingPoolType::size(),
+            Size rezColSize = T::ResultingPoolType::InnerLinearArray::size()>
+  auto derive(InputType const& in,
+              LinearArray<typename InputType::UnderlyingType, InputType::size(), rezLineSize, rezColSize> const&
+                  gradient) const {
+    InputType result {};
+    for (auto idx = 0; idx < in.size(); ++idx) {
+      result[idx] = static_cast<PoolType const*>(this)->derivedPool(in[idx], gradient[idx]);
     }
     return result;
   }
@@ -289,11 +302,42 @@ struct StridedConvolutionFunction :
 namespace impl {
 template <concepts::DeepLinearMatrixType InputType, typename PoolDim, typename StrideDim> struct MaxPoolFunction :
     impl::PoolingFunction<InputType, MaxPoolFunction<InputType, PoolDim, StrideDim>> {
+
+  static constexpr auto predicate = [](typename InputType::UnderlyingType lhs, typename InputType::UnderlyingType rhs) {
+    return lhs < rhs;
+  };
+
+  using ResultingPoolType =
+      decltype(std::declval<typename InputType::InnerLinearArray>()
+                   .template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(decltype(predicate) {}));
+
   auto pool(typename InputType::InnerLinearArray const& in) const {
-    auto predicate = [](typename InputType::UnderlyingType lhs, typename InputType::UnderlyingType rhs) {
-      return lhs < rhs;
-    };
     return in.template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(predicate);
+  }
+
+  auto derivedPool(typename InputType::InnerLinearArray const& in, ResultingPoolType const& gradient) const {
+    constexpr auto inLines = InputType::InnerLinearArray::size();
+    constexpr auto inCols = InputType::InnerLinearArray::InnerLinearArray::size();
+
+    typename InputType::InnerLinearArray result {};
+    auto localSearch = [&result, in, gradient](Size lineStartIndex, Size colStartIndex, Size gLineIndex,
+                                               Size gColIndex) {
+      for (auto lIdx = 0; lIdx < PoolDim::size(); ++lIdx) {
+        for (auto cIdx = 0; cIdx < PoolDim::size(); ++cIdx) {
+          if (in[lineStartIndex + lIdx][colStartIndex + cIdx] == gradient[gLineIndex][gColIndex]) {
+            result[lineStartIndex + lIdx][colStartIndex + cIdx] = 1;
+            return;
+          }
+        }
+      }
+    };
+
+    for (auto lIdx = 0, gLIdx = 0; lIdx < inLines; lIdx += StrideDim::size(), ++gLIdx) {
+      for (auto cIdx = 0, gColIdx = 0; cIdx < inCols; cIdx += StrideDim::size(), ++gColIdx) {
+        localSearch(lIdx, cIdx, gLIdx, gColIdx);
+      }
+    }
+    return result;
   }
 };
 } // namespace impl
