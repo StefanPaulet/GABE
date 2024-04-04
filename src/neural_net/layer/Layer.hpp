@@ -115,6 +115,9 @@ public:
   ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer&&) noexcept = default;
 
   auto& weights() { return _weights; }
+  template <typename T> auto randomize_weights(T&& transformer) -> void {
+    _weights.transform(std::forward<T>(transformer));
+  }
 
 private:
   InnerKernelArray _weights {};
@@ -269,6 +272,7 @@ public:
   using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
+  using InnerLayerPair::randomize_weights;
   using InnerLayerPair::weights;
 };
 
@@ -293,6 +297,7 @@ public:
   using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
+  using InnerLayerPair::randomize_weights;
   using InnerLayerPair::weights;
 };
 
@@ -340,6 +345,11 @@ public:
     weights() -= kernelGradient * learningRate;
     return currentLayerGradient;
   }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    InnerContainer::randomize_weights(std::forward<T>(transformer));
+    NextLayerPair::randomize_weights(std::forward<T>(transformer));
+  }
 };
 
 template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
@@ -366,6 +376,10 @@ public:
   auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
     auto nextLayerGradient = NextLayerPair::backPropagate(SecondLayerType().feedForward(input), target, learningRate);
     return SecondLayerType().backPropagate(input, nextLayerGradient);
+  }
+
+  template <typename T> auto randomize_weights(T&& transformer) {
+    NextLayerPair::randomize_weights(std::forward<T>(transformer));
   }
 };
 } // namespace impl

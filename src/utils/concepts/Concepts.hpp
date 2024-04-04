@@ -89,7 +89,7 @@ template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 
 template <typename T>
-concept ConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
+concept DeepConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
 
 namespace impl {
 template <typename, typename = void> struct IsConvolutionalLayerPair : std::false_type {};

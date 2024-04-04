@@ -183,19 +183,20 @@ struct SoftMaxDecoder {
 
 namespace impl {
 template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType, typename ConvType>
-struct ConvolutionFunction {
+struct DeepConvolutionFunction {
+  static_assert(InputType::size() == KernelType::size(),
+                "Cannot compute deep convolutions on input and kernel of different depths");
+
 private:
-  template <typename T = ConvType> using ConvResultType = typename T::ResultingConvolutionType;
+  template <typename T = ConvType> using ConvResultType = typename T::ConvolutionResultType;
 
 public:
-  static constexpr auto isConvolutionFunction = true;
+  static constexpr auto isDeepConvolutionFunction = true;
 
   auto operator()(InputType const& in, KernelType const& kernel) const {
 
     static constexpr auto rezLineSize = ConvResultType<>::size();
     static constexpr auto rezColumnSize = ConvResultType<>::total_size() / rezLineSize;
-
-    static_assert(InputType::size() == KernelType::size(), "Cannot convolve a matrix with a kernel of different depth");
 
     LinearArray<typename InputType::UnderlyingType, rezLineSize, rezColumnSize> result {};
     for (auto idx = 0; idx < InputType::size(); ++idx) {
@@ -205,12 +206,13 @@ public:
   }
 
   template <typename T = ConvType>
-  auto derive(InputType const& in, typename T::ResultingConvolutionType const& nextLayerGradient) const {
+  auto derive(InputType const& in, typename T::ConvolutionResultType const& nextLayerGradient) const {
     return static_cast<ConvType const*>(this)->deriveConvolve(in, nextLayerGradient);
   }
 
-  auto fullyConvolve(InputType const& in, KernelType const& kernel) const {
-    return static_cast<ConvType const*>(this)->paddedConvolve(in, kernel);
+  template <typename T = ConvType>
+  auto fullyConvolve(typename T::ConvolutionResultType const& nextLayerGradient, KernelType const& kernel) const {
+    return static_cast<ConvType const*>(this)->paddedConvolve(nextLayerGradient, kernel);
   }
 };
 
@@ -248,9 +250,9 @@ public:
 } // namespace impl
 
 template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
-struct SimpleConvolutionFunction :
-    impl::ConvolutionFunction<InputType, KernelType, SimpleConvolutionFunction<InputType, KernelType>> {
-  using ResultingConvolutionType =
+struct SimpleDeepConvolutionFunction :
+    impl::DeepConvolutionFunction<InputType, KernelType, SimpleDeepConvolutionFunction<InputType, KernelType>> {
+  using ConvolutionResultType =
       decltype(std::declval<typename InputType::InnerLinearArray>().convolve(typename KernelType::InnerLinearArray {}));
 
   auto convolve(typename InputType::InnerLinearArray const& in,
@@ -258,12 +260,7 @@ struct SimpleConvolutionFunction :
     return in.convolve(kernel);
   }
 
-  auto deriveConvolve(InputType const& in,
-                      decltype(std::declval<typename InputType::InnerLinearArray>().convolve(
-                          std::declval<std::add_lvalue_reference_t<typename KernelType::InnerLinearArray>>()))
-                          const& gradient) const {
-    static_assert(InputType::size() == KernelType::size(),
-                  "Cannot compute simple convolution derivative on input and kernel of different depths");
+  auto deriveConvolve(InputType const& in, ConvolutionResultType const& gradient) const {
     KernelType result {};
     for (auto idx = 0; idx < in.size(); ++idx) {
       result[idx] = in[idx].convolve(gradient);
@@ -271,32 +268,49 @@ struct SimpleConvolutionFunction :
     return result;
   }
 
-  auto paddedConvolve(InputType const& in, KernelType const& kernel) const {
-    constexpr auto linePad = KernelType::InnerLinearArray::size() / 2;
-    constexpr auto colPad = KernelType::InnerLinearArray::InnerLinearArray::size() / 2;
+  auto paddedConvolve(ConvolutionResultType const& gradient, KernelType const& kernel) const {
+    InputType result {};
 
-    using ResultingFeatureType =
-        decltype(std::declval<typename InputType::InnerLinearArray>().template pad<linePad, colPad>());
-    LinearArray<typename InputType::UnderlyingType, InputType::size(), ResultingFeatureType::size(),
-                ResultingFeatureType::InnerLinearArray::size()>
-        rez {};
-    for (auto idx = 0; idx < in.size(); ++idx) {
-      rez[idx] = in[idx].template pad<linePad, colPad>();
+    constexpr auto linePad = (KernelType::InnerLinearArray::size() + 1) / 2;
+    constexpr auto colPad = (KernelType::InnerLinearArray::InnerLinearArray::size() + 1) / 2;
+    auto paddedIn = gradient.template pad<linePad, colPad>();
+    for (auto idx = 0; idx < kernel.size(); ++idx) {
+      result[idx] = paddedIn.convolve(kernel[idx]);
     }
-    return SimpleConvolutionFunction<decltype(rez), KernelType> {}(rez, kernel);
+    return result;
   }
 };
 
 template <Size stride, concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
-struct StridedConvolutionFunction :
-    impl::ConvolutionFunction<InputType, KernelType, StridedConvolutionFunction<stride, InputType, KernelType>> {
-  using ResultingConvolutionType =
+struct StridedDeepConvolutionFunction :
+    impl::DeepConvolutionFunction<InputType, KernelType,
+                                  StridedDeepConvolutionFunction<stride, InputType, KernelType>> {
+  using ConvolutionResultType =
       decltype(std::declval<typename InputType::InnerLinearArray>().template stridedConvolve<stride>(
           typename KernelType::InnerLinearArray {}));
 
   auto convolve(typename InputType::InnerLinearArray const& in,
                 typename KernelType::InnerLinearArray const& kernel) const {
     return in.template stridedConvolve<stride>(kernel);
+  }
+
+  auto deriveConvolve(InputType const& in, ConvolutionResultType const& gradient) const {
+    KernelType result {};
+    for (auto idx = 0; idx < in.size(); ++idx) {
+      result[idx] = in[idx].template stridedConvolve<stride>(gradient);
+    }
+    return result;
+  }
+
+  auto paddedConvolve(ConvolutionResultType const& gradient, KernelType const& kernel) const {
+    constexpr auto linePad = (KernelType::InnerLinearArray::size() + 1) / 2;
+    constexpr auto colPad = (KernelType::InnerLinearArray::InnerLinearArray::size() + 1) / 2;
+    auto remodeledIn = gradient.template dilate<stride - 1>().template pad<linePad, colPad>();
+    InputType result {};
+    for (auto idx = 0; idx < kernel.size(); ++idx) {
+      result[idx] = remodeledIn.convolve(kernel[idx]);
+    }
+    return result;
   }
 };
 

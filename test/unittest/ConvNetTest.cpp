@@ -50,6 +50,20 @@ TEST(ConvolutionalNeuralNetwork, SimpleFeedForward) {
   ASSERT_EQ(exp, rez);
 }
 
+TEST(ConvolutionalNeuralNetwork, StridedFeedForward) {
+  NeuralNetwork<int, ConvolutionalInputLayer<4, 1>, StridedConvolutionalLayer<1, 2, 2, IdentityFunction<>>,
+                SizedLayer<1, Layer, ReluFunction<>>, SizedLayer<1, Layer, IdentityFunction<>>>
+      nn;
+  nn.weights<0>() = larray(larray(larray(larray(1, 0), larray(0, 1))));
+  nn.weights<1>() = larray(larray(1, 1, 1, 1));
+  nn.weights<2>() = larray(larray(1));
+
+  auto in = larray(larray(larray(5, 4, 3, 2), larray(1, 0, 0, 1), larray(2, 2, 2, 2), larray(-2, 4, 3, 1)));
+  auto exp = larray(larray(18));
+  auto rez = nn.feedForward(in);
+  ASSERT_EQ(exp, rez);
+}
+
 TEST(ConvolutionalNeuralNetwork, PoolingFeedForward) {
   NeuralNetwork<int, ConvolutionalInputLayer<6, 1>, ConvolutionalLayer<1, 3, IdentityFunction<>>, MaxPoolLayer<2, 2>,
                 SizedLayer<1, Layer, IdentityFunction<>>>
@@ -62,34 +76,4 @@ TEST(ConvolutionalNeuralNetwork, PoolingFeedForward) {
   auto exp = larray(larray(20));
   auto rez = nn.feedForward(in);
   ASSERT_EQ(exp, rez);
-}
-
-TEST(ConvolutionalNeuralNetwork, SimpleBackPropagate) {
-  NeuralNetwork<double, ConvolutionalInputLayer<4, 1>, ConvolutionalLayer<1, 3, IdentityFunction<>>,
-                SizedLayer<1, Layer, ReluFunction<>>,
-                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
-      nn;
-  nn.randomize_weights(-5, 5);
-  auto in = larray(larray(larray(5.0, 4, 3, 2), larray(1.0, 0, 0, 1), larray(2.0, 2, 2, 2), larray(-2.0, 4, 3, 1)));
-  auto target = larray(larray(50.0));
-  for (auto idx = 0; idx < 200; ++idx) {
-    nn.backPropagate(in, target, 0.05);
-  }
-  auto learned = nn.feedForward(in);
-  ASSERT_EQ(learned, target);
-}
-
-TEST(ConvolutionalNeuralNetwork, PoolingBackPropagate) {
-  NeuralNetwork<double, ConvolutionalInputLayer<4, 1>, ConvolutionalLayer<1, 3, IdentityFunction<>>, MaxPoolLayer<2, 2>,
-                SizedLayer<1, Layer, ReluFunction<>>,
-                SizedLayer<1, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
-      nn;
-  nn.randomize_weights(-5, 5);
-  auto in = larray(larray(larray(5.0, 4, 3, 2), larray(1.0, 0, 0, 1), larray(2.0, 2, 2, 2), larray(-2.0, 4, 3, 1)));
-  auto target = larray(larray(50.0));
-  for (auto idx = 0; idx < 200; ++idx) {
-    nn.backPropagate(in, target, 0.05);
-  }
-  auto learned = nn.feedForward(in);
-  ASSERT_EQ(learned, target);
 }

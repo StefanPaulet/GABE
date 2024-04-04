@@ -21,7 +21,7 @@ template <typename T> struct is_container_function<T, std::void_t<decltype(T::is
     std::true_type {};
 
 template <typename, typename = void> struct is_convolution_function : std::false_type {};
-template <typename T> struct is_convolution_function<T, std::void_t<decltype(T::isConvolutionFunction)>> :
+template <typename T> struct is_convolution_function<T, std::void_t<decltype(T::isDeepConvolutionFunction)>> :
     std::true_type {};
 
 template <typename, typename = void> struct is_pooling_function : std::false_type {};
