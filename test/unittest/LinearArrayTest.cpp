@@ -366,3 +366,27 @@ TEST(LinearArrayTest, Flatten) {
   (void) arr3;
   (void) arr4;
 }
+
+TEST(LinearArrayTest, Serialization) {
+  auto arr1 = larray(larray(1, 2, 3), larray(4, 2, 1));
+  FILE* out = fopen("file.out", "w");
+  arr1.serialize(out);
+  fclose(out);
+
+  FILE* in = fopen("file.out", "r");
+  auto arr2 = LinearArray<int, 2, 3>::deserialize(in);
+  fclose(in);
+
+  ASSERT_EQ(arr1, arr2);
+
+  auto arr3 = larray(larray(-2.23, 2.4, 3.52), larray(65.13, 2.29, -12.3));
+  FILE* out2 = fopen("file.out", "w");
+  arr3.serialize(out2);
+  fclose(out2);
+
+  FILE* in2 = fopen("file.out", "r");
+  auto arr4 = LinearArray<double, 2, 3>::deserialize(in2);
+  fclose(in2);
+
+  ASSERT_EQ(arr3, arr4);
+}

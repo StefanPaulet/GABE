@@ -163,6 +163,21 @@ public:
     }
     return result;
   }
+
+  auto serialize(FILE* outFile) const {
+    auto arr = static_cast<D const*>(this)->data();
+    for (auto const& e : arr) {
+      e.serialize(outFile);
+    }
+  }
+
+  static auto deserialize(FILE* inFile) -> D {
+    D result {};
+    for (auto idx = 0; idx < result.size(); ++idx) {
+      result[idx] = D::InnerLinearArray::deserialize(inFile);
+    }
+    return result;
+  }
 };
 
 template <typename FD> auto operator+(LinearArrayGenericOps<FD> const& lhs, LinearArrayGenericOps<FD> const& rhs)
@@ -517,7 +532,8 @@ public:
   }
 
   template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
-    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
+    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue),
+                           std::forward<A>(accumulator));
   }
 
   static constexpr auto total_size() { return size; }
@@ -549,6 +565,13 @@ public:
     for (auto& e : result.data()) {
       e = nulVal;
     }
+    return result;
+  }
+
+  auto serialize(FILE* outFile) const { fwrite(data().data(), sizeof(DataType), size, outFile); }
+  static auto deserialize(FILE* inFile) -> LinearArray {
+    LinearArray result;
+    fread(result.data().data(), sizeof(DataType), size, inFile);
     return result;
   }
 };
