@@ -28,7 +28,7 @@ public:
       return dist(randomDevice);
     };
 
-    static_cast<LayerPair*>(this)->randomize_weights(transformer);
+    LayerPair::randomize_weights(transformer);
   }
 
   template <typename InputLayerType, typename LabelEncoderType>
@@ -47,10 +47,23 @@ public:
     for (auto const& e : dataSet.data()) {
       auto rez = feedForward(e.data);
       if (labelDecoder(rez) != e.label) {
+        std::cout << labelDecoder(rez) << " " << e.label << '\n';
         error += static_cast<DataType>(1) / dataSet.data().size();
       }
     }
     return error;
+  }
+
+  auto serialize(std::string const& fileName) {
+    FILE* out = fopen(fileName.c_str(), "w");
+    LayerPair::serialize(out);
+    fclose(out);
+  }
+
+  auto deserialize(std::string const& fileName) {
+    FILE* in = fopen(fileName.c_str(), "r");
+    LayerPair::deserialize(in);
+    fclose(in);
   }
 };
 } // namespace gabe::nn

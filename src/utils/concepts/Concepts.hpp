@@ -93,7 +93,7 @@ concept DeepConvolutionFunctionType = gabe::utils::math::impl::is_convolution_fu
 
 namespace impl {
 template <typename, typename = void> struct IsConvolutionalLayerPair : std::false_type {};
-template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
           gabe::utils::concepts::ConvolutionalLayerType SecondLayer, typename... RemainingLayers>
 struct IsConvolutionalLayerPair<gabe::nn::impl::LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>> :
     std::true_type {};

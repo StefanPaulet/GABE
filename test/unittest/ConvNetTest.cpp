@@ -77,3 +77,16 @@ TEST(ConvolutionalNeuralNetwork, PoolingFeedForward) {
   auto rez = nn.feedForward(in);
   ASSERT_EQ(exp, rez);
 }
+
+TEST(ConvolutionalNeuralNetwork, Serialization) {
+  NeuralNetwork<int, ConvolutionalInputLayer<6, 1>, ConvolutionalLayer<1, 3, IdentityFunction<>>, MaxPoolLayer<2, 2>,
+                SizedLayer<1, Layer, IdentityFunction<>>>
+      nn;
+  nn.weights<0>() = larray(larray(larray(larray(1, 1, 1), larray(0, 1, 1), larray(0, 0, 1))));
+  nn.weights<2>() = larray(larray(1, 1, 1, 1));
+  nn.serialize("file.out");
+  decltype(nn) nn1;
+  nn1.deserialize("file.out");
+  ASSERT_EQ(nn.weights<0>(), nn1.weights<0>());
+  ASSERT_EQ(nn.weights<2>(), nn1.weights<2>());
+}

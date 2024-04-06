@@ -14,13 +14,13 @@ namespace gabe::utils::math {
 template <typename = void> struct RoundFloat {};
 
 template <> struct RoundFloat<void> {
-  template <typename InputType> auto operator()(InputType&& input) const -> InputType {
-    return RoundFloat<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  template <typename Input> auto operator()(Input&& input) const -> Input {
+    return RoundFloat<std::remove_cvref_t<Input>>()(std::forward<Input>(input));
   }
 };
 
-template <std::floating_point InputType> struct RoundFloat<InputType> {
-  auto operator()(InputType input) const -> InputType {
+template <std::floating_point Input> struct RoundFloat<Input> {
+  auto operator()(Input input) const -> Input {
     constexpr auto precision = 10000;
     return roundf(input * precision) / precision;
   }
@@ -29,85 +29,83 @@ template <std::floating_point InputType> struct RoundFloat<InputType> {
 
 template <typename = void> struct SigmoidFunction {};
 
-template <std::floating_point InputType> struct SigmoidFunction<InputType> {
+template <std::floating_point Input> struct SigmoidFunction<Input> {
   static constexpr auto isActivationFunction = true;
-  auto operator()(InputType const& input) const -> double {
-    return static_cast<InputType>(1) / (static_cast<InputType>(1) + std::exp(-input));
+  auto operator()(Input const& input) const -> double {
+    return static_cast<Input>(1) / (static_cast<Input>(1) + std::exp(-input));
   }
-  auto derive(InputType input) const -> double {
+  auto derive(Input input) const -> double {
     auto aux = operator()(input);
-    return aux * (static_cast<InputType>(1) - aux);
+    return aux * (static_cast<Input>(1) - aux);
   }
 };
 
 template <> struct SigmoidFunction<void> {
   static constexpr auto isActivationFunction = true;
 
-  template <typename InputType> auto operator()(InputType&& input) const {
-    return SigmoidFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  template <typename Input> auto operator()(Input&& input) const {
+    return SigmoidFunction<std::remove_cvref_t<Input>>()(std::forward<Input>(input));
   }
 
-  template <typename InputType> auto derive(InputType&& input) const {
-    return SigmoidFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  template <typename Input> auto derive(Input&& input) const {
+    return SigmoidFunction<std::remove_cvref_t<Input>>().derive(std::forward<Input>(input));
   }
 };
 
 
-template <typename InputType = void> struct IdentityFunction {
-  auto operator()(InputType const& input) const -> InputType { return input; }
-  auto derive(InputType const&) const -> InputType { return static_cast<InputType>(1); }
+template <typename Input = void> struct IdentityFunction {
+  auto operator()(Input const& input) const -> Input { return input; }
+  auto derive(Input const&) const -> Input { return static_cast<Input>(1); }
 };
 
 template <> struct IdentityFunction<void> {
-  template <typename InputType> auto operator()(InputType&& input) const {
-    return IdentityFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  template <typename Input> auto operator()(Input&& input) const {
+    return IdentityFunction<std::remove_cvref_t<Input>>()(std::forward<Input>(input));
   }
 
-  template <typename InputType> auto derive(InputType&& input) const {
-    return IdentityFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  template <typename Input> auto derive(Input&& input) const {
+    return IdentityFunction<std::remove_cvref_t<Input>>().derive(std::forward<Input>(input));
   }
 };
 
 
-template <typename InputType = void, typename TargetType = void> struct MeanSquaredErrorFunction {};
+template <typename Input = void, typename TargetType = void> struct MeanSquaredErrorFunction {};
 
 template <> struct MeanSquaredErrorFunction<void, void> {
   static constexpr auto isCostFunction = true;
 
-  template <typename InputType, typename TargetType = InputType>
-  auto operator()(InputType&& in, TargetType&& target) const {
-    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>, std::remove_cvref_t<TargetType>>()(
-        std::forward<InputType>(in), std::forward<TargetType>(target));
+  template <typename Input, typename TargetType = Input> auto operator()(Input&& in, TargetType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<TargetType>>()(
+        std::forward<Input>(in), std::forward<TargetType>(target));
   }
 
-  template <typename InputType, typename TargetType = InputType>
-  auto derive(InputType&& in, TargetType&& target) const {
-    return MeanSquaredErrorFunction<std::remove_cvref_t<InputType>, std::remove_cvref_t<TargetType>>().derive(
-        std::forward<InputType>(in), std::forward<TargetType>(target));
+  template <typename Input, typename TargetType = Input> auto derive(Input&& in, TargetType&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<TargetType>>().derive(
+        std::forward<Input>(in), std::forward<TargetType>(target));
   }
 };
 
-template <concepts::IntegralType InputType, concepts::IntegralType TargetType>
-struct MeanSquaredErrorFunction<InputType, TargetType> {
+template <concepts::IntegralType Input, concepts::IntegralType TargetType>
+struct MeanSquaredErrorFunction<Input, TargetType> {
   static constexpr auto isCostFunction = true;
 
-  auto operator()(InputType in, TargetType target) const { return (target - in) * (target - in) / 2; }
+  auto operator()(Input in, TargetType target) const { return (target - in) * (target - in) / 2; }
 
-  auto derive(InputType in, InputType target) const { return (in - target); }
+  auto derive(Input in, Input target) const { return (in - target); }
 };
 
-template <concepts::LinearArrayType InputType, concepts::LinearArrayType TargetType>
-struct MeanSquaredErrorFunction<InputType, TargetType> {
+template <concepts::LinearArrayType Input, concepts::LinearArrayType TargetType>
+struct MeanSquaredErrorFunction<Input, TargetType> {
   static constexpr auto isCostFunction = true;
 
-  auto operator()(InputType const& in, TargetType const& target) const {
-    auto divider = [](typename InputType::UnderlyingType const& val) {
-      return val / static_cast<typename InputType::UnderlyingType>(2);
+  auto operator()(Input const& in, TargetType const& target) const {
+    auto divider = [](typename Input::UnderlyingType const& val) {
+      return val / static_cast<typename Input::UnderlyingType>(2);
     };
     return ((target - in) * (target - in)).project(divider);
   }
 
-  auto derive(InputType const& in, TargetType const& target) const { return (in - target); }
+  auto derive(Input const& in, TargetType const& target) const { return (in - target); }
 };
 
 
@@ -117,30 +115,29 @@ template <> struct SoftmaxFunction<void> {
   static constexpr auto isActivationFunction = true;
   static constexpr auto isContainerFunction = true;
 
-  template <typename InputType> auto operator()(InputType&& input) const {
-    return SoftmaxFunction<std::remove_cvref_t<InputType>>()(std::forward<InputType>(input));
+  template <typename Input> auto operator()(Input&& input) const {
+    return SoftmaxFunction<std::remove_cvref_t<Input>>()(std::forward<Input>(input));
   }
 
-  template <typename InputType> auto derive(InputType&& input) const {
-    return SoftmaxFunction<std::remove_cvref_t<InputType>>().derive(std::forward<InputType>(input));
+  template <typename Input> auto derive(Input&& input) const {
+    return SoftmaxFunction<std::remove_cvref_t<Input>>().derive(std::forward<Input>(input));
   }
 };
 
-template <concepts::LinearArrayType InputType> struct SoftmaxFunction<InputType> {
+template <concepts::LinearArrayType Input> struct SoftmaxFunction<Input> {
   static constexpr auto isActivationFunction = true;
   static constexpr auto isContainerFunction = true;
 
-  auto operator()(InputType const& input) const -> InputType {
+  auto operator()(Input const& input) const -> Input {
     auto maxValue = input.max();
-    auto expArray = input.project([maxValue](InputType::UnderlyingType v) { return expf(v - maxValue); });
-    auto sum =
-        expArray.accumulate(0, [](InputType::UnderlyingType lhs, InputType::UnderlyingType rhs) { return lhs + rhs; });
-    return expArray.transform([sum](InputType::UnderlyingType v) { return RoundFloat<>()(v / sum); });
+    auto expArray = input.project([maxValue](Input::UnderlyingType v) { return expf(v - maxValue); });
+    auto sum = expArray.accumulate(0, [](Input::UnderlyingType lhs, Input::UnderlyingType rhs) { return lhs + rhs; });
+    return expArray.transform([sum](Input::UnderlyingType v) { return RoundFloat<>()(v / sum); });
   }
 
-  auto derive(InputType const& input) const -> InputType {
+  auto derive(Input const& input) const -> Input {
     auto aux = operator()(input);
-    return aux * (InputType::unit() - aux);
+    return aux * (Input::unit() - aux);
   }
 };
 
@@ -182,9 +179,9 @@ struct SoftMaxDecoder {
 };
 
 namespace impl {
-template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType, typename ConvType>
+template <concepts::DeepLinearMatrixType Input, concepts::DeepLinearMatrixType KernelType, typename ConvType>
 struct DeepConvolutionFunction {
-  static_assert(InputType::size() == KernelType::size(),
+  static_assert(Input::size() == KernelType::size(),
                 "Cannot compute deep convolutions on input and kernel of different depths");
 
 private:
@@ -193,20 +190,20 @@ private:
 public:
   static constexpr auto isDeepConvolutionFunction = true;
 
-  auto operator()(InputType const& in, KernelType const& kernel) const {
+  auto operator()(Input const& in, KernelType const& kernel) const {
 
     static constexpr auto rezLineSize = ConvResultType<>::size();
     static constexpr auto rezColumnSize = ConvResultType<>::total_size() / rezLineSize;
 
-    LinearArray<typename InputType::UnderlyingType, rezLineSize, rezColumnSize> result {};
-    for (auto idx = 0; idx < InputType::size(); ++idx) {
+    LinearArray<typename Input::UnderlyingType, rezLineSize, rezColumnSize> result {};
+    for (auto idx = 0; idx < Input::size(); ++idx) {
       result += static_cast<ConvType const*>(this)->convolve(in[idx], kernel[idx]);
     }
     return result;
   }
 
   template <typename T = ConvType>
-  auto derive(InputType const& in, typename T::ConvolutionResultType const& nextLayerGradient) const {
+  auto derive(Input const& in, typename T::ConvolutionResultType const& nextLayerGradient) const {
     return static_cast<ConvType const*>(this)->deriveConvolve(in, nextLayerGradient);
   }
 
@@ -216,20 +213,20 @@ public:
   }
 };
 
-template <concepts::DeepLinearMatrixType InputType, typename PoolType> struct PoolingFunction {
+template <concepts::DeepLinearMatrixType Input, typename PoolType> struct PoolingFunction {
 private:
   template <typename T = PoolType> using ResultingPoolType = typename T::ResultingPoolType;
 
 public:
   static constexpr auto isPoolingFunction = true;
 
-  auto operator()(InputType const& in) const {
-    constexpr auto rezLineDepth = InputType::size();
+  auto operator()(Input const& in) const {
+    constexpr auto rezLineDepth = Input::size();
     constexpr auto rezLineSize = ResultingPoolType<>::size();
     constexpr auto rezColSize = ResultingPoolType<>::InnerLinearArray::size();
 
-    LinearArray<typename InputType::UnderlyingType, rezLineDepth, rezLineSize, rezColSize> result {};
-    for (auto idx = 0; idx < InputType::size(); ++idx) {
+    LinearArray<typename Input::UnderlyingType, rezLineDepth, rezLineSize, rezColSize> result {};
+    for (auto idx = 0; idx < Input::size(); ++idx) {
       result[idx] = static_cast<PoolType const*>(this)->pool(in[idx]);
     }
     return result;
@@ -237,10 +234,10 @@ public:
 
   template <typename T = PoolType, Size rezLineSize = T::ResultingPoolType::size(),
             Size rezColSize = T::ResultingPoolType::InnerLinearArray::size()>
-  auto derive(InputType const& in,
-              LinearArray<typename InputType::UnderlyingType, InputType::size(), rezLineSize, rezColSize> const&
-                  gradient) const {
-    InputType result {};
+  auto
+  derive(Input const& in,
+         LinearArray<typename Input::UnderlyingType, Input::size(), rezLineSize, rezColSize> const& gradient) const {
+    Input result {};
     for (auto idx = 0; idx < in.size(); ++idx) {
       result[idx] = static_cast<PoolType const*>(this)->derivedPool(in[idx], gradient[idx]);
     }
@@ -249,18 +246,17 @@ public:
 };
 } // namespace impl
 
-template <concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
+template <concepts::DeepLinearMatrixType Input, concepts::DeepLinearMatrixType KernelType>
 struct SimpleDeepConvolutionFunction :
-    impl::DeepConvolutionFunction<InputType, KernelType, SimpleDeepConvolutionFunction<InputType, KernelType>> {
+    impl::DeepConvolutionFunction<Input, KernelType, SimpleDeepConvolutionFunction<Input, KernelType>> {
   using ConvolutionResultType =
-      decltype(std::declval<typename InputType::InnerLinearArray>().convolve(typename KernelType::InnerLinearArray {}));
+      decltype(std::declval<typename Input::InnerLinearArray>().convolve(typename KernelType::InnerLinearArray {}));
 
-  auto convolve(typename InputType::InnerLinearArray const& in,
-                typename KernelType::InnerLinearArray const& kernel) const {
+  auto convolve(typename Input::InnerLinearArray const& in, typename KernelType::InnerLinearArray const& kernel) const {
     return in.convolve(kernel);
   }
 
-  auto deriveConvolve(InputType const& in, ConvolutionResultType const& gradient) const {
+  auto deriveConvolve(Input const& in, ConvolutionResultType const& gradient) const {
     KernelType result {};
     for (auto idx = 0; idx < in.size(); ++idx) {
       result[idx] = in[idx].convolve(gradient);
@@ -269,7 +265,7 @@ struct SimpleDeepConvolutionFunction :
   }
 
   auto paddedConvolve(ConvolutionResultType const& gradient, KernelType const& kernel) const {
-    InputType result {};
+    Input result {};
 
     constexpr auto linePad = (KernelType::InnerLinearArray::size() + 1) / 2;
     constexpr auto colPad = (KernelType::InnerLinearArray::InnerLinearArray::size() + 1) / 2;
@@ -281,23 +277,22 @@ struct SimpleDeepConvolutionFunction :
   }
 };
 
-template <Size stride, concepts::DeepLinearMatrixType InputType, concepts::DeepLinearMatrixType KernelType>
+template <Size stride, concepts::DeepLinearMatrixType Input, concepts::DeepLinearMatrixType KernelType>
 struct StridedDeepConvolutionFunction :
-    impl::DeepConvolutionFunction<InputType, KernelType,
-                                  StridedDeepConvolutionFunction<stride, InputType, KernelType>> {
+    impl::DeepConvolutionFunction<Input, KernelType, StridedDeepConvolutionFunction<stride, Input, KernelType>> {
   using ConvolutionResultType =
-      decltype(std::declval<typename InputType::InnerLinearArray>().template stridedConvolve<stride>(
+      decltype(std::declval<typename Input::InnerLinearArray>().template stridedConvolve<stride>(
           typename KernelType::InnerLinearArray {}));
 
-  auto convolve(typename InputType::InnerLinearArray const& in,
-                typename KernelType::InnerLinearArray const& kernel) const {
+  auto convolve(typename Input::InnerLinearArray const& in, typename KernelType::InnerLinearArray const& kernel) const {
     return in.template stridedConvolve<stride>(kernel);
   }
 
-  auto deriveConvolve(InputType const& in, ConvolutionResultType const& gradient) const {
+  auto deriveConvolve(Input const& in, ConvolutionResultType const& gradient) const {
     KernelType result {};
+    auto dilatedGradient = gradient.template dilate<stride - 1>();
     for (auto idx = 0; idx < in.size(); ++idx) {
-      result[idx] = in[idx].template stridedConvolve<stride>(gradient);
+      result[idx] = in[idx].convolve(dilatedGradient);
     }
     return result;
   }
@@ -306,7 +301,7 @@ struct StridedDeepConvolutionFunction :
     constexpr auto linePad = (KernelType::InnerLinearArray::size() + 1) / 2;
     constexpr auto colPad = (KernelType::InnerLinearArray::InnerLinearArray::size() + 1) / 2;
     auto remodeledIn = gradient.template dilate<stride - 1>().template pad<linePad, colPad>();
-    InputType result {};
+    Input result {};
     for (auto idx = 0; idx < kernel.size(); ++idx) {
       result[idx] = remodeledIn.convolve(kernel[idx]);
     }
@@ -315,26 +310,26 @@ struct StridedDeepConvolutionFunction :
 };
 
 namespace impl {
-template <concepts::DeepLinearMatrixType InputType, typename PoolDim, typename StrideDim> struct MaxPoolFunction :
-    impl::PoolingFunction<InputType, MaxPoolFunction<InputType, PoolDim, StrideDim>> {
+template <concepts::DeepLinearMatrixType Input, typename PoolDim, typename StrideDim> struct MaxPoolFunction :
+    impl::PoolingFunction<Input, MaxPoolFunction<Input, PoolDim, StrideDim>> {
 
-  static constexpr auto predicate = [](typename InputType::UnderlyingType lhs, typename InputType::UnderlyingType rhs) {
+  static constexpr auto predicate = [](typename Input::UnderlyingType lhs, typename Input::UnderlyingType rhs) {
     return lhs < rhs;
   };
 
   using ResultingPoolType =
-      decltype(std::declval<typename InputType::InnerLinearArray>()
+      decltype(std::declval<typename Input::InnerLinearArray>()
                    .template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(decltype(predicate) {}));
 
-  auto pool(typename InputType::InnerLinearArray const& in) const {
+  auto pool(typename Input::InnerLinearArray const& in) const {
     return in.template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(predicate);
   }
 
-  auto derivedPool(typename InputType::InnerLinearArray const& in, ResultingPoolType const& gradient) const {
-    constexpr auto inLines = InputType::InnerLinearArray::size();
-    constexpr auto inCols = InputType::InnerLinearArray::InnerLinearArray::size();
+  auto derivedPool(typename Input::InnerLinearArray const& in, ResultingPoolType const& gradient) const {
+    constexpr auto inLines = Input::InnerLinearArray::size();
+    constexpr auto inCols = Input::InnerLinearArray::InnerLinearArray::size();
 
-    typename InputType::InnerLinearArray result {};
+    typename Input::InnerLinearArray result {};
     auto localSearch = [&result, in, gradient](Size lineStartIndex, Size colStartIndex, Size gLineIndex,
                                                Size gColIndex) {
       for (auto lIdx = 0; lIdx < PoolDim::size(); ++lIdx) {
@@ -347,8 +342,9 @@ template <concepts::DeepLinearMatrixType InputType, typename PoolDim, typename S
       }
     };
 
-    for (auto lIdx = 0, gLIdx = 0; lIdx < inLines; lIdx += StrideDim::size(), ++gLIdx) {
-      for (auto cIdx = 0, gColIdx = 0; cIdx < inCols; cIdx += StrideDim::size(), ++gColIdx) {
+    for (auto lIdx = 0, gLIdx = 0; lIdx < inLines && gLIdx < gradient.size(); lIdx += StrideDim::size(), ++gLIdx) {
+      for (auto cIdx = 0, gColIdx = 0; cIdx < inCols && gColIdx < gradient[0].size();
+           cIdx += StrideDim::size(), ++gColIdx) {
         localSearch(lIdx, cIdx, gLIdx, gColIdx);
       }
     }
@@ -357,19 +353,19 @@ template <concepts::DeepLinearMatrixType InputType, typename PoolDim, typename S
 };
 } // namespace impl
 
-template <concepts::DeepLinearMatrixType InputType, Size poolSize, Size stride> struct MaxPoolFunction :
-    impl::MaxPoolFunction<InputType, gabe::nn::impl::Dimension<poolSize>, gabe::nn::impl::Dimension<stride>> {};
+template <concepts::DeepLinearMatrixType Input, Size poolSize, Size stride> struct MaxPoolFunction :
+    impl::MaxPoolFunction<Input, gabe::nn::impl::Dimension<poolSize>, gabe::nn::impl::Dimension<stride>> {};
 
 template <typename = void> struct ReluFunction {};
 template <> struct ReluFunction<void> {
   static constexpr auto isActivationFunction = true;
 
-  template <typename InputType> auto operator()(InputType&& in) {
-    return ReluFunction<std::remove_cvref_t<InputType>> {}(std::forward<InputType>(in));
+  template <typename Input> auto operator()(Input&& in) {
+    return ReluFunction<std::remove_cvref_t<Input>> {}(std::forward<Input>(in));
   }
 
-  template <typename InputType> auto derive(InputType&& in) {
-    return ReluFunction<std::remove_cvref_t<InputType>> {}.derive(std::forward<InputType>(in));
+  template <typename Input> auto derive(Input&& in) {
+    return ReluFunction<std::remove_cvref_t<Input>> {}.derive(std::forward<Input>(in));
   }
 };
 
@@ -388,6 +384,6 @@ template <concepts::IntegralType T> struct ReluFunction<T> {
 
 
 namespace func {
-template <typename InputType> constexpr SigmoidFunction<InputType> sigmoid;
+template <typename Input> constexpr SigmoidFunction<Input> sigmoid;
 } // namespace func
 } // namespace gabe::utils::math

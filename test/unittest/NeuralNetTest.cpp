@@ -85,3 +85,14 @@ TEST(NeuralNetwork, BackPropagation) {
   ASSERT_EQ(nn1.weights<0>(), weight11Target);
   ASSERT_EQ(nn1.weights<1>(), weight12Target);
 }
+
+TEST(NeuralNetwork, Serialization) {
+  NeuralNetwork<float, SizedLayer<3, InputLayer>,
+                SizedLayer<3, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn;
+  nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
+  nn.serialize("file.out");
+  decltype(nn) nn1;
+  nn1.deserialize("file.out");
+  ASSERT_EQ(nn.weights<0>(), nn1.weights<0>());
+}

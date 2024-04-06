@@ -20,7 +20,8 @@ private:
 
 public:
   using LayerFunction = ActivationFunction;
-  using OutputType = InnerLinearArray;
+  using Input = InnerLinearArray;
+  using OutputType = Input;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -47,7 +48,8 @@ private:
 
 public:
   using LayerFunction = ActivationFunction;
-  using OutputType = InnerLinearArray;
+  using Input = InnerLinearArray;
+  using OutputType = Input;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -70,11 +72,11 @@ private:
   using Layer::backPropagate;
 
 public:
+  using Input = InnerLinearArray;
   using LayerFunction = CostFunction;
   using Layer::feedForward;
 
-  auto backPropagate(InnerLinearArray const& input, InnerLinearArray const& target)
-      -> std::pair<InnerLinearArray, InnerLinearArray> {
+  auto backPropagate(Input const& input, Input const& target) -> std::pair<InnerLinearArray, InnerLinearArray> {
     return {backPropagate(input), (*static_cast<CostFunction*>(this)).derive(feedForward(input), target)};
   }
 };
@@ -98,6 +100,16 @@ public:
     _biases.transform(std::forward<T>(transformer));
   }
 
+  auto serialize(FILE* out) {
+    _weights.serialize(out);
+    _biases.serialize(out);
+  }
+
+  auto deserialize(FILE* in) {
+    _weights = InnerLinearMatrix::deserialize(in);
+    _biases = InnerLinearArray::deserialize(in);
+  }
+
 private:
   InnerLinearMatrix _weights {};
   InnerLinearArray _biases {};
@@ -119,6 +131,9 @@ public:
     _weights.transform(std::forward<T>(transformer));
   }
 
+  auto serialize(FILE* out) { _weights.serialize(out); }
+  auto deserialize(FILE* in) { _weights = InnerKernelArray::deserialize(in); }
+
 private:
   InnerKernelArray _weights {};
 };
@@ -131,8 +146,6 @@ template <typename DataType, typename FirstLayer, typename SecondLayer, typename
 protected:
   static constexpr auto flDim = NDLType<FirstLayer>::template Type<DataType>::dimension;
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
-
-  using Input = utils::math::LinearColumnArray<DataType, flDim>;
   using LayerPairContainer =
       LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>>;
   using NextLayerPair = LayerPair<DataType, SecondLayer, RemainingLayers...>;
@@ -142,6 +155,8 @@ protected:
   using LayerPairContainer::weights;
 
 public:
+  using Input = utils::math::LinearColumnArray<DataType, flDim>;
+
   template <Size idx> auto& weights() {
     if constexpr (idx == 0) {
       return weights();
@@ -179,6 +194,16 @@ public:
     LayerPairContainer::randomize_weights(std::forward<T>(transformer));
     NextLayerPair::randomize_weights(std::forward<T>(transformer));
   }
+
+  auto serialize(FILE* out) {
+    LayerPairContainer::serialize(out);
+    NextLayerPair::serialize(out);
+  }
+
+  auto deserialize(FILE* in) {
+    LayerPairContainer::deserialize(in);
+    NextLayerPair::deserialize(in);
+  }
 };
 
 template <typename DataType, typename FirstLayer, typename SecondLayer>
@@ -191,13 +216,14 @@ protected:
   static constexpr auto slDim = NDLType<SecondLayer>::template Type<DataType>::dimension;
 
   using LayerPairContainer = LayerPairContainer<DataType, flDim, slDim, LayerPair<DataType, FirstLayer, SecondLayer>>;
-  using Input = typename utils::math::LinearArray<DataType, flDim, 1>;
   using SecondLayerType = typename NDLType<SecondLayer>::template Type<DataType>;
 
   using LayerPairContainer::biases;
   using LayerPairContainer::weights;
 
 public:
+  using Input = typename utils::math::LinearColumnArray<DataType, flDim>;
+
   template <Size idx> auto& weights() {
     static_assert(idx == 0, "Request for weights beyond last layer");
     return weights();
@@ -227,6 +253,10 @@ public:
   template <typename T> auto randomize_weights(T&& transformer) {
     LayerPairContainer::randomize_weights(std::forward<T>(transformer));
   }
+
+  auto serialize(FILE* out) { LayerPairContainer::serialize(out); }
+
+  auto deserialize(FILE* in) { LayerPairContainer::deserialize(in); }
 };
 
 template <typename B, typename D, typename DataType, typename FirstLayer, typename SecondLayer>
@@ -235,16 +265,15 @@ class ConvolutionalLayerPairFlattener {
 
 public:
   auto feedForward(Input const& input) {
-    decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
+    typename D::Input flattenedInput {input.flatten()};
     return static_cast<D*>(static_cast<B*>(this))->feedForward(flattenedInput);
   }
 
   template <typename TargetType>
   auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
-    decltype(std::declval<D>().template weights<0>().transpose()) flattenedInput {input.flatten()};
+    typename D::Input flattenedInput {input.flatten()};
     auto rez = static_cast<D*>(static_cast<B*>(this))->backPropagate(flattenedInput, target, learningRate);
-    return Input {
-        static_cast<D*>(static_cast<B*>(this))->backPropagate(flattenedInput, target, learningRate).flatten()};
+    return Input {rez.flatten()};
   }
 };
 
@@ -272,7 +301,10 @@ public:
   using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
+  using InnerLayerPair::deserialize;
+  using InnerLayerPair::InnerLayerPair;
   using InnerLayerPair::randomize_weights;
+  using InnerLayerPair::serialize;
   using InnerLayerPair::weights;
 };
 
@@ -297,7 +329,9 @@ public:
   using Flattener::backPropagate;
   using Flattener::feedForward;
   using InnerLayerPair::biases;
+  using InnerLayerPair::deserialize;
   using InnerLayerPair::randomize_weights;
+  using InnerLayerPair::serialize;
   using InnerLayerPair::weights;
 };
 
@@ -350,6 +384,16 @@ public:
     InnerContainer::randomize_weights(std::forward<T>(transformer));
     NextLayerPair::randomize_weights(std::forward<T>(transformer));
   }
+
+  auto serialize(FILE* out) {
+    InnerContainer::serialize(out);
+    NextLayerPair::serialize(out);
+  }
+
+  auto deserialize(FILE* in) {
+    InnerContainer::deserialize(in);
+    NextLayerPair::deserialize(in);
+  }
 };
 
 template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
@@ -381,6 +425,9 @@ public:
   template <typename T> auto randomize_weights(T&& transformer) {
     NextLayerPair::randomize_weights(std::forward<T>(transformer));
   }
+
+  using NextLayerPair ::deserialize;
+  using NextLayerPair ::serialize;
 };
 } // namespace impl
 

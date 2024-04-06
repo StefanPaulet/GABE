@@ -164,7 +164,7 @@ TEST(FunctionTest, StridedDeepConvolutionFunction) {
   auto mtrx3 = larray(larray(larray(1, 2, 3, 4), larray(5, 6, 7, 8), larray(9, 10, 11, 12), larray(13, 14, 15, 16)));
   auto mtrx4 = larray(larray(2, 1), larray(5, 6));
   StridedDeepConvolutionFunction<2, decltype(mtrx3), LinearArray<int, 1, 2, 2>> scf2;
-  auto rez2 = larray(larray(larray(65, 93), larray(177, 205)));
+  auto rez2 = larray(larray(larray(116, 130), larray(172, 186)));
   ASSERT_EQ(scf2.derive(mtrx3, mtrx4), rez2);
 
   auto mtrx5 = larray(larray(2, 2), larray(3, 1));

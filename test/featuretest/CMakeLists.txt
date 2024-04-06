@@ -14,6 +14,7 @@ endif()
 set(
     FEATURE_TEST_SOURCES
     DeepBackPropagationTest.cpp
+    ConvolutionalDeepBackPropagationTest.cpp
 )
 
 add_executable(featuretests

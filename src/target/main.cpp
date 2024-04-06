@@ -13,14 +13,4 @@ using namespace gabe::nn;
 using linearArray::larray;
 } // namespace
 
-
-int main() {
-  auto x = larray(larray(1, 2, 3), larray(4, 2, 1));
-  FILE* myCout = fopen("file.out", "w");
-  x.serialize(myCout);
-  fclose(myCout);
-  myCout = fopen("file.out", "r");
-  decltype(x) y = LinearArray<int, 2, 3>::deserialize(myCout);
-  std::cout << y << '\n';
-  fclose(myCout);
-}
+int main() {}
