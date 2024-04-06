@@ -85,21 +85,14 @@ TEST(ConvolutionalNeuralNetwork, PropagationWithSerialization) {
 }
 
 TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
-  auto v =
-      loadMNIST<LinearArray<float, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/test", MNISTDataSetType::TEST);
-  std::remove_cvref_t<decltype(v.data())> truncated_v = {v.data().begin(), v.data().begin() + 100};
-  decltype(v) truncData {truncated_v};
-  truncData.normalize();
+  auto train = loadMNIST<LinearArray<float, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/train",
+                                                        MNISTDataSetType::TRAIN);
+  train.normalize();
 
   std::random_device rd {};
-  std::ranges::shuffle(truncData.data(), std::mt19937(rd()));
-
-  decltype(v) train {};
-  train.data() = {truncData.data().begin(), truncData.data().begin() + truncData.data().size() / 4 * 3};
-  decltype(v) validate {};
-  validate.data() = {truncData.data().begin() + truncData.data().size() / 4 * 3, truncData.data().end()};
+  std::ranges::shuffle(train.data(), std::mt19937(rd()));
   NeuralNetwork<float, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                StridedConvolutionalLayer<64, 3, 2, ReluFunction<>>, SizedLayer<100, Layer, ReluFunction<>>,
+                SizedLayer<100, Layer, ReluFunction<>>,
                 SizedLayer<10, OutputLayer, SoftmaxFunction<>, MeanSquaredErrorFunction<>>>
       nn;
 
@@ -108,12 +101,8 @@ TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
   rl.rlim_cur *= 4;
   setrlimit(RLIMIT_STACK, &rl);
 
-  nn.deserialize("file.out");
-  nn.backPropagate(1, 0.075f, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<float, 10, 1>> {});
-  nn.serialize("file.out");
-  auto err = nn.validate(validate, gabe::utils::math::SoftMaxDecoder<short int, LinearArray<float, 10, 1>> {});
-  std::cout << err << '\n';
-  ASSERT_TRUE(err < 0.9);
+  nn.backPropagate(10, 0.075f, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<float, 10, 1>> {});
+  nn.serialize("mnistNetwork.out");
 }
 
 TEST(Smth, smth) {

@@ -15,6 +15,7 @@ set(
     UNIT_TEST_SOURCES
     ConvNetTest.cpp
     FunctionTest.cpp
+    LayerInitializationTest.cpp
     LayerTest.cpp
     LinearArrayTest.cpp
     LinearMatrixTest.cpp

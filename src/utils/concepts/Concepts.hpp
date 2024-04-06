@@ -77,6 +77,10 @@ template <typename T>
 concept DeepLinearMatrixType = LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsDeepLinearMatrix<T>::value;
 
 template <typename T>
+concept DeepKernelType =
+    LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsDeepThreeDimensionalKernel<T>::value;
+
+template <typename T>
 concept ConvolutionalLayerType = nn::impl::IsConvolutionalLayer<T>::value;
 
 template <typename T>

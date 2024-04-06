@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "initialization/InitializationScheme.hpp"
 #include "layer/ConvolutionalLayer.hpp"
 #include "layer/Layer.hpp"
 #include "utils/data/Data.hpp"
@@ -31,12 +32,26 @@ public:
     LayerPair::randomize_weights(transformer);
   }
 
-  template <typename InputLayerType, typename LabelEncoderType>
-  auto backPropagate(Size epochCount, DataType learningRate, DataSet<InputLayerType> const& dataSet,
-                     LabelEncoderType&& labelEncoder) -> void {
-    for (auto idx = 0; idx < epochCount; ++idx) {
+  template <typename Input, typename LabelEncoderType> auto backPropagate(Size epochCount, DataType learningRate,
+                                                                          DataSet<Input> const& dataSet,
+                                                                          LabelEncoderType&& labelEncoder) -> void {
+    for (Size idx = 0; idx < epochCount; ++idx) {
       for (auto const& e : dataSet.data()) {
         backPropagate(e.data, labelEncoder(e.label), learningRate);
+      }
+    }
+  }
+
+  template <typename Input, typename LabelEncoder>
+  auto backPropagateWithSerialization(Size epochCount, DataType learningRate, DataSet<Input> const& dataSet,
+                                      LabelEncoder&& labelEncoder, std::string const& serializationFile) -> void {
+    for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
+      for (auto const& e : dataSet.data()) {
+        backPropagate(e.data, labelEncoder(e.label), learningRate);
+        ++propIdx;
+        if (propIdx % 20 == 0) {
+          serialize(serializationFile);
+        }
       }
     }
   }
