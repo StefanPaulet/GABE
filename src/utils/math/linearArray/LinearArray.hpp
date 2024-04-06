@@ -11,7 +11,7 @@
 #include <cassert>
 #include <cstring>
 #include <numeric>
-#include <ostream>
+#include <thread>
 
 namespace gabe::utils::math {
 
@@ -378,13 +378,40 @@ public:
   template <Size rez_col_size> auto product(LinearArray<DataType, col_size, rez_col_size> const& rhs) const
       -> LinearArray<DataType, line_size, rez_col_size> {
     auto rez = LinearArray<DataType, line_size, rez_col_size>();
-    for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
-      for (int colIdx = 0; colIdx < col_size; ++colIdx) {
-        for (int cellIdx = 0; cellIdx < rez_col_size; ++cellIdx) {
-          rez[lineIdx][cellIdx] += data()[lineIdx][colIdx] * rhs[colIdx][cellIdx];
+
+    auto localProd = [&rez, &rhs, this](Size lStIdx, Size cStIdx, Size lEnIdx, Size cEnIdx) {
+      for (Size lineIdx = lStIdx; lineIdx < lEnIdx; ++lineIdx) {
+        for (Size colIdx = cStIdx; colIdx < cEnIdx; ++colIdx) {
+          for (Size cellIdx = 0; cellIdx < col_size; ++cellIdx) {
+            rez[lineIdx][colIdx] += data()[lineIdx][cellIdx] * rhs[cellIdx][colIdx];
+          }
         }
       }
+    };
+
+    if constexpr (line_size > 3 && rez_col_size > 3) {
+      constexpr auto threadCount = 4;
+      std::array<std::pair<Size, Size>, threadCount> lDir {{{0, line_size / threadCount},
+                                                            {0, line_size / threadCount},
+                                                            {line_size / threadCount, line_size},
+                                                            {line_size / threadCount, line_size}}};
+      std::array<std::pair<Size, Size>, threadCount> cDir {{{0, rez_col_size / threadCount},
+                                                            {rez_col_size / threadCount, rez_col_size},
+                                                            {0 / threadCount, rez_col_size},
+                                                            {rez_col_size / threadCount, rez_col_size}}};
+      auto closure = [&localProd, &lDir, &cDir](Size idx) {
+        return [idx, localProd, &lDir, &cDir] {
+          return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);
+        };
+      };
+      {
+        std::array<std::jthread, threadCount> threadArr {std::jthread {closure(0)}, std::jthread {closure(1)},
+                                                         std::jthread {closure(2)}, std::jthread {closure(3)}};
+      }
+    } else {
+      localProd(0, 0, line_size, rez_col_size);
     }
+
     return rez;
   }
 

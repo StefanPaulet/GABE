@@ -47,7 +47,6 @@ public:
     for (auto const& e : dataSet.data()) {
       auto rez = feedForward(e.data);
       if (labelDecoder(rez) != e.label) {
-        std::cout << labelDecoder(rez) << " " << e.label << '\n';
         error += static_cast<DataType>(1) / dataSet.data().size();
       }
     }

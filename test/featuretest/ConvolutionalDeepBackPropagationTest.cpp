@@ -5,6 +5,7 @@
 #include "neural_net/NeuralNetwork.hpp"
 #include "utils/data/dataLoader/DataLoader.hpp"
 #include "gtest/gtest.h"
+#include <sys/resource.h>
 
 namespace {
 using namespace gabe::utils::math;
@@ -83,7 +84,6 @@ TEST(ConvolutionalNeuralNetwork, PropagationWithSerialization) {
   ASSERT_EQ(learned, target);
 }
 
-
 TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
   auto v =
       loadMNIST<LinearArray<float, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/test", MNISTDataSetType::TEST);
@@ -99,15 +99,21 @@ TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
   decltype(v) validate {};
   validate.data() = {truncData.data().begin() + truncData.data().size() / 4 * 3, truncData.data().end()};
   NeuralNetwork<float, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                SizedLayer<100, Layer, ReluFunction<>>,
+                StridedConvolutionalLayer<64, 3, 2, ReluFunction<>>, SizedLayer<100, Layer, ReluFunction<>>,
                 SizedLayer<10, OutputLayer, SoftmaxFunction<>, MeanSquaredErrorFunction<>>>
       nn;
+
+  rlimit rl;
+  getrlimit(RLIMIT_STACK, &rl);
+  rl.rlim_cur *= 4;
+  setrlimit(RLIMIT_STACK, &rl);
+
   nn.deserialize("file.out");
-  nn.backPropagate(10, 0.075f, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<float, 10, 1>> {});
+  nn.backPropagate(1, 0.075f, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<float, 10, 1>> {});
   nn.serialize("file.out");
-  //  auto err = nn.validate(validate, gabe::utils::math::SoftMaxDecoder<short int, LinearArray<float, 10, 1>>{});
-  //  std::cout << err << '\n';
-  //  ASSERT_TRUE(err < 0.9);
+  auto err = nn.validate(validate, gabe::utils::math::SoftMaxDecoder<short int, LinearArray<float, 10, 1>> {});
+  std::cout << err << '\n';
+  ASSERT_TRUE(err < 0.9);
 }
 
 TEST(Smth, smth) {
