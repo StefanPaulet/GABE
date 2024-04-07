@@ -45,7 +45,7 @@ TEST(FunctionTest, Identity) {
   ASSERT_EQ(idt.derive(5), exp2);
 }
 
-TEST(FunctionTest, MeanSquaredErrorTest) {
+TEST(FunctionTest, MeanSquaredError) {
   MeanSquaredErrorFunction<> msq;
 
   static_assert(decltype(msq)::isCostFunction, "MeanSquaredError is not a cost function");
@@ -76,6 +76,20 @@ TEST(FunctionTest, MeanSquaredErrorTest) {
   auto ld_derive_exp = larray(larray(-0.68, 0.4, 0.28));
   ASSERT_EQ(msq(ld_arr1, ld_arr2), ld_exp);
   ASSERT_EQ(msq.derive(ld_arr1, ld_arr2), ld_derive_exp);
+}
+
+TEST(FunctionTest, CrossEntropy) {
+  CrossEntropyFunction<> cef;
+
+  static_assert(decltype(cef)::isCostFunction, "MeanSquaredError is not a cost function");
+
+  auto arr1 = larray(larray(0.58, 0.3, 0.12)).transpose();
+  auto tarr1 = OneHotEncoder<int, LinearArray<double, 3, 1>> {}(1);
+  auto exp1 = -log(0.3);
+  ASSERT_EQ(cef(arr1, tarr1).accumulate(0, [](double x, double y) { return x + y; }), exp1);
+
+  auto derivExp1 = -1.0 / 0.3;
+  ASSERT_EQ(cef.derive(arr1, tarr1).accumulate(0, [](double x, double y) { return x + y; }), derivExp1);
 }
 
 TEST(FunctionTest, Softmax) {

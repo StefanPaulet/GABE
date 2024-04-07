@@ -69,43 +69,70 @@ template <> struct IdentityFunction<void> {
 };
 
 
-template <typename Input = void, typename TargetType = void> struct MeanSquaredErrorFunction {};
+template <typename Input = void, typename Target = void> struct MeanSquaredErrorFunction {};
 
 template <> struct MeanSquaredErrorFunction<void, void> {
   static constexpr auto isCostFunction = true;
 
-  template <typename Input, typename TargetType = Input> auto operator()(Input&& in, TargetType&& target) const {
-    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<TargetType>>()(
-        std::forward<Input>(in), std::forward<TargetType>(target));
+  template <typename Input, typename Target = Input> auto operator()(Input&& in, Target&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>()(
+        std::forward<Input>(in), std::forward<Target>(target));
   }
 
-  template <typename Input, typename TargetType = Input> auto derive(Input&& in, TargetType&& target) const {
-    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<TargetType>>().derive(
-        std::forward<Input>(in), std::forward<TargetType>(target));
+  template <typename Input, typename Target = Input> auto derive(Input&& in, Target&& target) const {
+    return MeanSquaredErrorFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>().derive(
+        std::forward<Input>(in), std::forward<Target>(target));
   }
 };
 
-template <concepts::IntegralType Input, concepts::IntegralType TargetType>
-struct MeanSquaredErrorFunction<Input, TargetType> {
+template <concepts::IntegralType Input, concepts::IntegralType Target> struct MeanSquaredErrorFunction<Input, Target> {
   static constexpr auto isCostFunction = true;
 
-  auto operator()(Input in, TargetType target) const { return (target - in) * (target - in) / 2; }
+  auto operator()(Input in, Target target) const { return (target - in) * (target - in) / 2; }
 
   auto derive(Input in, Input target) const { return (in - target); }
 };
 
-template <concepts::LinearArrayType Input, concepts::LinearArrayType TargetType>
-struct MeanSquaredErrorFunction<Input, TargetType> {
+template <concepts::LinearArrayType Input, concepts::LinearArrayType Target>
+struct MeanSquaredErrorFunction<Input, Target> {
   static constexpr auto isCostFunction = true;
 
-  auto operator()(Input const& in, TargetType const& target) const {
-    auto divider = [](typename Input::UnderlyingType const& val) {
+  auto operator()(Input const& in, Target const& target) const {
+    auto divider = [](typename Input::UnderlyingType val) {
       return val / static_cast<typename Input::UnderlyingType>(2);
     };
     return ((target - in) * (target - in)).project(divider);
   }
 
-  auto derive(Input const& in, TargetType const& target) const { return (in - target); }
+  auto derive(Input const& in, Target const& target) const { return (in - target); }
+};
+
+template <typename Input = void, typename Target = void> struct CrossEntropyFunction {};
+
+template <> struct CrossEntropyFunction<void, void> {
+  static constexpr auto isCostFunction = true;
+
+  template <typename Input, typename Target = Input> auto operator()(Input&& in, Target&& target) const {
+    return CrossEntropyFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>()(
+        std::forward<Input>(in), std::forward<Target>(target));
+  }
+
+  template <typename Input, typename Target = Input> auto derive(Input&& in, Target&& target) const {
+    return CrossEntropyFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>().derive(
+        std::forward<Input>(in), std::forward<Target>(target));
+  }
+};
+
+template <concepts::LinearArrayType Input, concepts::LinearArrayType Target>
+struct CrossEntropyFunction<Input, Target> {
+  static constexpr auto isCostFunction = true;
+
+  auto operator()(Input const& in, Target const& target) const {
+    auto loger = [](typename Input::UnderlyingType val) { return std::log(val); };
+    return target * in.project(loger) * -1;
+  }
+
+  auto derive(Input const& in, Target const& target) const { return target / in * -1; }
 };
 
 

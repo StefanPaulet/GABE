@@ -177,8 +177,7 @@ public:
     return NextLayerPair::feedForward(SecondLayerType().feedForward(weights().product(input) + biases()));
   }
 
-  template <typename TargetType>
-  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
+  template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learning_rate) {
     auto z_value = weights().product(input) + biases();
     auto nextLayerGradient =
         NextLayerPair::backPropagate(SecondLayerType().feedForward(z_value), target, learning_rate);
@@ -236,8 +235,7 @@ public:
 
   auto feedForward(Input const& input) { return SecondLayerType().feedForward(weights().product(input) + biases()); }
 
-  template <typename TargetType>
-  auto backPropagate(Input const& input, TargetType const& target, DataType learning_rate) {
+  template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learning_rate) {
     static_assert(utils::math::impl::is_cost_function<typename SecondLayerType::LayerFunction>::value,
                   "Final layer must have a cost function");
     auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
@@ -269,8 +267,7 @@ public:
     return static_cast<D*>(static_cast<B*>(this))->feedForward(flattenedInput);
   }
 
-  template <typename TargetType>
-  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+  template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learningRate) {
     typename D::Input flattenedInput {input.flatten()};
     auto rez = static_cast<D*>(static_cast<B*>(this))->backPropagate(flattenedInput, target, learningRate);
     return Input {rez.flatten()};
@@ -371,8 +368,7 @@ public:
     return NextLayerPair::feedForward(SecondLayerType().feedForward(input, weights()));
   }
 
-  template <typename TargetType>
-  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+  template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learningRate) {
     auto nextLayerGradient =
         NextLayerPair::backPropagate(SecondLayerType().feedForward(input, weights()), target, learningRate);
     auto [kernelGradient, currentLayerGradient] = SecondLayerType().backPropagate(input, weights(), nextLayerGradient);
@@ -416,8 +412,7 @@ public:
 
   auto feedForward(Input const& input) { return NextLayerPair::feedForward(SecondLayerType().feedForward(input)); }
 
-  template <typename TargetType>
-  auto backPropagate(Input const& input, TargetType const& target, DataType learningRate) {
+  template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learningRate) {
     auto nextLayerGradient = NextLayerPair::backPropagate(SecondLayerType().feedForward(input), target, learningRate);
     return SecondLayerType().backPropagate(input, nextLayerGradient);
   }

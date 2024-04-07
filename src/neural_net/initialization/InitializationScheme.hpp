@@ -15,11 +15,17 @@ template <typename D> struct InitializationScheme {
   }
 };
 
-template <Size d = 0, typename = void> struct HeInitialization {};
+template <typename = void> struct HeInitialization {};
 
-template <Size depth, gabe::utils::concepts::DeepKernelType KernelArray> struct HeInitialization<depth, KernelArray> :
-    InitializationScheme<HeInitialization<depth, KernelArray>> {
-  auto initialize(KernelArray& in, std::random_device& rd) const {
+template <> struct HeInitialization<void> {
+  template <typename T, typename... Params> auto operator()(T&& in, Params... params) {
+    return HeInitialization<std::remove_cvref_t<T>> {}(std::forward<T>(in), params...);
+  }
+};
+
+template <gabe::utils::concepts::DeepKernelType KernelArray> struct HeInitialization<KernelArray> :
+    InitializationScheme<HeInitialization<KernelArray>> {
+  auto initialize(KernelArray& in, std::random_device& rd, Size depth) const {
     using KA = typename KernelArray::InnerLinearArray;
     std::normal_distribution<typename KA::UnderlyingType> distribution(
         0, 1.0 / std::sqrt(depth * KA::total_size() / KA::size()));
@@ -28,9 +34,13 @@ template <Size depth, gabe::utils::concepts::DeepKernelType KernelArray> struct 
   }
 };
 
-template <Size d> struct HeInitialization<d, void> {
-  template <typename T> auto operator()(T&& in) {
-    return HeInitialization<d, std::remove_cvref_t<T>> {}(std::forward<T>(in));
+template <gabe::utils::concepts::LinearMatrixType Matrix> struct HeInitialization<Matrix> :
+    InitializationScheme<HeInitialization<Matrix>> {
+  auto initialize(Matrix& in, std::random_device& rd) const {
+    std::normal_distribution<typename Matrix::UnderlyingType> distribution(
+        0, 1.0 / std::sqrt(in.total_size() / in.size()));
+    auto transformer = [&distribution, &rd](typename Matrix::UnderlyingType) { return distribution(rd); };
+    in.transform(transformer);
   }
 };
 } // namespace gabe::nn
