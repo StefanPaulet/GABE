@@ -61,6 +61,7 @@ public:
     double error = .0;
     for (auto const& e : dataSet.data()) {
       auto rez = feedForward(e.data);
+      std::cout << labelDecoder(rez) << " " << e.label << '\n';
       if (labelDecoder(rez) != e.label) {
         error += static_cast<DataType>(1) / dataSet.data().size();
       }

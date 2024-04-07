@@ -12,5 +12,4 @@ using namespace gabe::utils::data;
 using namespace gabe::nn;
 using linearArray::larray;
 } // namespace
-
 int main() {}

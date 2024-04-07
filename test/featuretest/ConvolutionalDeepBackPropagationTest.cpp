@@ -85,15 +85,17 @@ TEST(ConvolutionalNeuralNetwork, PropagationWithSerialization) {
 }
 
 TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
-  auto train = loadMNIST<LinearArray<float, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/train",
-                                                        MNISTDataSetType::TRAIN);
-  train.normalize();
-
+  auto train = loadMNIST<LinearArray<double, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/train",
+                                                         MNISTDataSetType::TRAIN);
+  for (auto& e : train.data()) {
+    e.data = e.data / 255;
+  }
   std::random_device rd {};
   std::ranges::shuffle(train.data(), std::mt19937(rd()));
-  NeuralNetwork<float, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                SizedLayer<100, Layer, ReluFunction<>>,
-                SizedLayer<10, OutputLayer, SoftmaxFunction<>, MeanSquaredErrorFunction<>>>
+  NeuralNetwork<double, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>, HeInitialization<>>,
+                MaxPoolLayer<2, 2>, InitSizedLayer<100, Layer, HeInitialization<>, ReluFunction<>>,
+                InitSizedLayer<10, OutputLayer, UniformInitialization<-1, 1>, SoftmaxFunction<>,
+                               CategoricalCrossEntropyFunction<>>>
       nn;
 
   rlimit rl;
@@ -101,16 +103,27 @@ TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
   rl.rlim_cur *= 4;
   setrlimit(RLIMIT_STACK, &rl);
 
-  nn.backPropagate(10, 0.075f, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<float, 10, 1>> {});
+  nn.serialize("mnistNetwork.out");
+  nn.backPropagateWithSerialization(
+      10, 0.075, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<double, 10, 1>> {}, "mnistNetwork.out");
   nn.serialize("mnistNetwork.out");
 }
 
-TEST(Smth, smth) {
-  NeuralNetwork<float, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<8, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                StridedConvolutionalLayer<12, 3, 2, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                SizedLayer<10, Layer, ReluFunction<>>,
-                SizedLayer<10, OutputLayer, SoftmaxFunction<>, MeanSquaredErrorFunction<>>>
+TEST(ConvolutionalNeuralNetwork, MNISTValidate) {
+  auto validate = loadMNIST<LinearArray<double, 1, 28, 28>>("../../../test/featuretest/datasets/mnist/test",
+                                                            MNISTDataSetType::TEST);
+  decltype(validate) actualValidate {{validate.data().begin(), validate.data().begin() + 500}};
+  NeuralNetwork<double, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
+                SizedLayer<100, Layer, ReluFunction<>>,
+                SizedLayer<10, OutputLayer, SoftmaxFunction<>, CrossEntropyFunction<>>>
       nn;
-  nn.deserialize("file.out");
-  std::cout << nn.weights<0>() << '\n';
+
+  rlimit rl;
+  getrlimit(RLIMIT_STACK, &rl);
+  rl.rlim_cur *= 4;
+  setrlimit(RLIMIT_STACK, &rl);
+
+  nn.deserialize("mnistNetwork.out");
+  auto err = nn.validate(actualValidate, gabe::utils::math::SoftMaxDecoder<short int, LinearArray<double, 10, 1>> {});
+  ASSERT_TRUE(err < 0.9);
 }

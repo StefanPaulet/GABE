@@ -123,7 +123,7 @@ template <> struct CrossEntropyFunction<void, void> {
   }
 };
 
-template <concepts::LinearArrayType Input, concepts::LinearArrayType Target>
+template <concepts::LinearMatrixType Input, concepts::LinearMatrixType Target>
 struct CrossEntropyFunction<Input, Target> {
   static constexpr auto isCostFunction = true;
 
@@ -133,6 +133,36 @@ struct CrossEntropyFunction<Input, Target> {
   }
 
   auto derive(Input const& in, Target const& target) const { return target / in * -1; }
+};
+
+template <typename Input = void, typename Target = void> struct CategoricalCrossEntropyFunction {};
+
+template <> struct CategoricalCrossEntropyFunction<void, void> {
+  static constexpr auto isCostFunction = true;
+  static constexpr auto isCatCrossEntropy = true;
+
+  template <typename Input, typename Target = Input> auto operator()(Input&& in, Target&& target) const {
+    return CategoricalCrossEntropyFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>()(
+        std::forward<Input>(in), std::forward<Target>(target));
+  }
+
+  template <typename Input, typename Target = Input> auto derive(Input&& in, Target&& target) const {
+    return CategoricalCrossEntropyFunction<std::remove_cvref_t<Input>, std::remove_cvref_t<Target>>().derive(
+        std::forward<Input>(in), std::forward<Target>(target));
+  }
+};
+
+template <concepts::LinearMatrixType Input, concepts::LinearMatrixType Target>
+struct CategoricalCrossEntropyFunction<Input, Target> {
+  static constexpr auto isCostFunction = true;
+  static constexpr auto isCatCrossEntropy = true;
+
+  auto operator()(Input const& in, Target const& target) const {
+    auto loger = [](typename Input::UnderlyingType val) { return std::log(val); };
+    return target * in.project(loger) * -1;
+  }
+
+  auto derive(Input const& in, Target const& target) const { return in - target; }
 };
 
 

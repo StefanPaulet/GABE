@@ -220,7 +220,14 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e / rhsArr[i++]; });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable {
+    if constexpr (concepts::IntegralType<std::remove_cvref_t<decltype(rhsArr[i])>>) {
+      if (HighPrecisionEquals<> {}(rhsArr[i], static_cast<typename FD::UnderlyingType>(0))) {
+        assert(false && "Cannot divide by 0");
+      }
+    }
+    e = e / rhsArr[i++];
+  });
   return result;
 }
 

@@ -11,7 +11,8 @@
 #include <utils/math/linearArray/LinearArray.hpp>
 
 namespace gabe::nn {
-template <typename DataType, typename ActivationFunction, typename Dim> class Layer : private ActivationFunction {
+template <typename DataType, typename ActivationFunction, typename InitializationScheme, typename Dim> class Layer :
+    private ActivationFunction {
 public:
   static const Size dimension = Dim::size();
 
@@ -22,6 +23,7 @@ public:
   using LayerFunction = ActivationFunction;
   using Input = InnerLinearArray;
   using OutputType = Input;
+  using InitializationFunction = InitializationScheme;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -38,8 +40,9 @@ public:
   }
 };
 
-template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename Dim>
-class Layer<DataType, ActivationFunction, Dim> : private ActivationFunction {
+template <typename DataType, utils::concepts::ContainerFunctionType ActivationFunction, typename InitializationScheme,
+          typename Dim>
+class Layer<DataType, ActivationFunction, InitializationScheme, Dim> : private ActivationFunction {
 public:
   static const Size dimension = Dim::size();
 
@@ -50,6 +53,7 @@ public:
   using LayerFunction = ActivationFunction;
   using Input = InnerLinearArray;
   using OutputType = Input;
+  using InitializationFunction = InitializationScheme;
 
   Layer() = default;
   Layer(Layer const&) = default;
@@ -64,10 +68,11 @@ public:
   }
 };
 
-template <typename DataType, typename ActivationFunction, typename CostFunction, typename Dim>
-class OutputLayer : public Layer<DataType, ActivationFunction, Dim>, private CostFunction {
+template <typename DataType, typename ActivationFunction, typename CostFunction, typename InitializationScheme,
+          typename Dim>
+class OutputLayer : public Layer<DataType, ActivationFunction, InitializationScheme, Dim>, private CostFunction {
 private:
-  using Layer = Layer<DataType, ActivationFunction, Dim>;
+  using Layer = Layer<DataType, ActivationFunction, InitializationScheme, Dim>;
   using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, Layer::dimension>;
   using Layer::backPropagate;
 
@@ -75,9 +80,31 @@ public:
   using Input = InnerLinearArray;
   using LayerFunction = CostFunction;
   using Layer::feedForward;
+  using InitializationFunction = InitializationScheme;
 
-  auto backPropagate(Input const& input, Input const& target) -> std::pair<InnerLinearArray, InnerLinearArray> {
-    return {backPropagate(input), (*static_cast<CostFunction*>(this)).derive(feedForward(input), target)};
+  auto backPropagate(Input const& input, Input const& target) -> InnerLinearArray {
+    return backPropagate(input) * (*static_cast<CostFunction*>(this)).derive(feedForward(input), target);
+  }
+};
+
+template <typename DataType, typename ActivationFunction,
+          gabe::utils::concepts::CatCrossEntropyFunctionType CostFunction, typename InitializationScheme, typename Dim>
+class OutputLayer<DataType, ActivationFunction, CostFunction, InitializationScheme, Dim> :
+    public Layer<DataType, ActivationFunction, InitializationScheme, Dim>,
+    private CostFunction {
+private:
+  using Layer = Layer<DataType, ActivationFunction, InitializationScheme, Dim>;
+  using InnerLinearArray = gabe::utils::math::LinearColumnArray<DataType, Layer::dimension>;
+  using Layer::backPropagate;
+
+public:
+  using Input = InnerLinearArray;
+  using LayerFunction = CostFunction;
+  using Layer::feedForward;
+  using InitializationFunction = InitializationScheme;
+
+  auto backPropagate(Input const& input, Input const& target) -> InnerLinearArray {
+    return (*static_cast<CostFunction*>(this)).derive(feedForward(input), target);
   }
 };
 
@@ -91,6 +118,10 @@ public:
   LayerPairContainer() = default;
   LayerPairContainer(LayerPairContainer const&) = default;
   LayerPairContainer(LayerPairContainer&&) noexcept = default;
+  template <typename IS> LayerPairContainer(IS&& is) {
+    is(_weights);
+    is(_biases);
+  }
 
   auto& weights() { return _weights; }
   auto& biases() { return _biases; }
@@ -125,6 +156,7 @@ public:
   ConvolutionalLayerPairContainer() = default;
   ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer const&) = default;
   ConvolutionalLayerPairContainer(ConvolutionalLayerPairContainer&&) noexcept = default;
+  template <typename IS> ConvolutionalLayerPairContainer(IS&& is) { is(_weights, inputDepth); }
 
   auto& weights() { return _weights; }
   template <typename T> auto randomize_weights(T&& transformer) -> void {
@@ -155,6 +187,8 @@ protected:
   using LayerPairContainer::weights;
 
 public:
+  LayerPair() : LayerPairContainer(typename SecondLayerType::InitializationFunction {}) {}
+
   using Input = utils::math::LinearColumnArray<DataType, flDim>;
 
   template <Size idx> auto& weights() {
@@ -221,6 +255,8 @@ protected:
   using LayerPairContainer::weights;
 
 public:
+  LayerPair() : LayerPairContainer(typename SecondLayerType::InitializationFunction {}) {}
+
   using Input = typename utils::math::LinearColumnArray<DataType, flDim>;
 
   template <Size idx> auto& weights() {
@@ -238,8 +274,7 @@ public:
   template <typename Target> auto backPropagate(Input const& input, Target const& target, DataType learning_rate) {
     static_assert(utils::math::impl::is_cost_function<typename SecondLayerType::LayerFunction>::value,
                   "Final layer must have a cost function");
-    auto rezPair = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
-    auto endLayerGradient = std::get<0>(rezPair) * std::get<1>(rezPair);
+    auto endLayerGradient = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
     auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
 
     biases() -= endLayerGradient * learning_rate;
@@ -356,6 +391,8 @@ private:
   using NextLayerPair = LayerPair<DataType, SecondLayerType, RemainingLayers...>;
 
 public:
+  LayerPair() : InnerContainer(typename SecondLayerType::InitializationFunction {}) {}
+
   template <Size idx> auto& weights() {
     if constexpr (idx == 0) {
       return weights();
@@ -426,9 +463,9 @@ public:
 };
 } // namespace impl
 
-template <typename DataType, typename Dim> struct InputLayer :
-    Layer<DataType, utils::math::IdentityFunction<DataType>, Dim> {
-  using Layer<DataType, utils::math::IdentityFunction<DataType>, Dim>::Layer;
+template <typename DataType, typename InitializationScheme, typename Dim> struct InputLayer :
+    Layer<DataType, utils::math::IdentityFunction<DataType>, InitializationScheme, Dim> {
+  using Layer<DataType, utils::math::IdentityFunction<DataType>, InitializationScheme, Dim>::Layer;
 };
 
 

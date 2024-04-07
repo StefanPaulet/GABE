@@ -26,4 +26,8 @@ template <typename T> struct is_convolution_function<T, std::void_t<decltype(T::
 
 template <typename, typename = void> struct is_pooling_function : std::false_type {};
 template <typename T> struct is_pooling_function<T, std::void_t<decltype(T::isPoolingFunction)>> : std::true_type {};
+
+template <typename, typename = void> struct is_cat_cross_entropy_function : std::false_type {};
+template <typename T> struct is_cat_cross_entropy_function<T, std::void_t<decltype(T::isCatCrossEntropy)>> :
+    std::true_type {};
 } // namespace gabe::utils::math::impl

@@ -15,6 +15,11 @@ template <typename D> struct InitializationScheme {
   }
 };
 
+struct NoInitialization : InitializationScheme<NoInitialization> {
+  template <typename In, typename... Params> auto initialize(In&, std::random_device&, Params...) const { /* empty */
+  }
+};
+
 template <typename = void> struct HeInitialization {};
 
 template <> struct HeInitialization<void> {
@@ -40,6 +45,15 @@ template <gabe::utils::concepts::LinearMatrixType Matrix> struct HeInitializatio
     std::normal_distribution<typename Matrix::UnderlyingType> distribution(
         0, 1.0 / std::sqrt(in.total_size() / in.size()));
     auto transformer = [&distribution, &rd](typename Matrix::UnderlyingType) { return distribution(rd); };
+    in.transform(transformer);
+  }
+};
+
+template <int lb, int ub> struct UniformInitialization : InitializationScheme<UniformInitialization<lb, ub>> {
+  template <utils::concepts::LinearArrayType T> auto initialize(T& in, std::random_device& rd) const {
+    std::uniform_real_distribution distribution {static_cast<typename T::UnderlyingType>(lb),
+                                                 static_cast<typename T::UnderlyingType>(ub)};
+    auto transformer = [&distribution, &rd](typename T::UnderlyingType) { return distribution(rd); };
     in.transform(transformer);
   }
 };

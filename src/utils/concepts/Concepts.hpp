@@ -93,6 +93,9 @@ template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 
 template <typename T>
+concept CatCrossEntropyFunctionType = gabe::utils::math::impl::is_cat_cross_entropy_function<T>::value;
+
+template <typename T>
 concept DeepConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
 
 namespace impl {

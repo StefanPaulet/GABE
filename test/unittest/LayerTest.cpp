@@ -13,7 +13,9 @@ using linearArray::larray;
 } // namespace
 
 TEST(LayerTest, Construction) {
-  Layer<int, IdentityFunction<>, Dimension<3>> lay1 {};
+  Layer<int, IdentityFunction<>, NoInitialization, Dimension<3>> lay1 {};
   SizedLayer<3, Layer, IdentityFunction<>>::template Type<int> lay2;
+  InitSizedLayer<3, Layer, NoInitialization, IdentityFunction<>>::template Type<int> lay3;
   static_assert(std::is_same_v<decltype(lay2), decltype(lay1)>);
+  static_assert(std::is_same_v<decltype(lay3), decltype(lay1)>);
 }
