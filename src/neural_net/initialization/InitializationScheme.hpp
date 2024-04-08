@@ -49,10 +49,12 @@ template <gabe::utils::concepts::LinearMatrixType Matrix> struct HeInitializatio
   }
 };
 
-template <int lb, int ub> struct UniformInitialization : InitializationScheme<UniformInitialization<lb, ub>> {
+template <int lb, int ub, int f = 1> struct UniformInitialization :
+    InitializationScheme<UniformInitialization<lb, ub, f>> {
   template <utils::concepts::LinearArrayType T> auto initialize(T& in, std::random_device& rd) const {
-    std::uniform_real_distribution distribution {static_cast<typename T::UnderlyingType>(lb),
-                                                 static_cast<typename T::UnderlyingType>(ub)};
+    std::uniform_real_distribution distribution {
+        static_cast<typename T::UnderlyingType>(lb) / static_cast<typename T::UnderlyingType>(f),
+        static_cast<typename T::UnderlyingType>(ub) / static_cast<typename T::UnderlyingType>(f)};
     auto transformer = [&distribution, &rd](typename T::UnderlyingType) { return distribution(rd); };
     in.transform(transformer);
   }
