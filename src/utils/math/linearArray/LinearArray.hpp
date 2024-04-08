@@ -396,16 +396,199 @@ public:
       }
     };
 
-    if constexpr (line_size > 3 && rez_col_size > 3) {
+    if constexpr (line_size > 3 && rez_col_size > 7 && line_size + rez_col_size >= 4096) {
+      constexpr auto threadCount = 32;
+      auto constexpr equivDistLine = line_size / threadCount * 2;
+      auto constexpr equivDistCol = rez_col_size / threadCount;
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr lDir {{{equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4}}};
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr cDir {{{equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 4, equivDistCol * 5},
+                                                                      {equivDistCol * 5, equivDistCol * 6},
+                                                                      {equivDistCol * 6, equivDistCol * 7},
+                                                                      {equivDistCol * 7, equivDistCol * 8},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 4, equivDistCol * 5},
+                                                                      {equivDistCol * 5, equivDistCol * 6},
+                                                                      {equivDistCol * 6, equivDistCol * 7},
+                                                                      {equivDistCol * 7, equivDistCol * 8},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 4, equivDistCol * 5},
+                                                                      {equivDistCol * 5, equivDistCol * 6},
+                                                                      {equivDistCol * 6, equivDistCol * 7},
+                                                                      {equivDistCol * 7, equivDistCol * 8},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 4, equivDistCol * 5},
+                                                                      {equivDistCol * 5, equivDistCol * 6},
+                                                                      {equivDistCol * 6, equivDistCol * 7},
+                                                                      {equivDistCol * 7, equivDistCol * 8}}};
+      auto closure = [&localProd, &lDir, &cDir](Size idx) {
+        return [idx, localProd, &lDir, &cDir] {
+          return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);
+        };
+      };
+      {
+        std::array<std::jthread, threadCount> threadArr {std::jthread {closure(0)}, std::jthread {closure(1)},
+                                                         std::jthread {closure(2)}, std::jthread {closure(3)},
+                                                         std::jthread {closure(4)}, std::jthread {closure(5)},
+                                                         std::jthread {closure(6)}, std::jthread {closure(7)},
+                                                         std::jthread {closure(8)}, std::jthread {closure(9)},
+                                                         std::jthread {closure(10)}, std::jthread {closure(11)},
+                                                         std::jthread {closure(12)}, std::jthread {closure(13)},
+                                                         std::jthread {closure(14)}, std::jthread {closure(15)},
+                                                         std::jthread {closure(16)}, std::jthread {closure(17)},
+                                                         std::jthread {closure(18)}, std::jthread {closure(19)},
+                                                         std::jthread {closure(20)}, std::jthread {closure(21)},
+                                                         std::jthread {closure(22)}, std::jthread {closure(23)},
+                                                         std::jthread {closure(24)}, std::jthread {closure(25)},
+                                                         std::jthread {closure(26)}, std::jthread {closure(27)},
+                                                         std::jthread {closure(28)}, std::jthread {closure(29)},
+                                                         std::jthread {closure(30)}, std::jthread {closure(31)}};
+      }
+    } else if constexpr (line_size > 3 && rez_col_size > 3 && line_size + rez_col_size >= 1024) {
+      constexpr auto threadCount = 16;
+      auto constexpr equivDistLine = line_size / threadCount;
+      auto constexpr equivDistCol = rez_col_size / threadCount;
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr lDir {{{equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 2, equivDistLine * 3},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4},
+                                                                      {equivDistLine * 3, equivDistLine * 4}}};
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr cDir {{{equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4}}};
+      auto closure = [&localProd, &lDir, &cDir](Size idx) {
+        return [idx, localProd, &lDir, &cDir] {
+          return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);
+        };
+      };
+      {
+        std::array<std::jthread, threadCount> threadArr {std::jthread {closure(0)}, std::jthread {closure(1)},
+                                                         std::jthread {closure(2)}, std::jthread {closure(3)},
+                                                         std::jthread {closure(4)}, std::jthread {closure(5)},
+                                                         std::jthread {closure(6)}, std::jthread {closure(7)},
+                                                         std::jthread {closure(8)}, std::jthread {closure(9)},
+                                                         std::jthread {closure(10)}, std::jthread {closure(11)},
+                                                         std::jthread {closure(12)}, std::jthread {closure(13)},
+                                                         std::jthread {closure(14)}, std::jthread {closure(15)}};
+      }
+    } else if constexpr (line_size > 1 && rez_col_size > 3 && line_size + rez_col_size >= 256) {
+      constexpr auto threadCount = 8;
+      auto constexpr equivDistLine = line_size / threadCount * 2;
+      auto constexpr equivDistCol = rez_col_size / threadCount;
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr lDir {{{equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2}}};
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr cDir {{{equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 2, equivDistCol * 3},
+                                                                      {equivDistCol * 3, equivDistCol * 4}}};
+      auto closure = [&localProd, &lDir, &cDir](Size idx) {
+        return [idx, localProd, &lDir, &cDir] {
+          return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);
+        };
+      };
+      {
+        std::array<std::jthread, threadCount> threadArr {std::jthread {closure(0)}, std::jthread {closure(1)},
+                                                         std::jthread {closure(2)}, std::jthread {closure(3)},
+                                                         std::jthread {closure(4)}, std::jthread {closure(5)},
+                                                         std::jthread {closure(6)}, std::jthread {closure(7)}};
+      }
+    } else if constexpr (line_size > 1 && rez_col_size > 1 && line_size + rez_col_size >= 64) {
       constexpr auto threadCount = 4;
-      std::array<std::pair<Size, Size>, threadCount> lDir {{{0, line_size / threadCount},
-                                                            {0, line_size / threadCount},
-                                                            {line_size / threadCount, line_size},
-                                                            {line_size / threadCount, line_size}}};
-      std::array<std::pair<Size, Size>, threadCount> cDir {{{0, rez_col_size / threadCount},
-                                                            {rez_col_size / threadCount, rez_col_size},
-                                                            {0 / threadCount, rez_col_size},
-                                                            {rez_col_size / threadCount, rez_col_size}}};
+      auto constexpr equivDistLine = line_size / threadCount;
+      auto constexpr equivDistCol = rez_col_size / threadCount;
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr lDir {{{equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 0, equivDistLine * 1},
+                                                                      {equivDistLine * 1, equivDistLine * 2},
+                                                                      {equivDistLine * 1, equivDistLine * 2}}};
+
+      std::array<std::pair<Size, Size>, threadCount> constexpr cDir {{{equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2},
+                                                                      {equivDistCol * 0, equivDistCol * 1},
+                                                                      {equivDistCol * 1, equivDistCol * 2}}};
       auto closure = [&localProd, &lDir, &cDir](Size idx) {
         return [idx, localProd, &lDir, &cDir] {
           return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);

@@ -97,23 +97,17 @@ TEST(ConvolutionalNeuralNetwork, MNISTPropagation) {
   }
   std::random_device rd {};
   std::ranges::shuffle(train.data(), std::mt19937(rd()));
-  //  NeuralNetwork<double, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>, HeInitialization<>>,
-  //                MaxPoolLayer<2, 2>, InitSizedLayer<100, Layer, HeInitialization<>, ReluFunction<>>,
-  //                InitSizedLayer<10, OutputLayer, UniformInitialization<-1, 1, 1000>, SoftmaxFunction<>,
-  //                               CategoricalCrossEntropyFunction<>>>
-  //      nn;
-  //
-  //  nn.serialize("mnistNetwork.out");
+    NeuralNetwork<double, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>, HeInitialization<>>,
+                  MaxPoolLayer<2, 2>, InitSizedLayer<100, Layer, HeInitialization<>, ReluFunction<>>,
+                  InitSizedLayer<10, OutputLayer, UniformInitialization<-1, 1, 1000>, SoftmaxFunction<>,
+                                 CategoricalCrossEntropyFunction<>>>
+        nn;
 
+  nn.serialize("mnistNetwork.out");
 
-  NeuralNetwork<double, ConvolutionalInputLayer<28, 1>, ConvolutionalLayer<32, 3, ReluFunction<>>, MaxPoolLayer<2, 2>,
-                SizedLayer<100, Layer, ReluFunction<>>,
-                SizedLayer<10, OutputLayer, SoftmaxFunction<>, CrossEntropyFunction<>>>
-      nn;
-  nn.deserialize("mnistNetwork.out");
-
-  nn.backPropagateWithSerialization(
-      10, 0.005, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<double, 10, 1>> {}, "mnistNetwork.out");
+  nn.backPropagateWithSerializationWithInfo(
+      10, 0.005, train, gabe::utils::math::OneHotEncoder<short int, LinearArray<double, 10, 1>> {}, "mnistNetwork.out",
+      std::cout, 20);
   nn.serialize("mnistNetwork.out");
 }
 

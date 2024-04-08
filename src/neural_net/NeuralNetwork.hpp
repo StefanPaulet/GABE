@@ -56,6 +56,25 @@ public:
     }
   }
 
+  template <typename Input, typename LabelEncoder>
+  auto backPropagateWithSerializationWithInfo(Size epochCount, DataType learningRate, DataSet<Input> const& dataSet,
+                                      LabelEncoder&& labelEncoder, std::string const& serializationFile,
+                                      std::ostream& infoBuffer, std::size_t serializeStepper) -> void {
+    for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
+      infoBuffer << "-- Starting epoch " << idx << '\n';
+      infoBuffer.flush();
+      for (auto const& e : dataSet.data()) {
+        backPropagate(e.data, labelEncoder(e.label), learningRate);
+        ++propIdx;
+        if (propIdx % serializeStepper == 0) {
+          infoBuffer << "---- Serialization reached on data idx " << propIdx << '\n';
+          infoBuffer.flush();
+          serialize(serializationFile);
+        }
+      }
+    }
+  }
+
   template <typename InputLayerType, typename LabelDecoderType>
   auto validate(DataSet<InputLayerType> const& dataSet, LabelDecoderType&& labelDecoder) -> double {
     double error = .0;
