@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <algorithm>
+#include <ranges>
+#include <vector>
+
 namespace gabe::utils::data {
 
 template <concepts::LinearArrayType DataPointType> struct DataPoint {
@@ -38,6 +42,37 @@ public:
 
 private:
   std::vector<DataPoint<T>> _data {};
+};
+
+
+template <concepts::DeepLinearMatrixType DataPoint> struct YoloDataPoint {
+  DataPoint data {};
+  std::vector<gabe::utils::math::LinearArray<typename DataPoint::UnderlyingType, 5, 1>> labels {};
+};
+
+template <concepts::DeepLinearMatrixType T> class YoloDataSet {
+private:
+  using DataPoint = YoloDataPoint<T>;
+
+public:
+  YoloDataSet() = default;
+  YoloDataSet(YoloDataSet const&) = default;
+  YoloDataSet(YoloDataSet&&) noexcept = default;
+  explicit YoloDataSet(std::vector<DataPoint> const& data) : _data(data) {}
+
+  auto normalize() {
+    auto divideBy255 = [](typename T::UnderlyingType value) {
+      return value / static_cast<typename T::UnderlyingType>(255);
+    };
+    auto transformer = [&divideBy255](DataPoint& el) { el.transform(divideBy255); };
+    std::ranges::for_each(_data, transformer);
+  }
+
+  auto const& data() const { return _data; }
+  auto& data() { return _data; }
+
+private:
+  std::vector<DataPoint> _data {};
 };
 
 } // namespace gabe::utils::data

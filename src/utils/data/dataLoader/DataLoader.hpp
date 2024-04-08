@@ -9,7 +9,10 @@
 #include "utils/data/Data.hpp"
 #include "utils/math/function/Function.hpp"
 #include <bitset>
+#include <cstdio>
+#include <filesystem>
 #include <fstream>
+#include <jpeglib.h>
 #include <sstream>
 
 namespace gabe::utils::data {
@@ -71,6 +74,69 @@ template <typename T> auto loadMNISTLabels(FILE* dataStream, uint32 expectedImag
 
   return rez;
 }
+
+template <concepts::DeepLinearMatrixType R> auto loadJPEG(std::string const& filePath) -> R {
+  R result {};
+
+  FILE* in = fopen(filePath.c_str(), "rb");
+
+  struct jpeg_decompress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_decompress(&cinfo);
+
+  jpeg_stdio_src(&cinfo, in);
+  jpeg_read_header(&cinfo, TRUE);
+  jpeg_start_decompress(&cinfo);
+
+  int width = cinfo.output_width;
+  int height = cinfo.output_height;
+  int numChannels = cinfo.num_components;
+  assert(width == 640 && "Width of CS2 image should be 640");
+  assert(height == 640 && "Height of CS2 image should be 640");
+  assert(numChannels == 3 && "The number of channels of CS2 image should be 3");
+
+  auto* imageBuffer = new unsigned char[width * height * numChannels];
+
+  while (cinfo.output_scanline < cinfo.output_height) {
+    unsigned char* row_pointer = &imageBuffer[cinfo.output_scanline * width * numChannels];
+    jpeg_read_scanlines(&cinfo, &row_pointer, 1);
+  }
+
+  jpeg_finish_decompress(&cinfo);
+  jpeg_destroy_decompress(&cinfo);
+  fclose(in);
+
+  for (Size channel = 0; channel < numChannels; ++channel) {
+    for (Size lIdx = 0; lIdx < height; ++lIdx) {
+      for (Size cIdx = 0; cIdx < width; ++cIdx) {
+        result[channel][lIdx][cIdx] = imageBuffer[(width * lIdx + cIdx) * numChannels + channel];
+      }
+    }
+  }
+  delete[] imageBuffer;
+  return result;
+}
+
+template <concepts::DeepLinearMatrixType K> auto loadCS2Labels(std::string const& filePath)
+    -> std::vector<gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1>> {
+  std::vector<gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1>> rez {};
+  std::ifstream in {filePath};
+  auto* line = new char[64];
+  do {
+    in.getline(line, 64);
+    gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1> el;
+    std::stringstream lineStr {line};
+    for (auto idx = 0; idx < 5; ++idx) {
+      lineStr >> el[idx][0];
+    }
+    rez.push_back(el);
+  } while (in);
+
+  delete[] line;
+
+  return rez;
+}
 } // namespace impl
 
 enum class MNISTDataSetType { TEST, TRAIN };
@@ -96,6 +162,22 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
   fclose(imagesIn);
   fclose(labelsIn);
   return DataSet<R> {rezVector};
+}
+
+template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const& folderPath) -> YoloDataSet<I> {
+  YoloDataSet<I> images {};
+  const std::filesystem::path imgDirectory {folderPath + "/images"};
+  const std::filesystem::path labelDirectory {folderPath + "/labels"};
+  for (auto const& dir_entry : std::filesystem::directory_iterator {imgDirectory}) {
+    auto fileString = dir_entry.path().filename().string();
+    auto lastIdx = fileString.find_last_of(".");
+    auto fileName = fileString.substr(0, lastIdx);
+
+    auto data = impl::loadJPEG<I>(dir_entry.path().string());
+    auto label = impl::loadCS2Labels<I>(labelDirectory.string() + "/" + fileString.substr(0, lastIdx) + ".txt");
+    images.data().emplace_back(data, label);
+  }
+  return images;
 }
 
 template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string const& filePath, char delim = ',')
