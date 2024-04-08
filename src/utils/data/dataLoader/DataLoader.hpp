@@ -164,10 +164,12 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
   return DataSet<R> {rezVector};
 }
 
-template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const& folderPath) -> YoloDataSet<I> {
+template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const& folderPath, Size imageCount = 2000)
+    -> YoloDataSet<I> {
   YoloDataSet<I> images {};
   const std::filesystem::path imgDirectory {folderPath + "/images"};
   const std::filesystem::path labelDirectory {folderPath + "/labels"};
+  Size idx = 0;
   for (auto const& dir_entry : std::filesystem::directory_iterator {imgDirectory}) {
     auto fileString = dir_entry.path().filename().string();
     auto lastIdx = fileString.find_last_of(".");
@@ -176,6 +178,10 @@ template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const
     auto data = impl::loadJPEG<I>(dir_entry.path().string());
     auto label = impl::loadCS2Labels<I>(labelDirectory.string() + "/" + fileString.substr(0, lastIdx) + ".txt");
     images.data().emplace_back(data, label);
+
+    if (++idx > imageCount) {
+      break;
+    }
   }
   return images;
 }

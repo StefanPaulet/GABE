@@ -439,6 +439,37 @@ template <concepts::IntegralType T> struct ReluFunction<T> {
   }
 };
 
+template <typename = void> struct LeakyReluFunction {};
+template <> struct LeakyReluFunction<void> {
+  static constexpr auto isActivationFunction = true;
+
+  template <typename Input> auto operator()(Input&& in) {
+    return ReluFunction<std::remove_cvref_t<Input>> {}(std::forward<Input>(in));
+  }
+
+  template <typename Input> auto derive(Input&& in) {
+    return ReluFunction<std::remove_cvref_t<Input>> {}.derive(std::forward<Input>(in));
+  }
+};
+
+template <concepts::IntegralType T> struct LeakyReluFunction<T> {
+  static constexpr auto isActivationFunction = true;
+
+  auto operator()(T value) -> T {
+    if (value > static_cast<T>(0)) {
+      return value;
+    }
+    return static_cast<T>(0.1) * value;
+  }
+
+  auto derive(T value) -> T {
+    if (value <= static_cast<T>(0)) {
+      return static_cast<T>(0.1);
+    }
+    return 1;
+  }
+};
+
 
 namespace func {
 template <typename Input> constexpr SigmoidFunction<Input> sigmoid;
