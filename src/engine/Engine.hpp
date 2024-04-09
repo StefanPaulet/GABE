@@ -18,9 +18,10 @@ public:
     log("Started processing commands", OpState::SUCCESS);
     auto thread = _windowController.run();
 
-    for (int i = 0; i < 10; ++i) {
-      auto sign = i % 2 ? -1 : 1;
-      _windowController.add_event(std::make_unique<StrafeEvent>(Point {100 * sign, 0}));
+    for (int i = 0; true; ++i) {
+      _windowController.add_event(std::make_unique<StrafeEvent>(Point {20, 5}));
+      _windowController.add_event(std::make_unique<StrafeEvent>(Point {-40, -5}));
+      _windowController.add_event(std::make_unique<StrafeEvent>(Point {20, 0}));
       sleep(1);
     }
     sleep(5);

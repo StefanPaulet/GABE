@@ -6,6 +6,7 @@
 #include "Exceptions.hpp"
 #include <types.hpp>
 #include <utils/logger/Logger.hpp>
+#include <unistd.h>
 
 namespace gabe {
 
@@ -20,6 +21,7 @@ struct Point {
     return *this;
   }
   auto operator/(int value) const -> Point { return {x / value, y / value}; }
+  auto operator*(int value) const -> Point { return {x * value, y * value}; }
   int x;
   int y;
 };
@@ -70,32 +72,27 @@ public:
   explicit StrafeEvent(Point const& movement) : _totalMovement {movement} {}
 
   auto solve(Display* display, Window window) noexcept(false) -> void override {
-    Window rootWindow;
-    Point rootPoint {};
-    Point windowPoint {};
-    unsigned int mask;
-
-    rootWindow = XRootWindow(display, DefaultScreen(display));
-
-    XQueryPointer(display, rootWindow, &rootWindow, &window, &rootPoint.x, &rootPoint.y, &windowPoint.x, &windowPoint.y,
-                  &mask);
+    XWindowAttributes attr;
+    int revert;
+    XGetInputFocus(display, &window, &revert);
+    XGetWindowAttributes(display, window, &attr);
 
     XSelectInput(display, window, PointerMotionMask);
     XFlush(display);
 
-
-    Point p = windowPoint;
+    Point p {};
     for (auto idx = 0; idx < itCount; ++idx) {
-      p += _totalMovement / itCount;
+      p = _totalMovement * idx / itCount;
       XSelectInput(display, window, PointerMotionMask);
       XFlush(display);
 
       XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
+      log(std::format("Moved mouse to x={}, y ={}", p.x, p.y), OpState::SUCCESS);
       XFlush(display);
-      usleep(100);
+      usleep(3000);
     }
 
-    log(std::format("Treated strafe mouse event at x={}, y={}", windowPoint.x, windowPoint.y), OpState::INFO);
+    log(std::format("Treated strafe mouse event of distance x={}, y={}", _totalMovement.x, _totalMovement.y), OpState::INFO);
   }
 
 private:
