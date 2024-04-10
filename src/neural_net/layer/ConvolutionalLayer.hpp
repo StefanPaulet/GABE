@@ -125,6 +125,22 @@ struct ConvolutionalLayer :
           template Type<DataType, Input, ConvolutionalLayer>;
 };
 
+template <Size depth, Size kernelSize, typename ActivationFunction, typename InitializationScheme = NoInitialization>
+struct FullConvolutionalLayer :
+    impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                 FullConvolutionalLayer<depth, kernelSize, ActivationFunction, InitializationScheme>> {
+  template <typename DataType, typename Input> using CF = gabe::utils::math::FullDeepConvolutionFunction<
+      Input, gabe::utils::math::LinearArray<DataType, Input::size(), kernelSize, kernelSize>>;
+
+  using IS = InitializationScheme;
+
+  template <typename DataType, typename Input> using Type =
+      impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                   FullConvolutionalLayer<depth, kernelSize, ActivationFunction,
+                                                          InitializationScheme>>::template Type<DataType, Input,
+                                                                                                FullConvolutionalLayer>;
+};
+
 template <Size depth, Size kernelSize, Size stride, typename ActivationFunction,
           typename InitializationScheme = NoInitialization>
 struct StridedConvolutionalLayer :
@@ -139,6 +155,22 @@ struct StridedConvolutionalLayer :
   template <typename DataType, typename Input> using Type =
       impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction, StridedConvolutionalLayer>::template Type<
           DataType, Input, StridedConvolutionalLayer>;
+};
+
+template <Size depth, Size kernelSize, Size stride, typename ActivationFunction,
+          typename InitializationScheme = NoInitialization>
+struct FullStridedConvolutionalLayer :
+    impl::BaseConvolutionalLayer<
+        depth, kernelSize, ActivationFunction,
+        FullStridedConvolutionalLayer<depth, kernelSize, stride, ActivationFunction, InitializationScheme>> {
+  template <typename DataType, typename Input> using CF = gabe::utils::math::FullStridedDeepConvolutionFunction<
+      stride, Input, gabe::utils::math::LinearArray<DataType, Input::size(), kernelSize, kernelSize>>;
+
+  using IS = InitializationScheme;
+
+  template <typename DataType, typename Input> using Type =
+      impl::BaseConvolutionalLayer<depth, kernelSize, ActivationFunction, FullStridedConvolutionalLayer>::template Type<
+          DataType, Input, FullStridedConvolutionalLayer>;
 };
 
 template <Size inputSize, Size depthSize> class ConvolutionalInputLayer {

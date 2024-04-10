@@ -8,18 +8,19 @@
 namespace gabe::nn {
 
 class ObjectDetection {
-  static constexpr Size outputSize = 7 * 7 * 5 * 2;
+  static constexpr Size outputSize = 7 * 7 * 6;
   using LeakyReluFunction = gabe::utils::math::LeakyReluFunction<>;
   using IdentityFunction = gabe::utils::math::IdentityFunction<>;
 
 public:
   using InitializedObjectRecongnitionNet =
-      NeuralNetwork<double, ConvolutionalInputLayer<640, 3>, MaxPoolLayer<2, 2>,
-                    StridedConvolutionalLayer<64, 7, 2, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
-                    StridedConvolutionalLayer<64, 3, 2, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
-                    ConvolutionalLayer<128, 3, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
-                    ConvolutionalLayer<128, 3, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
-                    InitSizedLayer<32, Layer, HeInitialization<>, LeakyReluFunction>,
+      NeuralNetwork<double, ConvolutionalInputLayer<640, 3>,
+                    FullStridedConvolutionalLayer<32, 7, 2, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
+                    FullConvolutionalLayer<64, 3, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
+                    FullConvolutionalLayer<64, 3, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
+                    FullConvolutionalLayer<128, 3, LeakyReluFunction, HeInitialization<>>, MaxPoolLayer<2, 2>,
+                    ConvolutionalLayer<1, 1, LeakyReluFunction, HeInitialization<>>,
+                    InitSizedLayer<1024, Layer, HeInitialization<>, LeakyReluFunction>,
                     InitSizedLayer<outputSize, OutputLayer, UniformInitialization<-1, 1, 10>, IdentityFunction,
                                    gabe::utils::math::MeanSquaredErrorFunction<>>>;
   using ObjectRecongnitionNet = NeuralNetwork<

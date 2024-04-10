@@ -167,6 +167,14 @@ TEST(FunctionTest, SimpleDeepConvolutionFunction) {
   ASSERT_EQ(scf3.fullyConvolve(mtrx5, mtrx6), rez3);
 }
 
+TEST(FunctionTest, FullDeepConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx2 = larray(larray(larray(1, 0, 1), larray(0, 1, 0), larray(1, 0, 1)));
+  FullDeepConvolutionFunction<decltype(mtrx1), decltype(mtrx2)> fcf;
+  auto rez = larray(larray(6, 12, 8), larray(14, 25, 16), larray(12, 18, 14));
+  ASSERT_EQ(fcf(mtrx1, mtrx2), rez);
+}
+
 TEST(FunctionTest, StridedDeepConvolutionFunction) {
   auto mtrx1 =
       larray(larray(larray(1, 2, 3, 4, 0), larray(5, 6, 7, 8, 0), larray(9, 10, 11, 12, 0), larray(13, 14, 15, 16, 0)));
@@ -187,6 +195,26 @@ TEST(FunctionTest, StridedDeepConvolutionFunction) {
   auto rez3 = larray(larray(larray(2, 2, 4, 2, 2), larray(0, 12, 10, 12, 10), larray(3, 5, 8, 3, 5),
                             larray(0, 18, 15, 6, 5), larray(0, 3, 6, 1, 2)));
   ASSERT_EQ(scf3.fullyConvolve(mtrx5, mtrx6), rez3);
+}
+
+TEST(FunctionTest, FullStridedDeepConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx2 = larray(larray(larray(1, 0, 1), larray(0, 1, 0), larray(1, 0, 1)));
+  FullStridedDeepConvolutionFunction<2, decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(6, 8), larray(12, 14));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+
+  auto mtrx3 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx4 = larray(larray(2, 1), larray(2, 3));
+  FullStridedDeepConvolutionFunction<2, decltype(mtrx3), LinearArray<int, 1, 3, 3>> scf2;
+  auto rez2 = larray(larray(larray(15, 26, 10), larray(26, 46, 20), larray(5, 14, 10)));
+  ASSERT_EQ(scf2.deriveConvolve(mtrx3, mtrx4), rez2);
+
+  auto mtrx5 = larray(larray(1, -1), larray(2, -2));
+  auto mtrx6 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  FullStridedDeepConvolutionFunction<2, LinearArray<int, 1, 3, 3>, decltype(mtrx6)> scf3;
+  auto rez3 = larray(larray(larray(5, -2, -5), larray(18, -6, -18), larray(10, -4, -10)));
+  ASSERT_EQ(scf3.paddedConvolve(mtrx5, mtrx6), rez3);
 }
 
 TEST(FunctionTest, Relu) {

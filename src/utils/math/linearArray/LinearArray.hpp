@@ -500,15 +500,22 @@ public:
     return __pool<pool_line_size, pool_col_size, PoolingPredicate, stride>(std::forward<PoolingPredicate>(predicate));
   }
 
-  template <Size line_pad_size, Size col_pad_size, Size rlSize = line_size + 2 * line_pad_size,
-            Size rcSize = col_size + 2 * col_pad_size>
-  auto pad() const {
+  template <Size upLinePadSize, Size ltColPadSize, Size dnLinePadSize, Size rtColPadSize,
+            Size rlSize = line_size + upLinePadSize + dnLinePadSize,
+            Size rcSize = col_size + ltColPadSize + rtColPadSize>
+  auto asymmetricPad() const {
     LinearArray<DataType, rlSize, rcSize> result {};
-    for (auto lIdx = line_pad_size; lIdx < rlSize - line_pad_size; ++lIdx) {
-      std::memcpy(result[lIdx].data().data() + col_pad_size, data()[lIdx - line_pad_size].data().data(),
+    for (auto lIdx = upLinePadSize; lIdx < rlSize - dnLinePadSize; ++lIdx) {
+      std::memcpy(result[lIdx].data().data() + ltColPadSize, data()[lIdx - upLinePadSize].data().data(),
                   col_size * sizeof(DataType));
     }
     return result;
+  }
+
+  template <Size line_pad_size, Size col_pad_size, Size rlSize = line_size + 2 * line_pad_size,
+            Size rcSize = col_size + 2 * col_pad_size>
+  auto pad() const {
+    return asymmetricPad<line_pad_size, col_pad_size, line_pad_size, col_pad_size>();
   }
 };
 
