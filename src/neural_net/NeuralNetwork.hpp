@@ -14,6 +14,7 @@ namespace gabe::nn {
 template <typename DataType, typename InputLayer, typename... Layers> class NeuralNetwork :
     public impl::LayerPair<DataType, InputLayer, Layers...> {
   template <typename InputLayerType> using DataSet = utils::data::DataSet<InputLayerType>;
+  template <typename InputLayerType> using YoloDataSet = utils::data::YoloDataSet<InputLayerType>;
 
 private:
   using LayerPair = impl::LayerPair<DataType, InputLayer, Layers...>;
@@ -50,6 +51,22 @@ public:
         backPropagate(e.data, labelEncoder(e.label), learningRate);
         ++propIdx;
         if (propIdx % 20 == 0) {
+          serialize(serializationFile);
+        }
+      }
+    }
+  }
+
+  template <typename Input> auto yoloBackPropagateWithSerialization(Size epochCount, DataType learningRate,
+                                                                    YoloDataSet<Input> const& dataSet,
+                                                                    std::string const& serializationFile) -> void {
+    for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
+      for (auto const& e : dataSet.data()) {
+        backPropagate(e.data, e.labels, learningRate);
+        ++propIdx;
+
+        if (propIdx % 20 == 0) {
+          std::cout << this->template weights<0>() << "\n\n";
           serialize(serializationFile);
         }
       }

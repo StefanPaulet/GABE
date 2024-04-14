@@ -234,8 +234,9 @@ TEST(FunctionTest, Relu) {
 TEST(FunctionTest, MaxPoolFunction) {
   auto mtrx1 = larray(larray(larray(2, 2, 7, 3), larray(9, 4, 6, 1), larray(8, 5, 2, 4), larray(3, 1, 2, 6)));
   auto mtrx2 = larray(larray(larray(9, 7), larray(8, 6)));
+  auto mtrx3 = larray(larray(larray(3, 2), larray(-5, 6)));
   MaxPoolFunction<decltype(mtrx1), 2, 2> mpf;
   ASSERT_EQ(mpf(mtrx1), mtrx2);
-  auto mtrx3 = larray(larray(larray(0, 0, 1, 0), larray(1, 0, 0, 0), larray(1, 0, 0, 0), larray(0, 0, 0, 1)));
-  ASSERT_EQ(mpf.derive(mtrx1, mtrx2), mtrx3);
+  auto mtrx4 = larray(larray(larray(0, 0, 2, 0), larray(3, 0, 0, 0), larray(-5, 0, 0, 0), larray(0, 0, 0, 6)));
+  ASSERT_EQ(mpf.derive(mtrx1, mtrx2, mtrx3), mtrx4);
 }

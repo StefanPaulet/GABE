@@ -290,13 +290,12 @@ public:
   }
 
   template <typename T = PoolType, Size rezLineSize = T::ResultingPoolType::size(),
-            Size rezColSize = T::ResultingPoolType::InnerLinearArray::size()>
-  auto
-  derive(Input const& in,
-         LinearArray<typename Input::UnderlyingType, Input::size(), rezLineSize, rezColSize> const& gradient) const {
+            Size rezColSize = T::ResultingPoolType::InnerLinearArray::size(),
+            typename DeepResult = LinearArray<typename Input::UnderlyingType, Input::size(), rezLineSize, rezColSize>>
+  auto derive(Input const& in, DeepResult const& poolResult, DeepResult const& gradient) const {
     Input result {};
     for (auto idx = 0; idx < in.size(); ++idx) {
-      result[idx] = static_cast<PoolType const*>(this)->derivedPool(in[idx], gradient[idx]);
+      result[idx] = static_cast<PoolType const*>(this)->derivedPool(in[idx], poolResult[idx], gradient[idx]);
     }
     return result;
   }
@@ -467,17 +466,17 @@ template <concepts::DeepLinearMatrixType Input, typename PoolDim, typename Strid
     return in.template pool<PoolDim::size(), PoolDim::size(), StrideDim::size()>(predicate);
   }
 
-  auto derivedPool(typename Input::InnerLinearArray const& in, ResultingPoolType const& gradient) const {
+  auto derivedPool(typename Input::InnerLinearArray const& in, ResultingPoolType const& poolResult,
+                   ResultingPoolType const& gradient) const {
     constexpr auto inLines = Input::InnerLinearArray::size();
     constexpr auto inCols = Input::InnerLinearArray::InnerLinearArray::size();
 
     typename Input::InnerLinearArray result {};
-    auto localSearch = [&result, in, gradient](Size lineStartIndex, Size colStartIndex, Size gLineIndex,
-                                               Size gColIndex) {
+    auto localSearch = [&](Size lineStartIndex, Size colStartIndex, Size gLineIndex, Size gColIndex) {
       for (auto lIdx = 0; lIdx < PoolDim::size(); ++lIdx) {
         for (auto cIdx = 0; cIdx < PoolDim::size(); ++cIdx) {
-          if (in[lineStartIndex + lIdx][colStartIndex + cIdx] == gradient[gLineIndex][gColIndex]) {
-            result[lineStartIndex + lIdx][colStartIndex + cIdx] = 1;
+          if (in[lineStartIndex + lIdx][colStartIndex + cIdx] == poolResult[gLineIndex][gColIndex]) {
+            result[lineStartIndex + lIdx][colStartIndex + cIdx] = gradient[gLineIndex][gColIndex];
             return;
           }
         }
@@ -529,11 +528,11 @@ template <> struct LeakyReluFunction<void> {
   static constexpr auto isActivationFunction = true;
 
   template <typename Input> auto operator()(Input&& in) {
-    return ReluFunction<std::remove_cvref_t<Input>> {}(std::forward<Input>(in));
+    return LeakyReluFunction<std::remove_cvref_t<Input>> {}(std::forward<Input>(in));
   }
 
   template <typename Input> auto derive(Input&& in) {
-    return ReluFunction<std::remove_cvref_t<Input>> {}.derive(std::forward<Input>(in));
+    return LeakyReluFunction<std::remove_cvref_t<Input>> {}.derive(std::forward<Input>(in));
   }
 };
 
@@ -551,7 +550,7 @@ template <concepts::IntegralType T> struct LeakyReluFunction<T> {
     if (value <= static_cast<T>(0)) {
       return static_cast<T>(0.1);
     }
-    return 1;
+    return static_cast<T>(1);
   }
 };
 

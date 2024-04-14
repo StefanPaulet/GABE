@@ -64,7 +64,7 @@ public:
     auto divideBy255 = [](typename T::UnderlyingType value) {
       return value / static_cast<typename T::UnderlyingType>(255);
     };
-    auto transformer = [&divideBy255](DataPoint& el) { el.transform(divideBy255); };
+    auto transformer = [&divideBy255](DataPoint& el) { el.data.transform(divideBy255); };
     std::ranges::for_each(_data, transformer);
   }
 

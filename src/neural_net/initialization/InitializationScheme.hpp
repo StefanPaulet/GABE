@@ -49,6 +49,24 @@ template <gabe::utils::concepts::LinearMatrixType Matrix> struct HeInitializatio
   }
 };
 
+template <typename = void> struct XavierInitialization {};
+
+template <> struct XavierInitialization<void> {
+  template <typename T, typename... Params> auto operator()(T&& in, Params... params) {
+    return XavierInitialization<std::remove_cvref_t<T>> {}(std::forward<T>(in), params...);
+  }
+};
+
+template <gabe::utils::concepts::LinearMatrixType Matrix> struct XavierInitialization<Matrix> :
+    InitializationScheme<XavierInitialization<Matrix>> {
+  auto initialize(Matrix& in, std::random_device& rd) const {
+    std::normal_distribution<typename Matrix::UnderlyingType> distribution(
+        0, std::sqrt(6.0 / (in.total_size() / in.size() + in.size())));
+    auto transformer = [&distribution, &rd](typename Matrix::UnderlyingType) { return distribution(rd); };
+    in.transform(transformer);
+  }
+};
+
 template <int lb, int ub, int f = 1> struct UniformInitialization :
     InitializationScheme<UniformInitialization<lb, ub, f>> {
   template <utils::concepts::LinearArrayType T> auto initialize(T& in, std::random_device& rd) const {

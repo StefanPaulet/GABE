@@ -123,15 +123,18 @@ template <concepts::DeepLinearMatrixType K> auto loadCS2Labels(std::string const
   std::vector<gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1>> rez {};
   std::ifstream in {filePath};
   auto* line = new char[64];
-  do {
+  while (in) {
     in.getline(line, 64);
+    if (strlen(line) == 0) {
+      break;
+    }
     gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1> el;
     std::stringstream lineStr {line};
     for (auto idx = 0; idx < 5; ++idx) {
       lineStr >> el[idx][0];
     }
     rez.push_back(el);
-  } while (in);
+  }
 
   delete[] line;
 

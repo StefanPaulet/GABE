@@ -47,7 +47,7 @@ public:
     KernelArrayType kernelGradient {};
     Input inputGradient {};
 
-    nextLayerGradient.transform([this]<typename T>(T&& value) {
+    nextLayerGradient *= nextLayerGradient.project([this]<typename T>(T&& value) {
       return static_cast<ActivationFunction*>(this)->derive(std::forward<T>(value));
     });
 
@@ -95,8 +95,8 @@ public:
   PoolingLayer(PoolingLayer&&) noexcept = default;
 
   auto feedForward(Input const& input) -> OutputType<> { return (static_cast<PoolingFunction&>(*this))(input); }
-  auto backPropagate(Input const& input, OutputType<> const& nextLayerGradient) -> Input {
-    return static_cast<PoolingFunction*>(this)->derive(input, nextLayerGradient);
+  auto backPropagate(Input const& input, OutputType<> const& procIn, OutputType<> const& nextLayerGradient) -> Input {
+    return static_cast<PoolingFunction*>(this)->derive(input, procIn, nextLayerGradient);
   }
 };
 
