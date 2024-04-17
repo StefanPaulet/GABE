@@ -56,6 +56,7 @@ class ObjectDetection {
   static constexpr Size outputSize = gridSize * gridSize * 5 * boundingBoxes;
   using LeakyReluFunction = gabe::utils::math::LeakyReluFunction<>;
   using SigmoidFunction = gabe::utils::math::SigmoidFunction<>;
+  using IdentityFunction = gabe::utils::math::IdentityFunction<>;
 
   struct YoloCostFunction {
     static constexpr auto isCostFunction = true;
@@ -121,9 +122,9 @@ class ObjectDetection {
               gradient[currGrid + boxIdx * 5 + 1][0] = coordCoef * 2 * (responsibleBox._x1 - gridObjectBox._x1);
               gradient[currGrid + boxIdx * 5 + 2][0] = coordCoef * 2 * (responsibleBox._y1 - gridObjectBox._y1);
               gradient[currGrid + boxIdx * 5 + 3][0] =
-                  (sqrt(responsibleBox.width()) - gridObjectBox.width()) / sqrt(responsibleBox.width());
+                  coordCoef * (sqrt(responsibleBox.width()) - gridObjectBox.width()) / sqrt(responsibleBox.width());
               gradient[currGrid + boxIdx * 5 + 4][0] =
-                  (sqrt(responsibleBox.height()) - gridObjectBox.height()) / sqrt(responsibleBox.height());
+                  coordCoef * (sqrt(responsibleBox.height()) - gridObjectBox.height()) / sqrt(responsibleBox.height());
             }
           }
         } else {

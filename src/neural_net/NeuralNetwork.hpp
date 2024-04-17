@@ -65,7 +65,7 @@ public:
         backPropagate(e.data, e.labels, learningRate, std::forward<Clipper>(clipper));
         ++propIdx;
 
-        if (propIdx % 25 == 0) {
+        if (propIdx % 50 == 0) {
           std::cout << "Serializing inside " + serializationFile + std::to_string(propIdx) + "\n";
           serialize(serializationFile + std::to_string(propIdx));
         }

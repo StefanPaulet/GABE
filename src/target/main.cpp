@@ -24,9 +24,6 @@ void f() {
   nn.deserialize("deepObjectDetectionMarker.nn");
   auto start = std::chrono::system_clock::now();
   auto clipper = [](double value) {
-    if (constexpr auto precision = 0.00001; std::abs(value) < precision && std::abs(value) > .0) {
-      return value < .0 ? -precision : precision;
-    }
     if (constexpr auto precision = 2.0; std::abs(value) > precision) {
       return value < .0 ? -precision : precision;
     }
@@ -49,20 +46,38 @@ void g() {
   auto dataSet = loadCS2Images<LinearArray<double, 3, 640, 640>>("../data/yolo/cs2/test");
   dataSet.normalize();
   ObjectDetection::ObjectRecongnitionNet nn {};
-  //  nn.deserialize("deepObjectDetectionMarker.nn");
-  nn.deserialize("deepObjectDetection.nn1025");
+  nn.deserialize("deepObjectDetectionMarker.nn");
+  //  nn.deserialize("deepObjectDetection.nn150");
+  //  std::cout << nn.weights<0>() << '\n';
+  std::cout << nn.weights<12>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<11>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<10>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<8>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<6>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<4>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<2>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  std::cout << nn.weights<0>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
   auto clipper = [](double value) {
-    if (constexpr auto precision = 0.00001; std::abs(value) < precision && std::abs(value) > .0) {
-      return value < .0 ? -precision : precision;
-    }
     if (constexpr auto precision = 2.0; std::abs(value) > precision) {
       return value < .0 ? -precision : precision;
     }
     return value;
   };
-  auto rez = nn.feedForward(dataSet.data()[52].data);
+  //  for (auto idx = 0; idx < 20; ++idx) {
+  //    nn.backPropagate(dataSet.data()[2].data, dataSet.data()[2].labels, 0.0001, clipper);
+  //    std::cout << "After:\n";
+  //    std::cout << nn.weights<12>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<11>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<10>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<8>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<6>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<4>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<2>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //    std::cout << nn.weights<0>().accumulate(.0, [](double x, double y) { return x + y; }) << '\n';
+  //  }
+  auto rez = nn.feedForward(dataSet.data()[2].data);
   std::cout << "Expected:\n";
-  for (auto const& t : dataSet.data()[52].labels) {
+  for (auto const& t : dataSet.data()[2].labels) {
     std::cout << t << '\n';
   }
   for (auto idx = 0; idx < 7 * 7; ++idx) {
@@ -86,8 +101,8 @@ int main() {
   getrlimit(RLIMIT_STACK, &rl);
   rl.rlim_cur = rl.rlim_max;
   setrlimit(RLIMIT_STACK, &rl);
-  f();
-  //  g();
+  //  f();
+  g();
   //  h();
   return 0;
 }
