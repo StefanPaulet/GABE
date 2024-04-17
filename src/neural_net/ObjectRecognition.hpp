@@ -25,6 +25,10 @@ struct BoundingBox {
   [[nodiscard]] auto area() const { return (_x2 - _x1) * (_y2 - _y1); }
 
   auto intersectionOverUnion(BoundingBox const& other) const {
+    if (empty() || other.empty()) {
+      return .0;
+    }
+
     BoundingBox intersection {std::max(_x1, other._x1), std::max(_y1, other._y1), std::min(_x2, other._x2),
                               std::min(_y2, other._y2)};
     if (intersection._x1 >= intersection._x2 || intersection._y1 >= intersection._y2) {
@@ -34,6 +38,11 @@ struct BoundingBox {
     auto unionSize = area() + other.area() - intersection.area();
     return intersection.area() / unionSize;
   }
+
+  auto empty() const -> bool { return _x1 == 0 && _y1 == 0 && _x2 == 0 && _y2 == 0; }
+
+  auto width() const { return _x2 - _x1; }
+  auto height() const { return _y2 - _y1; }
 
   double _x1 {};
   double _y1 {};
@@ -68,25 +77,10 @@ class ObjectDetection {
     auto objectPresent(Target const& target, Size gridIdx) {
       for (auto const& t : target) {
         if (inCell(t, gridIdx)) {
-          return true;
+          return BoundingBox {std::array<double, 4> {t[1][0], t[2][0], t[3][0], t[4][0]}};
         }
       }
-      return false;
-    }
-
-    auto findBestObject(Target const& target, BoundingBox const& box, Size gridIdx) {
-      BoundingBox groundTruth {
-          std::array<double, 4> {target[0][1][0], target[0][2][0], target[0][3][0], target[0][4][0]}};
-      for (auto const& t : target) {
-        if (inCell(t, gridIdx)) {
-
-          BoundingBox obBox {std::array<double, 4> {t[1][0], t[2][0], t[3][0], t[4][0]}};
-          if (obBox.intersectionOverUnion(box) > groundTruth.intersectionOverUnion(box)) {
-            groundTruth = obBox;
-          }
-        }
-      }
-      return groundTruth;
+      return BoundingBox {0, 0, 0, 0};
     }
 
   public:
@@ -95,27 +89,46 @@ class ObjectDetection {
     }
 
     auto derive(Input const& in, Target const& target) {
+      constexpr auto coordCoef = 5.0;
+      constexpr auto noObjCoef = 0.5;
       Input gradient {};
       for (auto gridIdx = 0; gridIdx < gridSize * gridSize; ++gridIdx) {
         auto currGrid = gridIdx * 5 * boundingBoxes;
-        for (auto boxIdx = 0; boxIdx < boundingBoxes; ++boxIdx) {
-          if (in[currGrid + boxIdx * 5][0] > confidenceThreshold) {
-            BoundingBox responsibleBox {std::array<double, 4> {in[currGrid + 1][0], in[currGrid + 2][0],
-                                                               in[currGrid + 3][0], in[currGrid + 4][0]}};
-            if (objectPresent(target, gridIdx)) {
-              auto groundTruth = findBestObject(target, responsibleBox, gridIdx);
-              gradient[currGrid + boxIdx * 5][0] = 2 * (in[currGrid + boxIdx * 5][0] - 1);
-              gradient[currGrid + boxIdx * 5 + 1][0] = 10 * (responsibleBox._x1 - groundTruth._x1);
-              gradient[currGrid + boxIdx * 5 + 2][0] = 10 * (responsibleBox._y1 - groundTruth._y1);
-              gradient[currGrid + boxIdx * 5 + 3][0] = 10 * (responsibleBox._x2 - groundTruth._x2);
-              gradient[currGrid + boxIdx * 5 + 4][0] = 10 * (responsibleBox._y2 - groundTruth._y2);
-            } else {
-              gradient[currGrid + boxIdx * 5][0] = 0.5 * in[currGrid + boxIdx * 5][0];
+        auto gridObjectBox = objectPresent(target, gridIdx);
+        if (!gridObjectBox.empty()) {
+          auto responsibleBoxIdx = 0;
+          auto responsibleBoxConfidence = .0;
+          auto responsibleBox = BoundingBox {std::array<double, 4> {in[currGrid + 1][0], in[currGrid + 2][0],
+                                                                    in[currGrid + 3][0], in[currGrid + 4][0]}};
+          for (auto boxIdx = 0; boxIdx < boundingBoxes; ++boxIdx) {
+            BoundingBox currBox {
+                std::array<double, 4> {in[currGrid + boxIdx * 5 + 1][0], in[currGrid + boxIdx * 5 + 2][0],
+                                       in[currGrid + boxIdx * 5 + 3][0], in[currGrid + boxIdx * 5 + 4][0]}};
+            auto currBoxConfidence = in[currGrid + boxIdx * 5][0] * gridObjectBox.intersectionOverUnion(currBox);
+            if (currBoxConfidence > responsibleBoxConfidence) {
+              responsibleBoxConfidence = currBoxConfidence;
+              responsibleBoxIdx = boxIdx;
+              responsibleBox = currBox;
             }
-          } else {
-            if (objectPresent(target, gridIdx)) {
-              gradient[currGrid + boxIdx * 5][0] = -2;
+          }
+          for (auto boxIdx = 0; boxIdx < boundingBoxes; ++boxIdx) {
+            if (boxIdx == responsibleBoxIdx) {
+              if (responsibleBox.width() == 0 || responsibleBox.height() == 0) {
+                std::cout << "Fuckup incoming\n";
+                std::terminate();
+              }
+              gradient[currGrid + boxIdx * 5][0] = 2 * (responsibleBoxConfidence - 1);
+              gradient[currGrid + boxIdx * 5 + 1][0] = coordCoef * 2 * (responsibleBox._x1 - gridObjectBox._x1);
+              gradient[currGrid + boxIdx * 5 + 2][0] = coordCoef * 2 * (responsibleBox._y1 - gridObjectBox._y1);
+              gradient[currGrid + boxIdx * 5 + 3][0] =
+                  (sqrt(responsibleBox.width()) - gridObjectBox.width()) / sqrt(responsibleBox.width());
+              gradient[currGrid + boxIdx * 5 + 4][0] =
+                  (sqrt(responsibleBox.height()) - gridObjectBox.height()) / sqrt(responsibleBox.height());
             }
+          }
+        } else {
+          for (auto boxIdx = 0; boxIdx < boundingBoxes; ++boxIdx) {
+            gradient[currGrid + boxIdx * 5][0] = noObjCoef * 2 * in[currGrid + boxIdx * 5][0];
           }
         }
       }
@@ -136,7 +149,7 @@ public:
                     InitSizedLayer<outputSize, OutputLayer, XavierInitialization<>, SigmoidFunction, YoloCostFunction>>;
   using ObjectRecongnitionNet =
       NeuralNetwork<double, ConvolutionalInputLayer<640, 3>, FullStridedConvolutionalLayer<32, 7, 2, LeakyReluFunction>,
-                    MaxPoolLayer<2, 2>, FullStridedConvolutionalLayer<32, 7, 2, LeakyReluFunction>, MaxPoolLayer<2, 2>,
+                    MaxPoolLayer<2, 2>, FullStridedConvolutionalLayer<32, 5, 2, LeakyReluFunction>, MaxPoolLayer<2, 2>,
                     FullConvolutionalLayer<64, 3, LeakyReluFunction>, MaxPoolLayer<2, 2>,
                     FullConvolutionalLayer<64, 3, LeakyReluFunction>, MaxPoolLayer<2, 2>,
                     FullConvolutionalLayer<128, 3, LeakyReluFunction>, MaxPoolLayer<2, 2>,

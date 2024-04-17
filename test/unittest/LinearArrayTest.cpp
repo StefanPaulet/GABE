@@ -361,6 +361,14 @@ TEST(LinearArrayTest, Flatten) {
   auto arr5 = LinearArray<int, 2, 3, 14> {arr3};
   ASSERT_EQ(arr5.flatten(), arr3);
 
+  auto darr1 = larray(4.3, 5.345, -25.2432, 432.234, -6034.32, 432.432, 675.54, 5.42, -0.32, 52.3);
+  auto darr2 = LinearArray<double, 5, 2, 1> {darr1};
+  auto darr3 = larray(larray(larray(4.3), larray(5.345)), larray(larray(-25.2432), larray(432.234)),
+                      larray(larray(-6034.32), larray(432.432)), larray(larray(675.54), larray(5.42)),
+                      larray(larray(-0.32), larray(52.3)));
+  ASSERT_EQ(darr2, darr3);
+  ASSERT_EQ(darr3.flatten(), darr1);
+
   (void) arr1;
   (void) arr2;
   (void) arr3;

@@ -57,17 +57,17 @@ public:
     }
   }
 
-  template <typename Input> auto yoloBackPropagateWithSerialization(Size epochCount, DataType learningRate,
-                                                                    YoloDataSet<Input> const& dataSet,
-                                                                    std::string const& serializationFile) -> void {
+  template <typename Input, typename Clipper>
+  auto yoloBackPropagateWithSerialization(Size epochCount, DataType learningRate, YoloDataSet<Input> const& dataSet,
+                                          std::string const& serializationFile, Clipper&& clipper) -> void {
     for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
       for (auto const& e : dataSet.data()) {
-        backPropagate(e.data, e.labels, learningRate);
+        backPropagate(e.data, e.labels, learningRate, std::forward<Clipper>(clipper));
         ++propIdx;
 
-        if (propIdx % 20 == 0) {
-          std::cout << this->template weights<0>() << "\n\n";
-          serialize(serializationFile);
+        if (propIdx % 25 == 0) {
+          std::cout << "Serializing inside " + serializationFile + std::to_string(propIdx) + "\n";
+          serialize(serializationFile + std::to_string(propIdx));
         }
       }
     }

@@ -308,7 +308,7 @@ public:
 
     for (Size lineIdx = 0; lineIdx < first_size; ++lineIdx) {
       std::array<DataType, LinearArray::total_size() / first_size> slicedArr {};
-      std::memcpy(slicedArr.data(), arr.data() + first_size * lineIdx,
+      std::memcpy(slicedArr.data(), arr.data() + LinearArray::total_size() / first_size * lineIdx,
                   LinearArray::total_size() / first_size * sizeof(DataType));
       data()[lineIdx] = InnerLinearArray {slicedArr};
     }

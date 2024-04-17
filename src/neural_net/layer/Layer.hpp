@@ -214,11 +214,11 @@ public:
   template <typename Target, typename Clipper = gabe::utils::math::IdentityFunction<>>
   auto backPropagate(Input const& input, Target const& target, DataType learning_rate, Clipper&& clipper = Clipper {}) {
     auto z_value = weights().product(input) + biases();
+
     auto nextLayerGradient =
         NextLayerPair::backPropagate(SecondLayerType().feedForward(z_value), target, learning_rate, clipper);
     auto currentLayerGradient = nextLayerGradient * SecondLayerType().backPropagate(z_value);
     currentLayerGradient.transform(clipper);
-
     auto returnGradient = currentLayerGradient.transpose().product(weights()).transpose();
     biases() -= currentLayerGradient * learning_rate;
     weights() -= currentLayerGradient.product(input.transpose()) * learning_rate;
@@ -280,7 +280,6 @@ public:
     auto endLayerGradient = SecondLayerType().backPropagate(weights().product(input) + biases(), target);
     endLayerGradient.transform(clipper);
     auto returnGradient = endLayerGradient.transpose().product(weights()).transpose();
-
     biases() -= endLayerGradient * learning_rate;
     weights() -= (endLayerGradient.product(input.transpose()).transform(clipper) * learning_rate);
 
@@ -416,6 +415,7 @@ public:
         NextLayerPair::backPropagate(SecondLayerType().feedForward(input, weights()), target, learningRate, clipper);
     auto [kernelGradient, currentLayerGradient] = SecondLayerType().backPropagate(input, weights(), nextLayerGradient);
     kernelGradient.transform(clipper);
+
     weights() -= kernelGradient * learningRate;
     return currentLayerGradient;
   }

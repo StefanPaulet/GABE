@@ -37,9 +37,10 @@ public:
     OutputType<> rez {};
     auto idx = 0;
     for (auto const& kernel : kernels) {
-      rez[idx++] =
-          (static_cast<ConvolutionFunction&>(*this))(input, kernel).transform(*static_cast<ActivationFunction*>(this));
+      rez[idx++] = (static_cast<ConvolutionFunction&>(*this))(input, kernel);
     }
+
+    rez.transform(*static_cast<ActivationFunction*>(this));
     return rez;
   }
 
