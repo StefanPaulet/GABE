@@ -152,14 +152,14 @@ private:
 
     cinfo.image_width = width;
     cinfo.image_height = height;
-    cinfo.input_components = 3; // RGB
+    cinfo.input_components = 3;
     cinfo.in_color_space = JCS_RGB;
 
     jpeg_set_defaults(&cinfo);
 
     jpeg_start_compress(&cinfo, TRUE);
 
-    row_stride = width * 3; // RGB components per row
+    row_stride = width * 3;
 
     while (cinfo.next_scanline < cinfo.image_height) {
       row_pointer[0] = &data[cinfo.next_scanline * row_stride];
@@ -170,5 +170,76 @@ private:
     fclose(outfile);
     jpeg_destroy_compress(&cinfo);
   }
+};
+
+class MouseClickEvent : public Event {
+public:
+  enum class Button { LEFT_BUTTON, RIGHT_BUTTON, WHEEL_PRESSED, WHEEL_UP, WHEEL_DOWN };
+
+  MouseClickEvent() = default;
+  MouseClickEvent(MouseClickEvent const&) = default;
+  MouseClickEvent(MouseClickEvent&&) noexcept = default;
+  explicit MouseClickEvent(Button val) : _buttonType {val} {}
+
+  auto solve(Display* display, Window window) noexcept(false) -> void override {
+    int button;
+    std::string buttonStr;
+    switch (_buttonType) {
+      using enum Button;
+      case LEFT_BUTTON: {
+        button = Button1;
+        buttonStr = "left click";
+        break;
+      }
+      case RIGHT_BUTTON: {
+        button = Button3;
+        buttonStr = "right click";
+        break;
+      }
+      case WHEEL_PRESSED: {
+        button = Button2;
+        buttonStr = "middle click";
+        break;
+      }
+      case WHEEL_UP: {
+        button = Button4;
+        buttonStr = "wheel up";
+        break;
+      }
+      case WHEEL_DOWN: {
+        button = Button5;
+        buttonStr = "wheel down";
+        break;
+      }
+    }
+    XTestFakeButtonEvent(display, button, True, CurrentTime);
+    usleep(100);
+    XTestFakeButtonEvent(display, button, False, CurrentTime);
+    log("Treated mouse click event of type " + buttonStr, OpState::INFO);
+  }
+
+private:
+  Button _buttonType {};
+};
+
+class KeyPressEvent : public Event {
+public:
+  KeyPressEvent() = default;
+  KeyPressEvent(KeyPressEvent const&) = default;
+  KeyPressEvent(KeyPressEvent&&) noexcept = default;
+  explicit KeyPressEvent(char key) : _key {key} {}
+
+  auto solve(Display* display, Window window) noexcept(false) -> void override {
+    KeySym keyCode = XKeysymToKeycode(display, _key);
+    XTestFakeKeyEvent(display, keyCode, True, CurrentTime);
+    XSync(display, False);
+    usleep(100);
+    XTestFakeKeyEvent(display, keyCode, False, CurrentTime);
+    XSync(display, False);
+    log(std::format("Treated key pres event of {}", _key), OpState::INFO);
+  }
+
+private:
+  char _key;
 };
 } // namespace gabe

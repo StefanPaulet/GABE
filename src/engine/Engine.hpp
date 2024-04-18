@@ -18,7 +18,15 @@ public:
     log("Started processing commands", OpState::SUCCESS);
     auto thread = _windowController.run();
 
-    _windowController.add_event(std::make_unique<ScreenshotEvent>());
+
+    _windowController.add_event(std::make_unique<MouseClickEvent>(MouseClickEvent::Button::LEFT_BUTTON));
+    for (auto idx = 0; idx < 10; ++idx) {
+      _windowController.add_event(std::make_unique<KeyPressEvent>('a' + idx));
+    }
+    for (auto idx = 0; idx < 10; ++idx) {
+      _windowController.add_event(std::make_unique<KeyPressEvent>('0' + idx));
+    }
+    _windowController.add_event(std::make_unique<MouseClickEvent>(MouseClickEvent::Button::RIGHT_BUTTON));
     sleep(5);
     _windowController.stop();
     thread.join();
