@@ -43,7 +43,7 @@ target_include_directories(
     src
 )
 
-target_link_libraries(main "-lX11 -lXtst")
+target_link_libraries(main "-lX11 -lXtst -ljpeg")
 
 include(FetchContent)
 enable_testing()

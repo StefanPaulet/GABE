@@ -4,9 +4,12 @@
 
 #pragma once
 #include "Exceptions.hpp"
+#include <X11/Xutil.h>
+#include <cstring>
+#include <jpeglib.h>
 #include <types.hpp>
-#include <utils/logger/Logger.hpp>
 #include <unistd.h>
+#include <utils/logger/Logger.hpp>
 
 namespace gabe {
 
@@ -98,5 +101,74 @@ public:
 private:
   static constexpr auto itCount = 50;
   Point _totalMovement {};
+};
+
+class ScreenshotEvent : public Event {
+public:
+  ScreenshotEvent() = default;
+  ScreenshotEvent(ScreenshotEvent const&) = default;
+  ScreenshotEvent(ScreenshotEvent&&) noexcept = default;
+
+  auto solve(Display* display, Window window) noexcept(false) -> void override {
+    XWindowAttributes attr;
+    XGetWindowAttributes(display, window, &attr);
+
+    XImage* img = XGetImage(display, window, 0, 0, attr.width, attr.height, AllPlanes, ZPixmap);
+    char* data = img->data;
+    auto* jpgData = new unsigned char[attr.width * attr.height * 3];
+    int bytesPerPixel = img->bits_per_pixel / 8;
+    int bytesPerLine = img->bytes_per_line;
+    for (int y = 0; y < attr.height; ++y) {
+      for (int x = 0; x < attr.width; ++x) {
+        int offset = y * bytesPerLine + x * bytesPerPixel;
+        int jpgOffset = y * attr.width * 3 + x * 3;
+
+        jpgData[jpgOffset + 0] = data[offset + 2];
+        jpgData[jpgOffset + 1] = data[offset + 1];
+        jpgData[jpgOffset + 2] = data[offset + 0];
+      }
+    }
+    saveImage("image.jpg", jpgData, attr.width, attr.height);
+    delete[] jpgData;
+    log(std::format("Treated screen capture event; width={} height={}", attr.width, attr.height), OpState::INFO);
+    XDestroyImage(img);
+  }
+
+private:
+  static auto saveImage(std::string const& filename, unsigned char* data, int width, int height) -> void {
+    struct jpeg_compress_struct cinfo {};
+    struct jpeg_error_mgr jerr {};
+
+    FILE* outfile;
+    JSAMPROW row_pointer[1];
+    int row_stride;
+
+    cinfo.err = jpeg_std_error(&jerr);
+
+    jpeg_create_compress(&cinfo);
+    outfile = fopen(filename.c_str(), "wb");
+
+    jpeg_stdio_dest(&cinfo, outfile);
+
+    cinfo.image_width = width;
+    cinfo.image_height = height;
+    cinfo.input_components = 3; // RGB
+    cinfo.in_color_space = JCS_RGB;
+
+    jpeg_set_defaults(&cinfo);
+
+    jpeg_start_compress(&cinfo, TRUE);
+
+    row_stride = width * 3; // RGB components per row
+
+    while (cinfo.next_scanline < cinfo.image_height) {
+      row_pointer[0] = &data[cinfo.next_scanline * row_stride];
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+
+    jpeg_finish_compress(&cinfo);
+    fclose(outfile);
+    jpeg_destroy_compress(&cinfo);
+  }
 };
 } // namespace gabe

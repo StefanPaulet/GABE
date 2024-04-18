@@ -18,12 +18,7 @@ public:
     log("Started processing commands", OpState::SUCCESS);
     auto thread = _windowController.run();
 
-    for (int i = 0; true; ++i) {
-      _windowController.add_event(std::make_unique<StrafeEvent>(Point {20, 5}));
-      _windowController.add_event(std::make_unique<StrafeEvent>(Point {-40, -5}));
-      _windowController.add_event(std::make_unique<StrafeEvent>(Point {20, 0}));
-      sleep(1);
-    }
+    _windowController.add_event(std::make_unique<ScreenshotEvent>());
     sleep(5);
     _windowController.stop();
     thread.join();
