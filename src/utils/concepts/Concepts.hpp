@@ -77,17 +77,30 @@ template <typename T>
 concept DeepLinearMatrixType = LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsDeepLinearMatrix<T>::value;
 
 template <typename T>
+concept DeepKernelType =
+    LinearArrayType<T> && gabe::utils::math::linearArray::impl::IsDeepThreeDimensionalKernel<T>::value;
+
+template <typename T>
 concept ConvolutionalLayerType = nn::impl::IsConvolutionalLayer<T>::value;
+
+template <typename T>
+concept PoolingLayerType = nn::impl::IsPoolingLayer<T>::value;
+
+template <typename T>
+concept ThreeDimensionalLayerType = ConvolutionalLayerType<T> || PoolingLayerType<T>;
 
 template <typename T>
 concept ContainerFunctionType = gabe::utils::math::impl::is_container_function<T>::value;
 
 template <typename T>
-concept ConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
+concept CatCrossEntropyFunctionType = gabe::utils::math::impl::is_cat_cross_entropy_function<T>::value;
+
+template <typename T>
+concept DeepConvolutionFunctionType = gabe::utils::math::impl::is_convolution_function<T>::value;
 
 namespace impl {
 template <typename, typename = void> struct IsConvolutionalLayerPair : std::false_type {};
-template <typename DataType, gabe::utils::concepts::ConvolutionalLayerType FirstLayer,
+template <typename DataType, gabe::utils::concepts::ThreeDimensionalLayerType FirstLayer,
           gabe::utils::concepts::ConvolutionalLayerType SecondLayer, typename... RemainingLayers>
 struct IsConvolutionalLayerPair<gabe::nn::impl::LayerPair<DataType, FirstLayer, SecondLayer, RemainingLayers...>> :
     std::true_type {};

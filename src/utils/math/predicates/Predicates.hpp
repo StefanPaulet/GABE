@@ -59,4 +59,22 @@ template <concepts::RandomAccessContainer L, concepts::RandomAccessContainer R> 
     return true;
   }
 };
+
+
+template <typename L = void, typename R = L> struct HighPrecisionEquals {
+  auto operator()(L const& lhs, R const& rhs) const -> bool { return &lhs == &rhs; }
+};
+
+template <> struct HighPrecisionEquals<void, void> {
+  template <typename L, typename R> auto operator()(L&& lhs, R&& rhs) const -> bool {
+    return HighPrecisionEquals<std::remove_cvref_t<L>, std::remove_cvref_t<R>>()(std::forward<L>(lhs),
+                                                                                 std::forward<R>(rhs));
+  }
+};
+
+template <std::floating_point L, std::floating_point R> struct HighPrecisionEquals<L, R> {
+  auto operator()(L const& lhs, R const& rhs) const -> bool {
+    return ((lhs - rhs > 0) ? (lhs - rhs) : (rhs - lhs)) < 0.000000001;
+  }
+};
 } // namespace gabe::utils::math

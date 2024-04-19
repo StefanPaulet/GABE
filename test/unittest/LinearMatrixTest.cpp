@@ -176,3 +176,10 @@ TEST(LinearMatrixTest, Dilate) {
   auto mtrx3 = mtrx1.dilate<1>();
   ASSERT_EQ(mtrx2, mtrx3);
 }
+
+TEST(LinearMatrixTest, Pad) {
+  auto mtrx1 = larray(larray(1, 2), larray(3, 4));
+  auto mtrx2 = larray(larray(0, 0, 0, 0), larray(0, 1, 2, 0), larray(0, 3, 4, 0), larray(0, 0, 0, 0));
+  auto mtrx3 = mtrx1.pad<1, 1>();
+  ASSERT_EQ(mtrx2, mtrx3);
+}

@@ -358,8 +358,43 @@ TEST(LinearArrayTest, Flatten) {
   auto arr4 = mtrx2.flatten();
   static_assert(std::is_same_v<decltype(arr3), decltype(arr4)>);
 
+  auto arr5 = LinearArray<int, 2, 3, 14> {arr3};
+  ASSERT_EQ(arr5.flatten(), arr3);
+
+  auto darr1 = larray(4.3, 5.345, -25.2432, 432.234, -6034.32, 432.432, 675.54, 5.42, -0.32, 52.3);
+  auto darr2 = LinearArray<double, 5, 2, 1> {darr1};
+  auto darr3 = larray(larray(larray(4.3), larray(5.345)), larray(larray(-25.2432), larray(432.234)),
+                      larray(larray(-6034.32), larray(432.432)), larray(larray(675.54), larray(5.42)),
+                      larray(larray(-0.32), larray(52.3)));
+  ASSERT_EQ(darr2, darr3);
+  ASSERT_EQ(darr3.flatten(), darr1);
+
   (void) arr1;
   (void) arr2;
   (void) arr3;
   (void) arr4;
+}
+
+TEST(LinearArrayTest, Serialization) {
+  auto arr1 = larray(larray(1, 2, 3), larray(4, 2, 1));
+  FILE* out = fopen("file.out", "w");
+  arr1.serialize(out);
+  fclose(out);
+
+  FILE* in = fopen("file.out", "r");
+  auto arr2 = LinearArray<int, 2, 3>::deserialize(in);
+  fclose(in);
+
+  ASSERT_EQ(arr1, arr2);
+
+  auto arr3 = larray(larray(-2.23, 2.4, 3.52), larray(65.13, 2.29, -12.3));
+  FILE* out2 = fopen("file.out", "w");
+  arr3.serialize(out2);
+  fclose(out2);
+
+  FILE* in2 = fopen("file.out", "r");
+  auto arr4 = LinearArray<double, 2, 3>::deserialize(in2);
+  fclose(in2);
+
+  ASSERT_EQ(arr3, arr4);
 }

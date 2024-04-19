@@ -13,8 +13,10 @@ endif()
 
 set(
     UNIT_TEST_SOURCES
+    BoundingBoxTest.cpp
     ConvNetTest.cpp
     FunctionTest.cpp
+    LayerInitializationTest.cpp
     LayerTest.cpp
     LinearArrayTest.cpp
     LinearMatrixTest.cpp

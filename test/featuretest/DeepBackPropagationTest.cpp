@@ -33,6 +33,27 @@ TEST(NeuralNetwork, BackPropagation) {
   ASSERT_EQ(target, output);
 }
 
+TEST(NeuralNetwork, PropagationWithSerialization) {
+  NeuralNetwork<float, SizedLayer<3, InputLayer>,
+                SizedLayer<3, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn;
+  auto input = larray(larray(1.0f, 1, 1)).transpose();
+  auto target = larray(larray(2.0f, 0, 0)).transpose();
+  auto learningRate = 0.05f;
+  nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
+
+  auto epochCount = 60;
+  for (auto epoch = 0; epoch < epochCount; ++epoch) {
+    nn.backPropagate(input, target, learningRate);
+  }
+
+  nn.serialize("file.out");
+  decltype(nn) nn1;
+  nn1.deserialize("file.out");
+  auto output = nn1.feedForward(input);
+  ASSERT_EQ(target, output);
+}
+
 TEST(NeuralNetwork, SeedsBackPropagation) {
   auto v = loadDelimSeparatedFile<LinearArray<float, 7, 1>>(
       "../../../test/featuretest/datasets/seeds/seeds_dataset.txt", '\t');

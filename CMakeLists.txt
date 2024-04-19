@@ -43,6 +43,8 @@ target_include_directories(
     src
 )
 
+target_link_libraries(main PUBLIC jpeg)
+
 include(FetchContent)
 enable_testing()
 add_subdirectory(test/unittest)

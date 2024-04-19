@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "initialization/InitializationScheme.hpp"
 #include "layer/ConvolutionalLayer.hpp"
 #include "layer/Layer.hpp"
 #include "utils/data/Data.hpp"
@@ -13,6 +14,7 @@ namespace gabe::nn {
 template <typename DataType, typename InputLayer, typename... Layers> class NeuralNetwork :
     public impl::LayerPair<DataType, InputLayer, Layers...> {
   template <typename InputLayerType> using DataSet = utils::data::DataSet<InputLayerType>;
+  template <typename InputLayerType> using YoloDataSet = utils::data::YoloDataSet<InputLayerType>;
 
 private:
   using LayerPair = impl::LayerPair<DataType, InputLayer, Layers...>;
@@ -28,15 +30,45 @@ public:
       return dist(randomDevice);
     };
 
-    static_cast<LayerPair*>(this)->randomize_weights(transformer);
+    LayerPair::randomize_weights(transformer);
   }
 
-  template <typename InputLayerType, typename LabelEncoderType>
-  auto backPropagate(Size epochCount, DataType learningRate, DataSet<InputLayerType> const& dataSet,
-                     LabelEncoderType&& labelEncoder) -> void {
-    for (auto idx = 0; idx < epochCount; ++idx) {
+  template <typename Input, typename LabelEncoderType> auto backPropagate(Size epochCount, DataType learningRate,
+                                                                          DataSet<Input> const& dataSet,
+                                                                          LabelEncoderType&& labelEncoder) -> void {
+    for (Size idx = 0; idx < epochCount; ++idx) {
       for (auto const& e : dataSet.data()) {
         backPropagate(e.data, labelEncoder(e.label), learningRate);
+      }
+    }
+  }
+
+  template <typename Input, typename LabelEncoder>
+  auto backPropagateWithSerialization(Size epochCount, DataType learningRate, DataSet<Input> const& dataSet,
+                                      LabelEncoder&& labelEncoder, std::string const& serializationFile) -> void {
+    for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
+      for (auto const& e : dataSet.data()) {
+        backPropagate(e.data, labelEncoder(e.label), learningRate);
+        ++propIdx;
+        if (propIdx % 20 == 0) {
+          serialize(serializationFile);
+        }
+      }
+    }
+  }
+
+  template <typename Input, typename Clipper>
+  auto yoloBackPropagateWithSerialization(Size epochCount, DataType learningRate, YoloDataSet<Input> const& dataSet,
+                                          std::string const& serializationFile, Clipper&& clipper) -> void {
+    for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
+      for (auto const& e : dataSet.data()) {
+        backPropagate(e.data, e.labels, learningRate, std::forward<Clipper>(clipper));
+        ++propIdx;
+
+        if (propIdx % 50 == 0) {
+          std::cout << "Serializing inside " + serializationFile + std::to_string(propIdx) + "\n";
+          serialize(serializationFile + std::to_string(propIdx));
+        }
       }
     }
   }
@@ -51,6 +83,18 @@ public:
       }
     }
     return error;
+  }
+
+  auto serialize(std::string const& fileName) {
+    FILE* out = fopen(fileName.c_str(), "w");
+    LayerPair::serialize(out);
+    fclose(out);
+  }
+
+  auto deserialize(std::string const& fileName) {
+    FILE* in = fopen(fileName.c_str(), "r");
+    LayerPair::deserialize(in);
+    fclose(in);
   }
 };
 } // namespace gabe::nn
