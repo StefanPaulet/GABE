@@ -10,6 +10,7 @@
 #include "utils/math/function/Function.hpp"
 #include <bitset>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <jpeglib.h>
@@ -92,9 +93,10 @@ template <concepts::DeepLinearMatrixType R> auto loadJPEG(std::string const& fil
   int width = cinfo.output_width;
   int height = cinfo.output_height;
   int numChannels = cinfo.num_components;
-  assert(width == 640 && "Width of CS2 image should be 640");
-  assert(height == 640 && "Height of CS2 image should be 640");
-  assert(numChannels == 3 && "The number of channels of CS2 image should be 3");
+  assert(width == R::InnerLinearArray::InnerLinearArray::size()
+         && "Width of image should match the third dimension of the container");
+  assert(height == R::InnerLinearArray::size() && "Height of image should match the second dimension of the container");
+  assert(numChannels == R::size() && "The number of channels should match the first dimension of the container");
 
   auto* imageBuffer = new unsigned char[width * height * numChannels];
 
@@ -145,7 +147,7 @@ template <concepts::DeepLinearMatrixType K> auto loadCS2Labels(std::string const
 enum class MNISTDataSetType { TEST, TRAIN };
 
 template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePath, MNISTDataSetType loadFlag)
-    -> DataSet<R> {
+    -> ImageDataSet<R> {
   FILE* imagesIn = fopen((filePath + "/images").c_str(), "rb");
   FILE* labelsIn = fopen((filePath + "/labels").c_str(), "rb");
   auto expectedImageCount = loadFlag == MNISTDataSetType::TRAIN ? 60000 : 10000;
@@ -156,7 +158,7 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
   assert(labelsVector.size() == dataVector.size()
          && "The number of labels is not the same as the number of data points");
 
-  auto rezVector = std::vector<DataPoint<R>> {};
+  auto rezVector = std::vector<ImageDataPoint<R>> {};
   rezVector.reserve(labelsVector.size());
   for (auto idx = 0; idx < labelsVector.size(); ++idx) {
     rezVector.emplace_back(dataVector[idx], labelsVector[idx]);
@@ -164,7 +166,49 @@ template <concepts::LinearArrayType R> auto loadMNIST(std::string const& filePat
 
   fclose(imagesIn);
   fclose(labelsIn);
-  return DataSet<R> {rezVector};
+  return ImageDataSet<R> {rezVector};
+}
+
+template <concepts::DeepLinearMatrixType I, Size widthTrunc = I::InnerLinearArray::InnerLinearArray::size(),
+          Size heightTrunc = I::InnerLinearArray::size(),
+          concepts::DeepLinearMatrixType FullJpgArr = math::LinearArray<typename I::UnderlyingType, 3, 25, 335>>
+auto loadCoordDigitsImages(std::string const& folderPath, int imgCount) {
+  ImageDataSet<I> images {};
+  I truncatedImage {};
+
+  std::string imgDirectory {folderPath + "/images/"};
+  std::string labelDirectory {folderPath + "/labels/"};
+
+  for (auto idx = 0; idx < imgCount; ++idx) {
+    auto fullJpg = impl::loadJPEG<FullJpgArr>(imgDirectory + "image.jpg" + std::to_string(idx));
+    std::ifstream labelsIn {(labelDirectory + std::to_string(idx) + ".txt").c_str()};
+    auto* pLine = new char[32];
+    while (labelsIn.getline(pLine, 32)) {
+      std::string labelLine {pLine};
+      auto range = std::views::split(labelLine, ' ');
+      auto it = range.begin();
+
+      Size label;
+      Size widthOffset;
+      Size heightOffset;
+      label = std::strtol((*it).data(), nullptr, 10);
+      ++it;
+      widthOffset = std::strtol((*it).data(), nullptr, 10);
+      ++it;
+      heightOffset = std::strtol((*it).data(), nullptr, 10);
+      for (auto channel = 0; channel < 3; ++channel) {
+        for (auto cIdx = widthOffset; cIdx < widthTrunc + widthOffset; ++cIdx) {
+          for (auto lIdx = heightOffset; lIdx < heightTrunc + heightOffset; ++lIdx) {
+            truncatedImage[channel][lIdx - heightOffset][cIdx - widthOffset] = fullJpg[channel][lIdx][cIdx];
+          }
+        }
+      }
+
+      images.data().emplace_back(truncatedImage, label);
+    }
+    delete[] pLine;
+  }
+  return images;
 }
 
 template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const& folderPath, Size imageCount = 2000)
@@ -190,8 +234,8 @@ template <concepts::DeepLinearMatrixType I> auto loadCS2Images(std::string const
 }
 
 template <concepts::LinearArrayType R> auto loadDelimSeparatedFile(std::string const& filePath, char delim = ',')
-    -> DataSet<R> {
-  DataSet<R> rezVector;
+    -> ImageDataSet<R> {
+  ImageDataSet<R> rezVector;
 
   std::ifstream in {filePath};
   auto* linePtr = new char[1024];

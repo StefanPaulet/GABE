@@ -13,7 +13,7 @@ namespace gabe::nn {
 
 template <typename DataType, typename InputLayer, typename... Layers> class NeuralNetwork :
     public impl::LayerPair<DataType, InputLayer, Layers...> {
-  template <typename InputLayerType> using DataSet = utils::data::DataSet<InputLayerType>;
+  template <typename InputLayerType> using ImageDataSet = utils::data::ImageDataSet<InputLayerType>;
   template <typename InputLayerType> using YoloDataSet = utils::data::YoloDataSet<InputLayerType>;
 
 private:
@@ -34,7 +34,7 @@ public:
   }
 
   template <typename Input, typename LabelEncoderType> auto backPropagate(Size epochCount, DataType learningRate,
-                                                                          DataSet<Input> const& dataSet,
+                                                                          ImageDataSet<Input> const& dataSet,
                                                                           LabelEncoderType&& labelEncoder) -> void {
     for (Size idx = 0; idx < epochCount; ++idx) {
       for (auto const& e : dataSet.data()) {
@@ -44,13 +44,14 @@ public:
   }
 
   template <typename Input, typename LabelEncoder>
-  auto backPropagateWithSerialization(Size epochCount, DataType learningRate, DataSet<Input> const& dataSet,
+  auto backPropagateWithSerialization(Size epochCount, DataType learningRate, ImageDataSet<Input> const& dataSet,
                                       LabelEncoder&& labelEncoder, std::string const& serializationFile) -> void {
     for (Size idx = 0, propIdx = 0; idx < epochCount; ++idx) {
       for (auto const& e : dataSet.data()) {
         backPropagate(e.data, labelEncoder(e.label), learningRate);
         ++propIdx;
         if (propIdx % 20 == 0) {
+          std::cout << "Serialization " << propIdx << " done\n";
           serialize(serializationFile);
         }
       }
@@ -74,10 +75,11 @@ public:
   }
 
   template <typename InputLayerType, typename LabelDecoderType>
-  auto validate(DataSet<InputLayerType> const& dataSet, LabelDecoderType&& labelDecoder) -> double {
+  auto validate(ImageDataSet<InputLayerType> const& dataSet, LabelDecoderType&& labelDecoder) -> double {
     double error = .0;
     for (auto const& e : dataSet.data()) {
       auto rez = feedForward(e.data);
+      std::cout << labelDecoder(rez) << " " << e.label << '\n';
       if (labelDecoder(rez) != e.label) {
         error += static_cast<DataType>(1) / dataSet.data().size();
       }
