@@ -3,8 +3,8 @@
 //
 
 #pragma once
-#include "Exceptions.hpp"
 #include <X11/Xutil.h>
+#include <cassert>
 #include <cstring>
 #include <jpeglib.h>
 #include <types.hpp>
@@ -20,7 +20,8 @@ struct Point {
 
   auto operator+(Point const& other) const -> Point { return {x + other.x, y + other.y}; }
   auto operator+=(Point const& other) -> Point& {
-    *this = *this + other;
+    x += other.x;
+    y += other.y;
     return *this;
   }
   auto operator/(int value) const -> Point { return {x / value, y / value}; }
@@ -31,7 +32,7 @@ struct Point {
 
 class Event {
 public:
-  virtual auto solve(Display*, Window) noexcept(false) -> void = 0;
+  virtual auto solve(Display* display, Window window) -> void = 0;
   virtual ~Event() = default;
   auto translateCoordinates(Display* display, Window window) -> Point {
     int targetX;
@@ -49,7 +50,7 @@ public:
   MouseMoveEvent(MouseMoveEvent&&) noexcept = default;
   explicit MouseMoveEvent(Point const& point) : _point {point} {}
 
-  auto solve(Display* display, Window window) noexcept(false) -> void override {
+  auto solve(Display* display, Window window) -> void override {
     _point = _point + translateCoordinates(display, window);
     XSetInputFocus(display, window, RevertToParent, CurrentTime);
     XFlush(display);
@@ -74,7 +75,7 @@ public:
   StrafeEvent(StrafeEvent&&) noexcept = default;
   explicit StrafeEvent(Point const& movement) : _totalMovement {movement} {}
 
-  auto solve(Display* display, Window window) noexcept(false) -> void override {
+  auto solve(Display* display, Window window) -> void override {
     XWindowAttributes attr;
     int revert;
     XGetInputFocus(display, &window, &revert);
@@ -109,13 +110,13 @@ public:
   ScreenshotEvent(ScreenshotEvent const&) = default;
   ScreenshotEvent(ScreenshotEvent&&) noexcept = default;
 
-  auto solve(Display* display, Window window) noexcept(false) -> void override {
+  auto solve(Display* display, Window window) -> void override {
     XWindowAttributes attr;
     XGetWindowAttributes(display, window, &attr);
 
     XImage* img = XGetImage(display, window, 0, 0, attr.width, attr.height, AllPlanes, ZPixmap);
     char const* data = img->data;
-    auto const* jpgData = new unsigned char[attr.width * attr.height * 3];
+    auto* jpgData = new unsigned char[attr.width * attr.height * 3];
     int bytesPerPixel = img->bits_per_pixel / 8;
     int bytesPerLine = img->bytes_per_line;
     for (int y = 0; y < attr.height; ++y) {
@@ -144,7 +145,7 @@ private:
     cinfo.err = jpeg_std_error(&jerr);
 
     jpeg_create_compress(&cinfo);
-    auto* outfile = fopen(filename.c_str(), "wb");
+    auto* outfile = fopen(filename.data(), "wb");
 
     jpeg_stdio_dest(&cinfo, outfile);
 
@@ -162,6 +163,7 @@ private:
     while (cinfo.next_scanline < cinfo.image_height) {
       row_pointer = &data[cinfo.next_scanline * row_stride];
       jpeg_write_scanlines(&cinfo, &row_pointer, 1);
+    }
   }
 };
 
@@ -180,8 +182,8 @@ public:
   MouseClickEvent(MouseClickEvent&&) noexcept = default;
   explicit MouseClickEvent(Button val) : _buttonType {val} {}
 
-  auto solve(Display* display, Window window) noexcept(false) -> void override {
-    auto toString = [this] {
+  auto solve(Display* display, Window window) -> void override {
+    auto toString = [this]() -> std::string {
       switch(_buttonType) {
         using enum Button;
         case LEFT_BUTTON: return "left click";
@@ -194,7 +196,7 @@ public:
       return "<undefined button type>";
     };
 
-    int buttonId = static_cast<std::underlying_type_t<Button>>(_buttonType);
+    auto buttonId = static_cast<std::underlying_type_t<Button>>(_buttonType);
     XTestFakeButtonEvent(display, buttonId, True, CurrentTime);
     usleep(100);
     XTestFakeButtonEvent(display, buttonId, False, CurrentTime);
@@ -212,7 +214,7 @@ public:
   KeyPressEvent(KeyPressEvent&&) noexcept = default;
   explicit KeyPressEvent(char key) : _key {key} {}
 
-  auto solve(Display* display, Window window) noexcept(false) -> void override {
+  auto solve(Display* display, Window window) -> void override {
     KeySym keyCode = XKeysymToKeycode(display, _key);
     XTestFakeKeyEvent(display, keyCode, True, CurrentTime);
     XSync(display, False);
@@ -223,6 +225,6 @@ public:
   }
 
 private:
-  char _key;
+  char _key {};
 };
 } // namespace gabe

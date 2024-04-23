@@ -11,24 +11,18 @@ enum class OpState { SUCCESS, FAILURE, INFO };
 
 #ifndef NDEBUG
 auto log(std::string const& message, OpState opState) -> void {
-  std::string formatString {};
-  switch (opState) {
-    using enum gabe::OpState;
-    case SUCCESS: {
-      formatString = "\033[1;32m";
-      break;
+  auto formatString = [opState]() {
+    switch (opState) {
+      using enum gabe::OpState;
+      case SUCCESS: return "\033[1;32m";
+      case FAILURE: return "\033[1;31m";
+      case INFO: return "\033[1;33m";
     }
-    case FAILURE: {
-      formatString = "\033[1;31m";
-      break;
-    }
-    case INFO: {
-      formatString = "\033[1;33m";
-      break;
-    }
-  }
+    assert(false && "OpState undefined");
+    return "<undefined operation state>";
+  };
 
-  printf("%s %s\n", formatString.c_str(), message.c_str());
+  printf("%s %s\n", formatString(), message.c_str());
 }
 #else
 template <typename... Args> auto log(Args&&...) {}

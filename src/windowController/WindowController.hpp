@@ -123,7 +123,7 @@ private:
 
     try {
       std::string output = exec(cmd.c_str());
-      _window = std::stoi(output, nullptr, 16);
+      _window = std::strtol(output.c_str(), nullptr, 16);
       log(std::format("Found Counter-Strike 2 window id: {}", _window), OpState::SUCCESS);
       return true;
     } catch (window::PipeOpenException const& e) {

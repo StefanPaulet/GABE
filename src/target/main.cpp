@@ -11,6 +11,5 @@ using namespace gabe;
 int main() {
   gabe::WindowController wc {"../scripts/find_csXwindow.sh"};
   Engine engine {wc};
-  engine.run();
-  return 0;
+  return engine.run();
 }
