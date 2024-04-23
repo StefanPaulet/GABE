@@ -172,11 +172,24 @@ public:
     return result;
   }
 
+  auto serialize(std::string const& outFilePath) const {
+    FILE* outFile = fopen(outFilePath.c_str(), "w");
+    serialize(outFile);
+    fclose(outFile);
+  }
+
   auto serialize(FILE* outFile) const {
     auto arr = static_cast<D const*>(this)->data();
     for (auto const& e : arr) {
       e.serialize(outFile);
     }
+  }
+
+  static auto deserialize(std::string const& inFilePath) {
+    FILE* inFile = fopen(inFilePath.c_str(), "r");
+    auto rez = deserialize(inFile);
+    fclose(inFile);
+    return rez;
   }
 
   static auto deserialize(FILE* inFile) -> D {

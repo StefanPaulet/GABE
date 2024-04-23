@@ -13,7 +13,7 @@ using namespace gabe::utils::math::linearArray;
 
 int main() {
   PositionReader pr {};
-  //  pr.trainNetwork("../src/utils/positionReader/data", 1);
+  pr.loadTemplates("../src/utils/positionReader/data", 2);
   pr.identifyObjects("../src/utils/positionReader/data", 1);
   return 0;
 }
