@@ -327,3 +327,74 @@ TEST(LinearArrayTest, Maximize) {
   ASSERT_EQ(arr5, arr4);
   ASSERT_EQ(arr6, arr3);
 }
+
+TEST(LinearArrayTest, Size) {
+  auto arr1 = LinearArray<int, 5> {};
+  ASSERT_EQ(arr1.size(), 5);
+
+  auto arr2 = LinearArray<int, 5, 3> {};
+  ASSERT_EQ(arr2.size(), 5);
+
+  auto arr3 = LinearArray<int, 3, 5> {};
+  ASSERT_EQ(arr3.size(), 3);
+}
+
+TEST(LinearArrayTest, TotalSize) {
+  auto arr1 = LinearArray<int, 7, 2> {};
+  ASSERT_EQ(arr1.total_size(), 14);
+
+  auto arr2 = LinearArray<int, 3, 3, 2> {};
+  ASSERT_EQ(arr2.total_size(), 18);
+}
+
+TEST(LinearArrayTest, Flatten) {
+  auto mtrx1 = LinearArray<int, 5, 3> {};
+  auto arr1 = LinearArray<int, 15> {};
+  auto arr2 = mtrx1.flatten();
+  static_assert(std::is_same_v<decltype(arr1), decltype(arr2)>);
+
+  auto mtrx2 = LinearArray<int, 1, 28, 3> {};
+  auto arr3 = LinearArray<int, 84> {};
+  auto arr4 = mtrx2.flatten();
+  static_assert(std::is_same_v<decltype(arr3), decltype(arr4)>);
+
+  auto arr5 = LinearArray<int, 2, 3, 14> {arr3};
+  ASSERT_EQ(arr5.flatten(), arr3);
+
+  auto darr1 = larray(4.3, 5.345, -25.2432, 432.234, -6034.32, 432.432, 675.54, 5.42, -0.32, 52.3);
+  auto darr2 = LinearArray<double, 5, 2, 1> {darr1};
+  auto darr3 = larray(larray(larray(4.3), larray(5.345)), larray(larray(-25.2432), larray(432.234)),
+                      larray(larray(-6034.32), larray(432.432)), larray(larray(675.54), larray(5.42)),
+                      larray(larray(-0.32), larray(52.3)));
+  ASSERT_EQ(darr2, darr3);
+  ASSERT_EQ(darr3.flatten(), darr1);
+
+  (void) arr1;
+  (void) arr2;
+  (void) arr3;
+  (void) arr4;
+}
+
+TEST(LinearArrayTest, Serialization) {
+  auto arr1 = larray(larray(1, 2, 3), larray(4, 2, 1));
+  FILE* out = fopen("file.out", "w");
+  arr1.serialize(out);
+  fclose(out);
+
+  FILE* in = fopen("file.out", "r");
+  auto arr2 = LinearArray<int, 2, 3>::deserialize(in);
+  fclose(in);
+
+  ASSERT_EQ(arr1, arr2);
+
+  auto arr3 = larray(larray(-2.23, 2.4, 3.52), larray(65.13, 2.29, -12.3));
+  FILE* out2 = fopen("file.out", "w");
+  arr3.serialize(out2);
+  fclose(out2);
+
+  FILE* in2 = fopen("file.out", "r");
+  auto arr4 = LinearArray<double, 2, 3>::deserialize(in2);
+  fclose(in2);
+
+  ASSERT_EQ(arr3, arr4);
+}

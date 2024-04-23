@@ -18,6 +18,18 @@ template <typename T, Size fs, Size... rs> struct IsLinearArray<LinearArray<T, f
 template <typename> struct IsLinearColumnArray : std::false_type {};
 template <typename T, Size colSize> struct IsLinearColumnArray<LinearArray<T, colSize, 1>> : std::true_type {};
 
+template <typename T> struct IsLinearMatrix : std::false_type {};
+template <typename T, Size lineSize, Size colSize> struct IsLinearMatrix<LinearArray<T, lineSize, colSize>> :
+    std::true_type {};
+
+template <typename T> struct IsDeepLinearMatrix : std::false_type {};
+template <typename T, Size depth, Size lines, Size cols> struct IsDeepLinearMatrix<LinearArray<T, depth, lines, cols>> :
+    std::true_type {};
+
+template <typename T> struct IsDeepThreeDimensionalKernel : std::false_type {};
+template <typename T, Size s1, Size s2, Size s3, Size s4>
+struct IsDeepThreeDimensionalKernel<LinearArray<T, s1, s2, s3, s4>> : std::true_type {};
+
 template <typename> struct IsMalformedLinearArray : std::false_type {};
 template <typename T, Size s> struct IsMalformedLinearArray<LinearArray<T, s>> :
     std::bool_constant<IsLinearArray<T>::value> {};

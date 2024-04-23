@@ -45,7 +45,7 @@ TEST(FunctionTest, Identity) {
   ASSERT_EQ(idt.derive(5), exp2);
 }
 
-TEST(FunctionTest, MeanSquaredErrorTest) {
+TEST(FunctionTest, MeanSquaredError) {
   MeanSquaredErrorFunction<> msq;
 
   static_assert(decltype(msq)::isCostFunction, "MeanSquaredError is not a cost function");
@@ -76,6 +76,20 @@ TEST(FunctionTest, MeanSquaredErrorTest) {
   auto ld_derive_exp = larray(larray(-0.68, 0.4, 0.28));
   ASSERT_EQ(msq(ld_arr1, ld_arr2), ld_exp);
   ASSERT_EQ(msq.derive(ld_arr1, ld_arr2), ld_derive_exp);
+}
+
+TEST(FunctionTest, CrossEntropy) {
+  CrossEntropyFunction<> cef;
+
+  static_assert(decltype(cef)::isCostFunction, "MeanSquaredError is not a cost function");
+
+  auto arr1 = larray(larray(0.58, 0.3, 0.12)).transpose();
+  auto tarr1 = OneHotEncoder<int, LinearArray<double, 3, 1>> {}(1);
+  auto exp1 = -log(0.3);
+  ASSERT_EQ(cef(arr1, tarr1).accumulate(0, [](double x, double y) { return x + y; }), exp1);
+
+  auto derivExp1 = -1.0 / 0.3;
+  ASSERT_EQ(cef.derive(arr1, tarr1).accumulate(0, [](double x, double y) { return x + y; }), derivExp1);
 }
 
 TEST(FunctionTest, Softmax) {
@@ -131,4 +145,98 @@ TEST(FunctionTest, SoftMaxDecoder) {
   SoftMaxDecoder<int, LinearArray<double, 3, 1>, decltype(add_one)> smd1;
   auto val1 = 2;
   ASSERT_EQ(smd1(darr1), val1);
+}
+
+TEST(FunctionTest, SimpleDeepConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3, 4), larray(5, 6, 7, 8), larray(9, 10, 11, 12), larray(13, 14, 15, 16)));
+  auto mtrx2 = larray(larray(larray(2, 1, 3), larray(0, 0, 0), larray(-1, 2, -4)));
+  SimpleDeepConvolutionFunction<decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(-20, -17), larray(-8, -5));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+
+  auto mtrx3 = larray(larray(larray(1, 1, 1), larray(0, 1, 0), larray(1, 1, 1)));
+  auto mtrx4 = larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9));
+  SimpleDeepConvolutionFunction<decltype(mtrx3), LinearArray<int, 1, 1, 1>> scf2;
+  auto rez2 = larray(larray(larray(35)));
+  ASSERT_EQ(scf2.derive(mtrx3, mtrx4), rez2);
+
+  auto mtrx5 = larray(larray(1, 2, 3), larray(3, 4, 5), larray(5, 6, 7));
+  auto mtrx6 = larray(larray(larray(2, 0), larray(0, 1)));
+  SimpleDeepConvolutionFunction<LinearArray<int, 1, 4, 4>, decltype(mtrx6)> scf3;
+  auto rez3 = larray(larray(larray(1, 2, 3, 0), larray(3, 6, 9, 6), larray(5, 12, 15, 10), larray(0, 10, 12, 14)));
+  ASSERT_EQ(scf3.fullyConvolve(mtrx5, mtrx6), rez3);
+}
+
+TEST(FunctionTest, FullDeepConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx2 = larray(larray(larray(1, 0, 1), larray(0, 1, 0), larray(1, 0, 1)));
+  FullDeepConvolutionFunction<decltype(mtrx1), decltype(mtrx2)> fcf;
+  auto rez = larray(larray(6, 12, 8), larray(14, 25, 16), larray(12, 18, 14));
+  ASSERT_EQ(fcf(mtrx1, mtrx2), rez);
+}
+
+TEST(FunctionTest, StridedDeepConvolutionFunction) {
+  auto mtrx1 =
+      larray(larray(larray(1, 2, 3, 4, 0), larray(5, 6, 7, 8, 0), larray(9, 10, 11, 12, 0), larray(13, 14, 15, 16, 0)));
+  auto mtrx2 = larray(larray(larray(2, 1, 3), larray(0, 0, 0), larray(-1, 2, -4)));
+  StridedDeepConvolutionFunction<2, decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(-20, 23));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+
+  auto mtrx3 = larray(larray(larray(1, 2, 3, 4), larray(5, 6, 7, 8), larray(9, 10, 11, 12), larray(13, 14, 15, 16)));
+  auto mtrx4 = larray(larray(2, 1), larray(5, 6));
+  StridedDeepConvolutionFunction<2, decltype(mtrx3), LinearArray<int, 1, 2, 2>> scf2;
+  auto rez2 = larray(larray(larray(116, 130), larray(172, 186)));
+  ASSERT_EQ(scf2.derive(mtrx3, mtrx4), rez2);
+
+  auto mtrx5 = larray(larray(2, 2), larray(3, 1));
+  auto mtrx6 = larray(larray(larray(2, 1, 0), larray(5, 6, 0), larray(1, 1, 1)));
+  StridedDeepConvolutionFunction<2, LinearArray<int, 1, 5, 5>, decltype(mtrx6)> scf3;
+  auto rez3 = larray(larray(larray(2, 2, 4, 2, 2), larray(0, 12, 10, 12, 10), larray(3, 5, 8, 3, 5),
+                            larray(0, 18, 15, 6, 5), larray(0, 3, 6, 1, 2)));
+  ASSERT_EQ(scf3.fullyConvolve(mtrx5, mtrx6), rez3);
+}
+
+TEST(FunctionTest, FullStridedDeepConvolutionFunction) {
+  auto mtrx1 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx2 = larray(larray(larray(1, 0, 1), larray(0, 1, 0), larray(1, 0, 1)));
+  FullStridedDeepConvolutionFunction<2, decltype(mtrx1), decltype(mtrx2)> scf;
+  auto rez = larray(larray(6, 8), larray(12, 14));
+  ASSERT_EQ(scf(mtrx1, mtrx2), rez);
+
+  auto mtrx3 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  auto mtrx4 = larray(larray(2, 1), larray(2, 3));
+  FullStridedDeepConvolutionFunction<2, decltype(mtrx3), LinearArray<int, 1, 3, 3>> scf2;
+  auto rez2 = larray(larray(larray(15, 26, 10), larray(26, 46, 20), larray(5, 14, 10)));
+  ASSERT_EQ(scf2.deriveConvolve(mtrx3, mtrx4), rez2);
+
+  auto mtrx5 = larray(larray(1, -1), larray(2, -2));
+  auto mtrx6 = larray(larray(larray(1, 2, 3), larray(4, 5, 6), larray(7, 8, 9)));
+  FullStridedDeepConvolutionFunction<2, LinearArray<int, 1, 3, 3>, decltype(mtrx6)> scf3;
+  auto rez3 = larray(larray(larray(5, -2, -5), larray(18, -6, -18), larray(10, -4, -10)));
+  ASSERT_EQ(scf3.paddedConvolve(mtrx5, mtrx6), rez3);
+}
+
+TEST(FunctionTest, Relu) {
+  ReluFunction<> rf;
+  auto arr1 = larray(1, -5, 3);
+  auto arr2 = larray(1, 0, 3);
+  ASSERT_EQ(arr1.transform(rf), arr2);
+
+  auto darr1 = larray(-1.3, 2.22, 3.4);
+  auto darr2 = larray(0, 2.22, 3.4);
+  ASSERT_EQ(darr1.transform(rf), darr2);
+
+  ASSERT_EQ(rf.derive(5), 1);
+  ASSERT_EQ(rf.derive(-3), 0);
+}
+
+TEST(FunctionTest, MaxPoolFunction) {
+  auto mtrx1 = larray(larray(larray(2, 2, 7, 3), larray(9, 4, 6, 1), larray(8, 5, 2, 4), larray(3, 1, 2, 6)));
+  auto mtrx2 = larray(larray(larray(9, 7), larray(8, 6)));
+  auto mtrx3 = larray(larray(larray(3, 2), larray(-5, 6)));
+  MaxPoolFunction<decltype(mtrx1), 2, 2> mpf;
+  ASSERT_EQ(mpf(mtrx1), mtrx2);
+  auto mtrx4 = larray(larray(larray(0, 0, 2, 0), larray(3, 0, 0, 0), larray(-5, 0, 0, 0), larray(0, 0, 0, 6)));
+  ASSERT_EQ(mpf.derive(mtrx1, mtrx2, mtrx3), mtrx4);
 }

@@ -14,8 +14,12 @@ using linearArray::larray;
 } // namespace
 
 TEST(NeuralNetwork, Construction) {
-  NeuralNetwork<float, InputLayer<float, Dimension<3>>, Layer<float, IdentityFunction<float>, Dimension<3>>> nn;
-  NeuralNetwork<float, NDL<InputLayer, Dimension<3>>, NDL<Layer, IdentityFunction<>, Dimension<3>>> nn1;
+  NeuralNetwork<float, InputLayer<float, NoInitialization, Dimension<3>>,
+                Layer<float, IdentityFunction<float>, NoInitialization, Dimension<3>>>
+      nn;
+  NeuralNetwork<float, NDL<InputLayer, NoInitialization, Dimension<3>>,
+                NDL<Layer, IdentityFunction<>, NoInitialization, Dimension<3>>>
+      nn1;
   NeuralNetwork<float, SizedLayer<3, InputLayer>, SizedLayer<3, Layer, IdentityFunction<>>> nn2;
   static_assert(std::is_same_v<std::remove_cvref_t<decltype(nn.weights<0>())>, SquareLinearMatrix<float, 3>>);
   static_assert(std::is_same_v<std::remove_cvref_t<decltype(nn.biases<0>())>, LinearColumnArray<float, 3>>);
@@ -28,7 +32,7 @@ TEST(NeuralNetwork, Construction) {
   (void) nn2;
 }
 
-TEST(NeuralNetwork, ForwardPropagating) {
+TEST(NeuralNetwork, ForwardPropagation) {
   NeuralNetwork<float, SizedLayer<3, InputLayer>, SizedLayer<3, Layer, IdentityFunction<>>> nn;
   auto input = larray(larray(1.0f, 2, 3));
   nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
@@ -84,4 +88,15 @@ TEST(NeuralNetwork, BackPropagation) {
   nn1.backPropagate(input1, target1, 0.05f);
   ASSERT_EQ(nn1.weights<0>(), weight11Target);
   ASSERT_EQ(nn1.weights<1>(), weight12Target);
+}
+
+TEST(NeuralNetwork, Serialization) {
+  NeuralNetwork<float, SizedLayer<3, InputLayer>,
+                SizedLayer<3, OutputLayer, IdentityFunction<>, MeanSquaredErrorFunction<>>>
+      nn;
+  nn.weights<0>() = larray(larray(1.0f, 1, 1), larray(1.0f, 1, 1), larray(1.0f, 1, 1));
+  nn.serialize("file.out");
+  decltype(nn) nn1;
+  nn1.deserialize("file.out");
+  ASSERT_EQ(nn.weights<0>(), nn1.weights<0>());
 }

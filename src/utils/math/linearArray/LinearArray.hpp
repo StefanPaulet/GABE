@@ -11,7 +11,7 @@
 #include <cassert>
 #include <cstring>
 #include <numeric>
-#include <ostream>
+#include <thread>
 
 namespace gabe::utils::math {
 
@@ -26,9 +26,9 @@ public:
   explicit LinearArrayContainer(std::array<DataType, s> const& data) : _data(data) {}
   auto operator=(LinearArrayContainer const&) -> LinearArrayContainer& = default;
 
-  auto& data() { return _data; }
-  auto const& data() const { return _data; }
-  constexpr auto size() const { return s; }
+  constexpr auto& data() { return _data; }
+  constexpr auto const& data() const { return _data; }
+  static constexpr auto size() { return s; }
 
 private:
   std::array<DataType, s> _data;
@@ -136,9 +136,7 @@ public:
     return currMin;
   }
 
-  constexpr auto total_size() const {
-    return static_cast<D const*>(this)->size() * static_cast<D const*>(this)->data()->total_size();
-  }
+  static constexpr auto total_size() { return D::size() * D::InnerLinearArray::total_size(); }
 
   auto begin() { return static_cast<D*>(this)->data().begin(); }
   auto end() { return static_cast<D*>(this)->data().end(); }
@@ -146,11 +144,37 @@ public:
   auto begin() const { return static_cast<D const*>(this)->data().begin(); }
   auto end() const { return static_cast<D const*>(this)->data().end(); }
 
+  constexpr auto flatten() const {
+    LinearArray<typename D::UnderlyingType, total_size()> rez;
+    auto data = static_cast<D const*>(this)->data();
+    for (auto idx = 0; idx < data.size(); ++idx) {
+      auto flatData = data[idx].flatten();
+      std::memcpy(rez.data().data() + idx * flatData.size(), flatData.data().data(),
+                  flatData.size() * sizeof(typename D::UnderlyingType));
+    }
+    return rez;
+  }
+
   template <typename T = D> static constexpr auto unit(typename T::UnderlyingType const& unit = 1) {
     D result {};
     auto row_value = result.data()[0].unit() * unit;
     for (auto& e : result.data()) {
       e = row_value;
+    }
+    return result;
+  }
+
+  auto serialize(FILE* outFile) const {
+    auto arr = static_cast<D const*>(this)->data();
+    for (auto const& e : arr) {
+      e.serialize(outFile);
+    }
+  }
+
+  static auto deserialize(FILE* inFile) -> D {
+    D result {};
+    for (auto idx = 0; idx < result.size(); ++idx) {
+      result[idx] = D::InnerLinearArray::deserialize(inFile);
     }
     return result;
   }
@@ -196,7 +220,14 @@ template <typename FD> auto operator/(LinearArrayGenericOps<FD> const& lhs, Line
 
   FD result;
   std::ranges::copy(lhsArr, result.begin());
-  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable { e = e / rhsArr[i++]; });
+  std::ranges::for_each(result.data(), [&rhsArr, i = 0](auto& e) mutable {
+    if constexpr (concepts::IntegralType<std::remove_cvref_t<decltype(rhsArr[i])>>) {
+      if (HighPrecisionEquals<> {}(rhsArr[i], static_cast<typename FD::UnderlyingType>(0))) {
+        assert(false && "Cannot divide by 0");
+      }
+    }
+    e = e / rhsArr[i++];
+  });
   return result;
 }
 
@@ -257,17 +288,37 @@ template <typename DataType, Size first_size, Size... remaining_sizes> class Lin
     public linearArray::impl::LinearArrayContainer<LinearArray<DataType, remaining_sizes...>, first_size>,
     public linearArray::impl::LinearArrayGenericOps<LinearArray<DataType, first_size, remaining_sizes...>> {
 
+public:
   using InnerLinearArray = LinearArray<DataType, remaining_sizes...>;
+  using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
+  using UnderlyingType = DataType;
+
+private:
   using LinearArrayContainer = linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>;
 
 public:
-  using linearArray::impl::LinearArrayContainer<InnerLinearArray, first_size>::data;
-  using UnderlyingType = DataType;
   using LinearArrayContainer::LinearArrayContainer;
 
   LinearArray() = default;
   LinearArray(LinearArray const&) = default;
   LinearArray(LinearArray&&) noexcept = default;
+
+  template <Size array_size> explicit LinearArray(std::array<DataType, array_size> const& arr) {
+    static_assert(LinearArray::total_size() == array_size, "Non-matching size from one dimensional array to matrix");
+
+    for (Size lineIdx = 0; lineIdx < first_size; ++lineIdx) {
+      std::array<DataType, LinearArray::total_size() / first_size> slicedArr {};
+      std::memcpy(slicedArr.data(), arr.data() + LinearArray::total_size() / first_size * lineIdx,
+                  LinearArray::total_size() / first_size * sizeof(DataType));
+      data()[lineIdx] = InnerLinearArray {slicedArr};
+    }
+  }
+
+  template <Size array_size> explicit LinearArray(LinearArray<DataType, array_size> const& lArr) :
+      LinearArray(lArr.data()) {}
+
+  auto operator=(LinearArray const& other) -> LinearArray& = default;
+  auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
 };
 
 template <typename DataType, Size line_size, Size col_size> class LinearArray<DataType, line_size, col_size> :
@@ -277,6 +328,7 @@ template <typename DataType, Size line_size, Size col_size> class LinearArray<Da
   using LinearArrayContainer = linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>;
 
 public:
+  using InnerLinearArray = LinearArray<DataType, col_size>;
   using linearArray::impl::LinearArrayContainer<LinearArray<DataType, col_size>, line_size>::data;
   using UnderlyingType = DataType;
   using LinearArrayContainer::LinearArrayContainer;
@@ -293,6 +345,9 @@ public:
       std::memcpy(data()[lineIdx].data().data(), arr.data() + lineIdx * col_size, col_size * sizeof(DataType));
     }
   }
+
+  template <Size array_size> explicit LinearArray(LinearArray<DataType, array_size> const& lArr) :
+      LinearArray(lArr.data()) {}
 
   auto operator=(LinearArray const& other) -> LinearArray& = default;
   auto operator=(LinearArray&& other) noexcept -> LinearArray& = default;
@@ -330,34 +385,137 @@ public:
   template <Size rez_col_size> auto product(LinearArray<DataType, col_size, rez_col_size> const& rhs) const
       -> LinearArray<DataType, line_size, rez_col_size> {
     auto rez = LinearArray<DataType, line_size, rez_col_size>();
-    for (int lineIdx = 0; lineIdx < line_size; ++lineIdx) {
-      for (int colIdx = 0; colIdx < col_size; ++colIdx) {
-        for (int cellIdx = 0; cellIdx < rez_col_size; ++cellIdx) {
-          rez[lineIdx][cellIdx] += data()[lineIdx][colIdx] * rhs[colIdx][cellIdx];
+
+    auto localProd = [&rez, &rhs, this](Size lStIdx, Size cStIdx, Size lEnIdx, Size cEnIdx) {
+      for (Size lineIdx = lStIdx; lineIdx < lEnIdx; ++lineIdx) {
+        for (Size colIdx = cStIdx; colIdx < cEnIdx; ++colIdx) {
+          for (Size cellIdx = 0; cellIdx < col_size; ++cellIdx) {
+            rez[lineIdx][colIdx] += data()[lineIdx][cellIdx] * rhs[cellIdx][colIdx];
+          }
         }
+      }
+    };
+
+    if constexpr (line_size > 3 && rez_col_size > 3) {
+      constexpr auto threadCount = 4;
+      std::array<std::pair<Size, Size>, threadCount> lDir {{{0, line_size / threadCount},
+                                                            {0, line_size / threadCount},
+                                                            {line_size / threadCount, line_size},
+                                                            {line_size / threadCount, line_size}}};
+      std::array<std::pair<Size, Size>, threadCount> cDir {{{0, rez_col_size / threadCount},
+                                                            {rez_col_size / threadCount, rez_col_size},
+                                                            {0 / threadCount, rez_col_size},
+                                                            {rez_col_size / threadCount, rez_col_size}}};
+      auto closure = [&localProd, &lDir, &cDir](Size idx) {
+        return [idx, localProd, &lDir, &cDir] {
+          return localProd(lDir[idx].first, cDir[idx].first, lDir[idx].second, cDir[idx].second);
+        };
+      };
+      {
+        std::array<std::jthread, threadCount> threadArr {std::jthread {closure(0)}, std::jthread {closure(1)},
+                                                         std::jthread {closure(2)}, std::jthread {closure(3)}};
+      }
+    } else {
+      localProd(0, 0, line_size, rez_col_size);
+    }
+
+    return rez;
+  }
+
+  template <Size conv_line_size, Size conv_col_size, Size stride = 1,
+            Size rlSize = (line_size - conv_line_size) / stride + 1,
+            Size rcSize = (col_size - conv_col_size) / stride + 1>
+  auto convolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
+      -> LinearArray<DataType, rlSize, rcSize> {
+    auto rez = LinearArray<DataType, rlSize, rcSize> {};
+
+    auto add = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
+      for (Size convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
+        for (Size convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
+          rez[rezLIdx][rezCIdx] += data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
+        }
+      }
+    };
+    for (Size lineIdx = 0, rezLine = 0; lineIdx < line_size - conv_line_size + 1; lineIdx += stride, ++rezLine) {
+      for (Size colIdx = 0, rezCol = 0; colIdx < col_size - conv_col_size + 1; colIdx += stride, ++rezCol) {
+        add(rezLine, rezCol, lineIdx, colIdx);
       }
     }
     return rez;
   }
 
-  template <Size conv_line_size, Size conv_col_size>
-  auto convolve(LinearArray<DataType, conv_line_size, conv_col_size> const& kernel) const
-      -> LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1> {
-    auto rez = LinearArray<DataType, line_size - conv_line_size + 1, col_size - conv_col_size + 1>();
+  template <Size stride, Size cls, Size ccs> auto stridedConvolve(LinearArray<DataType, cls, ccs> const& kernel) const {
+    return convolve<cls, ccs, stride>(kernel);
+  }
 
-    auto add = [&](int lineIdx, int colIdx) {
-      for (int convLineIdx = 0; convLineIdx < conv_line_size; ++convLineIdx) {
-        for (int convColIdx = 0; convColIdx < conv_col_size; ++convColIdx) {
-          rez[lineIdx][colIdx] += data()[lineIdx + convLineIdx][colIdx + convColIdx] * kernel[convLineIdx][convColIdx];
-        }
-      }
-    };
-    for (int lineIdx = 0; lineIdx < line_size - conv_line_size + 1; ++lineIdx) {
-      for (int colIdx = 0; colIdx < col_size - conv_col_size + 1; ++colIdx) {
-        add(lineIdx, colIdx);
+  auto flip() const -> LinearArray {
+    static_assert(line_size == col_size && "Only square matrices can be flipped");
+    LinearArray rez {};
+    for (auto lIdx = 0; lIdx < this->size(); ++lIdx) {
+      for (auto cIdx = 0; cIdx < this->size(); ++cIdx) {
+        rez[lIdx][cIdx] = (*this)[this->size() - lIdx - 1][this->size() - cIdx - 1];
       }
     }
     return rez;
+  }
+
+  template <Size dilation, Size rlSize = line_size + dilation*(line_size - 1),
+            Size rcSize = col_size + dilation*(col_size - 1)>
+  auto dilate() const -> LinearArray<DataType, rlSize, rcSize> {
+    LinearArray<DataType, rlSize, rcSize> rez {};
+    for (Size rezLIdx = 0, lIdx = 0; lIdx < line_size; ++lIdx, rezLIdx += dilation + 1) {
+      for (Size rezCIdx = 0, cIdx = 0; cIdx < col_size; ++cIdx, rezCIdx += dilation + 1) {
+        rez[rezLIdx][rezCIdx] = data()[lIdx][cIdx];
+      }
+    }
+    return rez;
+  }
+
+  template <Size pool_line_size, Size pool_col_size, typename PoolingPredicate, Size stride = 1,
+            Size rlSize = (line_size - pool_line_size) / stride + 1,
+            Size rcSize = (col_size - pool_col_size) / stride + 1>
+  auto __pool(PoolingPredicate&& predicate) const -> LinearArray<DataType, rlSize, rcSize> {
+    LinearArray<DataType, rlSize, rcSize> rez {};
+
+    auto localPool = [&](Size rezLIdx, Size rezCIdx, Size lineIdx, Size colIdx) {
+      DataType currentMax = data()[lineIdx][colIdx];
+      for (Size lIdx = 0; lIdx < pool_line_size; ++lIdx) {
+        for (Size cIdx = 0; cIdx < pool_col_size; ++cIdx) {
+          currentMax =
+              std::max(currentMax, data()[lineIdx + lIdx][colIdx + cIdx], std::forward<PoolingPredicate>(predicate));
+        }
+      }
+      rez[rezLIdx][rezCIdx] = currentMax;
+    };
+    for (Size lineIdx = 0, rezLine = 0; lineIdx < line_size - pool_line_size + 1; lineIdx += stride, ++rezLine) {
+      for (Size colIdx = 0, rezCol = 0; colIdx < col_size - pool_col_size + 1; colIdx += stride, ++rezCol) {
+        localPool(rezLine, rezCol, lineIdx, colIdx);
+      }
+    }
+    return rez;
+  }
+
+  template <Size pool_line_size, Size pool_col_size, Size stride, typename PoolingPredicate>
+  auto pool(PoolingPredicate&& predicate) const {
+    return __pool<pool_line_size, pool_col_size, PoolingPredicate, stride>(std::forward<PoolingPredicate>(predicate));
+  }
+
+  template <Size upLinePadSize, Size ltColPadSize, Size dnLinePadSize, Size rtColPadSize,
+            Size rlSize = line_size + upLinePadSize + dnLinePadSize,
+            Size rcSize = col_size + ltColPadSize + rtColPadSize>
+  auto asymmetricPad() const {
+    LinearArray<DataType, rlSize, rcSize> result {};
+    for (auto lIdx = upLinePadSize; lIdx < rlSize - dnLinePadSize; ++lIdx) {
+      std::memcpy(result[lIdx].data().data() + ltColPadSize, data()[lIdx - upLinePadSize].data().data(),
+                  col_size * sizeof(DataType));
+    }
+    return result;
+  }
+
+  template <Size line_pad_size, Size col_pad_size, Size rlSize = line_size + 2 * line_pad_size,
+            Size rcSize = col_size + 2 * col_pad_size>
+  auto pad() const {
+    return asymmetricPad<line_pad_size, col_pad_size, line_pad_size, col_pad_size>();
   }
 };
 
@@ -368,6 +526,7 @@ template <typename DataType, Size size> using SquareLinearMatrix = LinearMatrix<
 
 template <typename DataType, Size colSize> using LinearColumnArray = LinearMatrix<DataType, colSize, 1>;
 template <typename DataType, Size lineSize> using LinearLineArray = LinearMatrix<DataType, 1, lineSize>;
+template <typename DataType, Size size> using Kernel = SquareLinearMatrix<DataType, size>;
 
 template <typename DataType, Size size> class LinearArray<DataType, size> :
     public linearArray::impl::LinearArrayContainer<DataType, size>,
@@ -414,10 +573,11 @@ public:
   }
 
   template <typename V, typename A> auto accumulate(V initialValue, A&& accumulator) const -> UnderlyingType {
-    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue), accumulator);
+    return std::accumulate(data().begin(), data().end(), static_cast<UnderlyingType>(initialValue),
+                           std::forward<A>(accumulator));
   }
 
-  constexpr auto total_size() const { return size; }
+  static constexpr auto total_size() { return size; }
 
   template <typename P> auto maximize(LinearArray const& other, P&& predicate) const -> LinearArray {
     LinearArray rez {};
@@ -430,6 +590,8 @@ public:
     }
     return rez;
   }
+
+  constexpr auto flatten() -> LinearArray { return LinearArray {*this}; }
 
   static constexpr auto unit(DataType const& unit = 1) -> LinearArray {
     auto result = LinearArray();
@@ -444,6 +606,13 @@ public:
     for (auto& e : result.data()) {
       e = nulVal;
     }
+    return result;
+  }
+
+  auto serialize(FILE* outFile) const { fwrite(data().data(), sizeof(DataType), size, outFile); }
+  static auto deserialize(FILE* inFile) -> LinearArray {
+    LinearArray result;
+    fread(result.data().data(), sizeof(DataType), size, inFile);
     return result;
   }
 };
