@@ -114,8 +114,8 @@ public:
     XGetWindowAttributes(display, window, &attr);
 
     XImage* img = XGetImage(display, window, 0, 0, attr.width, attr.height, AllPlanes, ZPixmap);
-    char* data = img->data;
-    auto* jpgData = new unsigned char[attr.width * attr.height * 3];
+    char const* data = img->data;
+    auto const* jpgData = new unsigned char[attr.width * attr.height * 3];
     int bytesPerPixel = img->bits_per_pixel / 8;
     int bytesPerLine = img->bytes_per_line;
     for (int y = 0; y < attr.height; ++y) {
@@ -135,18 +135,16 @@ public:
   }
 
 private:
-  static auto saveImage(std::string const& filename, unsigned char* data, int width, int height) -> void {
+  static auto saveImage(std::string_view filename, unsigned char* data, int width, int height) -> void {
     struct jpeg_compress_struct cinfo {};
     struct jpeg_error_mgr jerr {};
 
-    FILE* outfile;
-    JSAMPROW row_pointer[1];
-    int row_stride;
+    JSAMPROW row_pointer;
 
     cinfo.err = jpeg_std_error(&jerr);
 
     jpeg_create_compress(&cinfo);
-    outfile = fopen(filename.c_str(), "wb");
+    auto* outfile = fopen(filename.c_str(), "wb");
 
     jpeg_stdio_dest(&cinfo, outfile);
 
@@ -159,22 +157,23 @@ private:
 
     jpeg_start_compress(&cinfo, TRUE);
 
-    row_stride = width * 3;
+    auto const row_stride = width * 3;
 
     while (cinfo.next_scanline < cinfo.image_height) {
-      row_pointer[0] = &data[cinfo.next_scanline * row_stride];
-      jpeg_write_scanlines(&cinfo, row_pointer, 1);
-    }
-
-    jpeg_finish_compress(&cinfo);
-    fclose(outfile);
-    jpeg_destroy_compress(&cinfo);
+      row_pointer = &data[cinfo.next_scanline * row_stride];
+      jpeg_write_scanlines(&cinfo, &row_pointer, 1);
   }
 };
 
 class MouseClickEvent : public Event {
 public:
-  enum class Button { LEFT_BUTTON, RIGHT_BUTTON, WHEEL_PRESSED, WHEEL_UP, WHEEL_DOWN };
+  enum class Button : int {
+    LEFT_BUTTON = Button1, 
+    RIGHT_BUTTON = Button2, 
+    WHEEL_PRESSED = Button3, 
+    WHEEL_UP = Button4, 
+    WHEEL_DOWN = Button5 
+  };
 
   MouseClickEvent() = default;
   MouseClickEvent(MouseClickEvent const&) = default;
@@ -182,40 +181,24 @@ public:
   explicit MouseClickEvent(Button val) : _buttonType {val} {}
 
   auto solve(Display* display, Window window) noexcept(false) -> void override {
-    int button;
-    std::string buttonStr;
-    switch (_buttonType) {
-      using enum Button;
-      case LEFT_BUTTON: {
-        button = Button1;
-        buttonStr = "left click";
-        break;
+    auto toString = [this] {
+      switch(_buttonType) {
+        using enum Button;
+        case LEFT_BUTTON: return "left click";
+        case RIGHT_BUTTON: return "right click";
+        case WHEEL_PRESSED: return "middle click";
+        case WHEEL_UP: return "wheel up";
+        case WHEEL_DOWN: return "wheel down";
       }
-      case RIGHT_BUTTON: {
-        button = Button3;
-        buttonStr = "right click";
-        break;
-      }
-      case WHEEL_PRESSED: {
-        button = Button2;
-        buttonStr = "middle click";
-        break;
-      }
-      case WHEEL_UP: {
-        button = Button4;
-        buttonStr = "wheel up";
-        break;
-      }
-      case WHEEL_DOWN: {
-        button = Button5;
-        buttonStr = "wheel down";
-        break;
-      }
-    }
-    XTestFakeButtonEvent(display, button, True, CurrentTime);
+      assert(false && "Button type undefined");
+      return "<undefined button type>";
+    };
+
+    int buttonId = static_cast<std::underlying_type_t<Button>>(_buttonType);
+    XTestFakeButtonEvent(display, buttonId, True, CurrentTime);
     usleep(100);
-    XTestFakeButtonEvent(display, button, False, CurrentTime);
-    log("Treated mouse click event of type " + buttonStr, OpState::INFO);
+    XTestFakeButtonEvent(display, buttonId, False, CurrentTime);
+    log("Treated mouse click event of type " + toString(), OpState::INFO);
   }
 
 private:

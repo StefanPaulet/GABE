@@ -9,6 +9,7 @@
 namespace gabe {
 enum class OpState { SUCCESS, FAILURE, INFO };
 
+#ifndef NDEBUG
 auto log(std::string const& message, OpState opState) -> void {
   std::string formatString {};
   switch (opState) {
@@ -29,5 +30,8 @@ auto log(std::string const& message, OpState opState) -> void {
 
   printf("%s %s\n", formatString.c_str(), message.c_str());
 }
+#else
+template <typename... Args> auto log(Args&&...) {}
+#endif
 
 } // namespace gabe

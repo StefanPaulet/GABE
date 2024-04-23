@@ -22,8 +22,6 @@ public:
     _windowController.add_event(std::make_unique<MouseClickEvent>(MouseClickEvent::Button::LEFT_BUTTON));
     for (auto idx = 0; idx < 10; ++idx) {
       _windowController.add_event(std::make_unique<KeyPressEvent>('a' + idx));
-    }
-    for (auto idx = 0; idx < 10; ++idx) {
       _windowController.add_event(std::make_unique<KeyPressEvent>('0' + idx));
     }
     _windowController.add_event(std::make_unique<MouseClickEvent>(MouseClickEvent::Button::RIGHT_BUTTON));
