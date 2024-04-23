@@ -20,21 +20,35 @@ public:
   static constexpr auto templateWidth = 15;
   static constexpr auto offsetX = 53;
   static constexpr auto offsetY = 303;
+private:
+  using TemplateDigit = math::LinearArray<float, 3, imageHeight, templateWidth>;
+public:
 
-  using Image = math::LinearArray<int, 3, imageHeight, imageWidth>;
-  using TemplateDigit = math::LinearArray<int, 3, imageHeight, templateWidth>;
-  using Template = math::LinearArray<int, templateCount, 3, imageHeight, templateWidth>;
+  using Image = math::LinearArray<float, imageHeight, imageWidth>;
+  using Template = math::LinearArray<float, templateCount, imageHeight, templateWidth>;
 
   PositionReader() = default;
-  explicit PositionReader(Image const& image) : _image {image} {}
 
-  auto trainNetwork(std::string const& folderPath, int imageCount) {
+  auto loadTemplates(std::string const& folderPath, int imageCount) {
     auto dataSet = gabe::utils::data::loadCoordDigitsImages<TemplateDigit>(folderPath, imageCount);
+    auto nulVal = TemplateDigit::nul();
+    for (auto const& e : dataSet.data()) {
+      for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
+        for (auto cIdx = 0; cIdx < templateWidth; ++cIdx) {
+          _templates[e.label]
+        }
+      }
+    }
   }
 
   auto identifyObjects(std::string const& folderPath, int imageCount) {}
 
 private:
-  Image _image {};
+  auto isActive(float red, float green, float blue) {
+    static constexpr auto limit = 235.0;
+    return red >= limit && green >= limit && blue >= limit;
+  }
+
+  Template _templates {};
 };
 } // namespace gabe::utils

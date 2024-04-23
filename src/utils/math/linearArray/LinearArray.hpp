@@ -164,6 +164,14 @@ public:
     return result;
   }
 
+  template <typename T = D> static constexpr auto nul(typename T::UnderlyingType const& nulVal = 0) {
+    D result {};
+    for (auto& e : result.data()) {
+      e = e.nul(nulVal);
+    }
+    return result;
+  }
+
   auto serialize(FILE* outFile) const {
     auto arr = static_cast<D const*>(this)->data();
     for (auto const& e : arr) {
@@ -358,16 +366,6 @@ public:
     auto result = LinearArray();
     for (Size lineIdx = 0; lineIdx < line_size; ++lineIdx) {
       result[lineIdx][lineIdx] = unit;
-    }
-    return result;
-  }
-
-  static constexpr auto nul(DataType const& nulVal = 0) -> LinearArray {
-    auto result = LinearArray();
-    for (auto& l : result.data()) {
-      for (auto& e : l.data()) {
-        e = nulVal;
-      }
     }
     return result;
   }
