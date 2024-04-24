@@ -120,6 +120,47 @@ template <concepts::DeepLinearMatrixType R> auto loadJPEG(std::string const& fil
   return result;
 }
 
+template <concepts::LinearMatrixType R> auto loadJPEG(std::string const& filePath) -> R {
+  R result {};
+
+  FILE* in = fopen(filePath.c_str(), "rb");
+
+  struct jpeg_decompress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_decompress(&cinfo);
+
+  jpeg_stdio_src(&cinfo, in);
+  jpeg_read_header(&cinfo, TRUE);
+  jpeg_start_decompress(&cinfo);
+
+  int width = cinfo.output_width;
+  int height = cinfo.output_height;
+  int numChannels = cinfo.num_components;
+  assert(height == R::size() && "Width of image should match the third dimension of the container");
+  assert(width == R::InnerLinearArray::size() && "Height of image should match the second dimension of the container");
+
+  auto* imageBuffer = new unsigned char[width * height * numChannels];
+
+  while (cinfo.output_scanline < cinfo.output_height) {
+    unsigned char* row_pointer = &imageBuffer[cinfo.output_scanline * width * numChannels];
+    jpeg_read_scanlines(&cinfo, &row_pointer, 1);
+  }
+
+  jpeg_finish_decompress(&cinfo);
+  jpeg_destroy_decompress(&cinfo);
+  fclose(in);
+
+  for (Size lIdx = 0; lIdx < height; ++lIdx) {
+    for (Size cIdx = 0; cIdx < width; ++cIdx) {
+      result[lIdx][cIdx] = imageBuffer[(width * lIdx + cIdx) * numChannels + 0]
+          + imageBuffer[(width * lIdx + cIdx) * numChannels + 1] + imageBuffer[(width * lIdx + cIdx) * numChannels + 2];
+    }
+  }
+  delete[] imageBuffer;
+  return result;
+}
+
 template <concepts::DeepLinearMatrixType K> auto loadCS2Labels(std::string const& filePath)
     -> std::vector<gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1>> {
   std::vector<gabe::utils::math::LinearArray<typename K::UnderlyingType, 5, 1>> rez {};
