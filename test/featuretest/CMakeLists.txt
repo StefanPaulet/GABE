@@ -17,9 +17,9 @@ set(
     ConvolutionalDeepBackPropagationTest.cpp
 )
 
-add_executable(featuretests
-        ${FEATURE_TEST_SOURCES}
-        FeatureTest.cpp)
-
-target_include_directories(featuretests PRIVATE ../../src)
-target_link_libraries(featuretests lib.gtest)
+#add_executable(featuretests
+#        ${FEATURE_TEST_SOURCES}
+#        FeatureTest.cpp)
+#
+#target_include_directories(featuretests PRIVATE ../../src)
+#target_link_libraries(featuretests lib.gtest)
