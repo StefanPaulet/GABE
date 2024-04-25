@@ -20,6 +20,7 @@ public:
   static constexpr auto templateWidth = 15;
   static constexpr auto offsetX = 53;
   static constexpr auto offsetY = 303;
+  static constexpr float totalPixels = imageHeight * templateWidth;
 private:
   using TemplateDigit = math::LinearArray<float, 3, imageHeight, templateWidth>;
   using Digit = math::LinearArray<float, imageHeight, templateWidth>;
@@ -32,7 +33,6 @@ public:
 
   auto loadTemplates(std::string const& folderPath) {
     static constexpr auto imageCount = 3;
-    static constexpr float totalPixels = imageHeight * templateWidth;
     for (auto dataSet = gabe::utils::data::loadCoordDigitsImages<TemplateDigit>(folderPath, imageCount);
          auto const& e : dataSet.data()) {
       Image activatedImage {};
@@ -51,18 +51,28 @@ public:
         }
       }
     }
-    _templates[11].transform([](float x) {
-      if (x > .0f) {
-        return 1.0f / 9;
-      }
-      return -1.0f / (totalPixels - 9 - 6 * imageHeight);
-    });
-    for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
-      for (auto cIdx = 0; cIdx < 3; ++cIdx) {
-        _templates[11][lIdx][cIdx] = _templates[11][lIdx][templateWidth - cIdx - 1] = 0;
-      }
-    }
+    adjustTemplates(11);
     _templates.serialize("templateDigits.gabe");
+  }
+
+  auto adjustTemplates(int templateIdx)-> void {
+    switch (templateIdx) {
+      case 11: {
+        _templates[templateIdx].transform([](float x) {
+          if (x > .0f) {
+            return 1.0f / 9;
+          }
+          return -1.0f / (totalPixels - 9 - 6 * imageHeight);
+        });
+        for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
+          for (auto cIdx = 0; cIdx < 3; ++cIdx) {
+            _templates[templateIdx][lIdx][cIdx] = _templates[11][lIdx][templateWidth - cIdx - 1] = 0;
+          }
+        }
+        break;
+      }
+      default: break;
+    }
   }
 
   auto identifyObjects(Image const& image) const {
