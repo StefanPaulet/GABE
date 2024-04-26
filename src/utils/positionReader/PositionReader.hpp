@@ -58,11 +58,12 @@ public:
   auto adjustTemplates(int templateIdx)-> void {
     switch (templateIdx) {
       case 11: {
+        constexpr auto activatedPixels = 9;
         _templates[templateIdx].transform([](float x) {
           if (x > .0f) {
-            return 1.0f / 9;
+            return 1.0f / activatedPixels;
           }
-          return -1.0f / (totalPixels - 9 - 6 * imageHeight);
+          return -1.0f / (totalPixels - activatedPixels - 6 * imageHeight);
         });
         for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
           for (auto cIdx = 0; cIdx < 3; ++cIdx) {
@@ -75,16 +76,36 @@ public:
     }
   }
 
-  auto identifyObjects(Image const& image) const {
+  auto identifyObjects(Image const& image) const -> std::array<float, 3> {
     PredictionMaker predictionMaker {_templates};
     Prediction lastPrediction {};
+    auto resultIdx = 0;
+    std::array<float, 3> result {};
+    std::array<bool, 3> signum {true, true, true};
+
     for (auto leftMargin = 0; leftMargin < imageWidth - templateWidth;) {
-      Digit currentDigit = getCurrentDigit(image, leftMargin);
+      auto enhancer = [](float x) {
+        if (x < 240.0f) return x + 250.0f;
+        return x;
+      };
+      Digit currentDigit = getCurrentDigit(image, leftMargin).transform(enhancer);
+
       auto currentPrediction = predictionMaker.getPrediction(currentDigit);
 
       if (lastPrediction.value > currentPrediction.value && lastPrediction.isValid()) {
-        std::cout << "Found an object of label " << lastPrediction.label << " at margin " << leftMargin << '\n';
         predictionMaker.advance(lastPrediction);
+
+        if (lastPrediction.label == 10) {
+          signum[resultIdx] = false;
+        } else {
+          if (predictionMaker.buildNumber(result[resultIdx], lastPrediction.label)) {
+            ++resultIdx;
+            if (resultIdx > 3) {
+              return {{-1024.0f, -1024.0f, -1024.0f}};
+            }
+          }
+        }
+
         auto marginOffset = predictionMaker.getOffset(lastPrediction);
         leftMargin += marginOffset;
         lastPrediction = {};
@@ -93,6 +114,12 @@ public:
         lastPrediction = currentPrediction;
       }
     }
+    for (auto idx = 0; idx < 3; ++idx) {
+      if (!signum[idx]) {
+        result[idx] *= -1.0f;
+      }
+    }
+    return result;
   }
 
 private:
@@ -125,6 +152,7 @@ private:
     [[nodiscard]] auto isDot() const -> bool { return label == 11; }
   };
   struct PredictionMaker {
+    //TODO specialize dot detection so it doesn't use a template
     explicit PredictionMaker(Template const& templates) : _templates {templates} {}
 
     enum class State { START, DIGIT, MINUS, DOT, FIRST_AFTER_DOT, SECOND_AFTER_DOT };
@@ -181,6 +209,28 @@ private:
         offset -= 2;
       }
       return offset;
+    }
+
+    auto buildNumber(float& value, int label) const -> bool {
+      if (label == 11) {
+        return false;
+      }
+
+      switch (_state) {
+        using enum State;
+        case FIRST_AFTER_DOT: {
+          value = value + static_cast<float>(label) / 10.0f;
+          return false;
+        }
+        case SECOND_AFTER_DOT: {
+          value = value + static_cast<float>(label) / 100.0f;
+          return true;
+        }
+        default: {
+          value = value * 10.0f + static_cast<float>(label);
+        }
+      }
+      return false;
     }
 
     auto advance(Prediction const& prediction) -> void {

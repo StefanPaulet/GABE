@@ -14,10 +14,11 @@ using namespace gabe::utils::math::linearArray;
 int main() {
   PositionReader pr {};
   pr.loadTemplates("../src/utils/positionReader/data/train");
-  for (auto idx = 5; idx < 8; ++idx) {
+  for (auto idx = 0; idx < 8; ++idx) {
     auto image = data::impl::loadJPEG<PositionReader::Image>("../src/utils/positionReader/data/test/images/image.jpg"
                                                              + std::to_string(idx));
-    pr.identifyObjects(image);
+    auto rez = pr.identifyObjects(image);
+    std::cout << rez[0] << " " << rez[1] << " " << rez[2] << '\n';
     std::cout << "\n\n";
   }
   return 0;
