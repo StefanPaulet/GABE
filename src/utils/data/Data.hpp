@@ -10,18 +10,18 @@
 
 namespace gabe::utils::data {
 
-template <concepts::LinearArrayType DataPointType> struct DataPoint {
+template <concepts::LinearArrayType DataPointType> struct ImageDataPoint {
   DataPointType data {};
   typename DataPointType::UnderlyingType label {};
 };
 
-template <concepts::LinearArrayType T> class DataSet {
+template <concepts::LinearArrayType T> class ImageDataSet {
 
 public:
-  DataSet() = default;
-  DataSet(DataSet const&) = default;
-  DataSet(DataSet&&) noexcept = default;
-  explicit DataSet(std::vector<DataPoint<T>> const& data) : _data(data) {}
+  ImageDataSet() = default;
+  ImageDataSet(ImageDataSet const&) = default;
+  ImageDataSet(ImageDataSet&&) noexcept = default;
+  explicit ImageDataSet(std::vector<ImageDataPoint<T>> const& data) : _data(data) {}
 
   auto normalize() {
 
@@ -33,7 +33,7 @@ public:
     }
     auto diff = max - min;
 
-    auto normalizer = [min, diff](DataPoint<T>& arr) { arr.data = (arr.data - min) / diff; };
+    auto normalizer = [min, diff](ImageDataPoint<T>& arr) { arr.data = (arr.data - min) / diff; };
     std::ranges::for_each(_data, normalizer);
   }
 
@@ -41,30 +41,30 @@ public:
   auto& data() { return _data; }
 
 private:
-  std::vector<DataPoint<T>> _data {};
+  std::vector<ImageDataPoint<T>> _data {};
 };
 
 
-template <concepts::DeepLinearMatrixType DataPoint> struct YoloDataPoint {
-  DataPoint data {};
-  std::vector<gabe::utils::math::LinearArray<typename DataPoint::UnderlyingType, 5, 1>> labels {};
+template <concepts::DeepLinearMatrixType ImageDataPoint> struct YoloDataPoint {
+  ImageDataPoint data {};
+  std::vector<gabe::utils::math::LinearArray<typename ImageDataPoint::UnderlyingType, 5, 1>> labels {};
 };
 
 template <concepts::DeepLinearMatrixType T> class YoloDataSet {
 private:
-  using DataPoint = YoloDataPoint<T>;
+  using ImageDataPoint = YoloDataPoint<T>;
 
 public:
   YoloDataSet() = default;
   YoloDataSet(YoloDataSet const&) = default;
   YoloDataSet(YoloDataSet&&) noexcept = default;
-  explicit YoloDataSet(std::vector<DataPoint> const& data) : _data(data) {}
+  explicit YoloDataSet(std::vector<ImageDataPoint> const& data) : _data(data) {}
 
   auto normalize() {
     auto divideBy255 = [](typename T::UnderlyingType value) {
       return value / static_cast<typename T::UnderlyingType>(255);
     };
-    auto transformer = [&divideBy255](DataPoint& el) { el.data.transform(divideBy255); };
+    auto transformer = [&divideBy255](ImageDataPoint& el) { el.data.transform(divideBy255); };
     std::ranges::for_each(_data, transformer);
   }
 
@@ -72,7 +72,7 @@ public:
   auto& data() { return _data; }
 
 private:
-  std::vector<DataPoint> _data {};
+  std::vector<ImageDataPoint> _data {};
 };
 
 } // namespace gabe::utils::data
