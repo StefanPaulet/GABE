@@ -21,6 +21,8 @@ set(
     LinearArrayTest.cpp
     LinearMatrixTest.cpp
     NeuralNetTest.cpp
+    ObjectDetection.cpp
+    PointTest.cpp
     PredicatesTest.cpp
 )
 
@@ -32,7 +34,7 @@ add_executable(highCostTest
     DataLoaderTest.cpp)
 
 target_include_directories(unittests PRIVATE ../../src)
-target_link_libraries(unittests lib.gtest)
+target_link_libraries(unittests lib.gtest jpeg)
 
 target_include_directories(highCostTest PRIVATE ../../src)
 target_link_libraries(highCostTest lib.gtest)

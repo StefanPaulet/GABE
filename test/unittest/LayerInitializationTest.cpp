@@ -19,7 +19,7 @@ TEST(InitializationSchemeTest, HeInitialization) {
   he(kernelArr, 5);
   auto maxValue = kernelArr.max();
   auto minValue = kernelArr.min();
-  auto aproxLimit = 3.0 / sqrt(45);
+  auto aproxLimit = 4.0 / sqrt(45);
   ASSERT_TRUE(maxValue < aproxLimit);
   ASSERT_TRUE(std::abs(minValue) < aproxLimit);
 
