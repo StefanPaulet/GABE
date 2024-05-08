@@ -74,7 +74,7 @@ public:
       XFlush(display);
 
       XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
-      log(std::format("Moved mouse to x={}, y ={}", p.x, p.y), OpState::SUCCESS);
+      log(std::format("Moved mouse to x={}, y={}", p.x, p.y), OpState::SUCCESS);
       XFlush(display);
       usleep(3000);
     }
