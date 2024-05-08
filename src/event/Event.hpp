@@ -13,23 +13,6 @@
 
 namespace gabe {
 
-struct Point {
-  Point() = default;
-  Point(Point const&) = default;
-  Point(int x, int y) : x {x}, y {y} {}
-
-  auto operator+(Point const& other) const -> Point { return {x + other.x, y + other.y}; }
-  auto operator+=(Point const& other) -> Point& {
-    x += other.x;
-    y += other.y;
-    return *this;
-  }
-  auto operator/(int value) const -> Point { return {x / value, y / value}; }
-  auto operator*(int value) const -> Point { return {x * value, y * value}; }
-  int x;
-  int y;
-};
-
 class Event {
 public:
   virtual auto solve(Display* display, Window window) -> void = 0;
