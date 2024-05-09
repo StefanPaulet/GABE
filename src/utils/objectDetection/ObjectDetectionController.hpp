@@ -82,7 +82,9 @@ public:
     close(_channel[1]);
   }
 
-  auto analyzeImage(unsigned char* data, int imageSize) -> std::vector<BoundingBox> {
+  auto analyzeImage(unsigned char* data) -> std::vector<BoundingBox> {
+    static constexpr auto imageSize = 640 * 640 * 3;
+
     auto* response = new char[256];
     write(_channel[1], data, imageSize);
     read(_channel[0], response, 256);

@@ -12,6 +12,8 @@
 #include <utils/logger/Logger.hpp>
 
 namespace gabe {
+static constexpr auto expectedScreenWidth = 1920;
+static constexpr auto expectedScreenHeight = 1036;
 
 class Event {
 public:
@@ -76,13 +78,14 @@ public:
       XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
       log(std::format("Moved mouse to x={}, y={}", p.x, p.y), OpState::SUCCESS);
       XFlush(display);
-      usleep(3000);
+      usleep(sleepTime);
     }
 
     log(std::format("Treated strafe mouse event of distance x={}, y={}", _totalMovement.x, _totalMovement.y), OpState::INFO);
   }
 
 private:
+  static constexpr auto sleepTime = 3000;
   static constexpr auto itCount = 50;
   Point _totalMovement {};
 };
@@ -100,6 +103,9 @@ public:
     XImage* img = XGetImage(display, window, 0, 0, attr.width, attr.height, AllPlanes, ZPixmap);
     char const* data = img->data;
     auto* jpgData = new unsigned char[attr.width * attr.height * 3];
+    assert(attr.width == expectedScreenWidth && attr.height == expectedScreenHeight
+           && "Window does not match expected sizes");
+
     int bytesPerPixel = img->bits_per_pixel / 8;
     int bytesPerLine = img->bytes_per_line;
     for (int y = 0; y < attr.height; ++y) {
@@ -112,9 +118,8 @@ public:
         jpgData[jpgOffset + 2] = data[offset + 0];
       }
     }
-    saveImage("image.jpg", jpgData, attr.width, attr.height);
     delete[] jpgData;
-    log(std::format("Treated screen capture event; width={} height={}", attr.width, attr.height), OpState::INFO);
+    log("Treated screen capture event", OpState::INFO);
     XDestroyImage(img);
   }
 
@@ -181,12 +186,13 @@ public:
 
     auto buttonId = static_cast<std::underlying_type_t<Button>>(_buttonType);
     XTestFakeButtonEvent(display, buttonId, True, CurrentTime);
-    usleep(100);
+    usleep(sleepTime);
     XTestFakeButtonEvent(display, buttonId, False, CurrentTime);
     log("Treated mouse click event of type " + toString(), OpState::INFO);
   }
 
 private:
+  static constexpr auto sleepTime = 100;
   Button _buttonType {};
 };
 
@@ -201,13 +207,14 @@ public:
     KeySym keyCode = XKeysymToKeycode(display, _key);
     XTestFakeKeyEvent(display, keyCode, True, CurrentTime);
     XSync(display, False);
-    usleep(100);
+    usleep(sleepTime);
     XTestFakeKeyEvent(display, keyCode, False, CurrentTime);
     XSync(display, False);
     log(std::format("Treated key pres event of {}", _key), OpState::INFO);
   }
 
 private:
+  static constexpr auto sleepTime = 100;
   char _key {};
 };
 } // namespace gabe

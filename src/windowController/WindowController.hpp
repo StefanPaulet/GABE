@@ -47,7 +47,6 @@ public:
         _eventQueue.pop();
         event.get()->solve(_display, _window);
       }
-      usleep(500000);
       log("Finished running the event loop", OpState::SUCCESS);
     };
     return std::jthread {eventLoop};

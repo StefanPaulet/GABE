@@ -24,7 +24,7 @@ TEST(ObjectDetection, Detection) {
   }
 
   ObjectDetectionController objectDetectionController {"../../../scripts/objectDetection"};
-  auto result = objectDetectionController.analyzeImage(data, 640 * 640 * 3);
+  auto result = objectDetectionController.analyzeImage(data);
   auto expected = BoundingBox {{200, 268}, {300, 506}};
 
   ASSERT_EQ(result.size(), 1);

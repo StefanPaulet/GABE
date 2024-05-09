@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "DecisionTree.hpp"
 #include "GameState.hpp"
 #include "windowController/WindowController.hpp"
 
@@ -24,6 +25,8 @@ public:
   auto run() -> int {
     log("Started processing commands", OpState::SUCCESS);
     _windowControllerThread = _windowController.run();
+    _windowController.add_event(std::make_unique<ScreenshotEvent>());
+    usleep(5000);
     return 0;
   }
 
