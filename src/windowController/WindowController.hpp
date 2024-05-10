@@ -14,13 +14,42 @@
 #include <utils/logger/Logger.hpp>
 
 namespace gabe {
+class Synchronizer {
+public:
+  Synchronizer() = default;
+  Synchronizer(Synchronizer const&) = delete;
+  Synchronizer(Synchronizer&&) noexcept = delete;
+
+  auto requestSynchronization() -> void {
+    log("Synchronization between engine and window controller required", OpState::INFO);
+    std::unique_lock lockGuard {mutex};
+    synchronize = true;
+    conditionVariable.wait(lockGuard, [this] { return !synchronize; });
+  }
+
+  auto handleSynchronization() -> void {
+    std::unique_lock lockGuard {mutex};
+    synchronize = false;
+    conditionVariable.notify_all();
+    log("Synchronization between engine and window controller handled", OpState::INFO);
+  }
+
+  auto synchronizationRequired() -> bool { return synchronize; }
+
+private:
+  bool synchronize {false};
+  std::mutex mutex {};
+  std::condition_variable conditionVariable {};
+};
+
 class WindowController {
 public:
   WindowController() = delete;
   WindowController(WindowController const&) = delete;
   WindowController(WindowController&&) noexcept = delete;
 
-  explicit WindowController(std::string const& pathToWindowFinder) noexcept(false) {
+  explicit WindowController(std::string const& pathToWindowFinder, Synchronizer& synchronizer) noexcept(false) :
+      _synchronizer {synchronizer} {
     _display = XOpenDisplay(nullptr);
     if (_display == nullptr) {
       throw window::DisplayOpeningException {};
@@ -40,8 +69,11 @@ public:
         } catch (window::DisplayOpeningException const& e) {
           log("Error: " + std::string(e.what()), OpState::FAILURE);
         }
-        if (_windowState.focused == false || _eventQueue.empty()) {
+        if (_windowState.focused == false) {
           continue;
+        }
+        if (_eventQueue.empty() && _synchronizer.synchronizationRequired()) {
+          _synchronizer.handleSynchronization();
         }
         auto event = std::move(_eventQueue.front());
         _eventQueue.pop();
@@ -65,6 +97,7 @@ private:
   Window _window {};
   Display* _display;
   std::queue<std::unique_ptr<Event>> _eventQueue {};
+  Synchronizer& _synchronizer;
 
   auto checkWindowState() noexcept(false) -> void {
     Window focusedWindow;

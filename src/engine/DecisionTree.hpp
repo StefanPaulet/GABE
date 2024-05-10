@@ -36,6 +36,7 @@ public:
       _children.emplace_back(e.weight, std::move(e.decision));
     }
   }
+  virtual ~DecisionTree() = default;
 
   auto addDecision(float weight, std::unique_ptr<DecisionTree>&& decision) noexcept(false) -> void {
     auto currentWeights = std::accumulate(_children.begin(), _children.end(), .0f,
@@ -47,12 +48,11 @@ public:
   }
 
   virtual auto random_decision() -> Decision = 0;
-  virtual auto act() -> void = 0;
+  virtual auto act() -> std::unique_ptr<Event> = 0;
 
-  auto evaluate() -> void {
+  auto evaluate() -> std::unique_ptr<Event> {
     if (_children.empty()) {
-      act();
-      return;
+      return act();
     }
 
     std::random_device rd {};
@@ -61,15 +61,16 @@ public:
     for (auto const& e : _children) {
       chosenValue += e.weight;
       if (chosenValue > targetValue) {
-        e.decision->evaluate();
-        return;
+        return e.decision->evaluate();
       }
     }
-    random_decision().decision->evaluate();
+    return random_decision().decision->evaluate();
   }
+
+protected:
+  GameState& _state;
 
 private:
   std::vector<Decision> _children;
-  GameState& _state;
 };
 } // namespace gabe

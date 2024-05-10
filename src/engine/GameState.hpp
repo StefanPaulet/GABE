@@ -21,8 +21,8 @@ struct Position {
   float z;
 };
 
-struct EnemyList {
-  std::vector<utils::BoundingBox> enemies;
+struct CurrentImage {
+  unsigned char* data;
 };
 
 struct Orientation {
@@ -42,12 +42,12 @@ struct SharedPosition : Position, Shared {
     return *this;
   }
 };
-struct SharedEnemyList : EnemyList, Shared {
-  SharedEnemyList() = default;
-  explicit SharedEnemyList(EnemyList const& other) : EnemyList(other) {}
+struct SharedCurrentImage : CurrentImage, Shared {
+  SharedCurrentImage() = default;
+  explicit SharedCurrentImage(CurrentImage const& other) : CurrentImage(other) {}
 
-  auto& operator=(EnemyList const& other) {
-    enemies = other.enemies;
+  auto& operator=(CurrentImage&& other) {
+    data = std::exchange(other.data, nullptr);
     return *this;
   }
 };
@@ -89,8 +89,8 @@ public:
         break;
       }
       case ENEMIES: {
-        if constexpr (std::is_assignable_v<std::remove_cvref_t<decltype(_enemyList)>, V>) {
-          setter(_enemyList);
+        if constexpr (std::is_assignable_v<std::remove_cvref_t<decltype(_CurrentImage)>, V>) {
+          setter(_CurrentImage);
         }
         break;
       }
@@ -103,6 +103,6 @@ public:
 private:
   SharedPosition _position {};
   SharedOrientation _orientation {};
-  SharedEnemyList _enemyList {};
+  SharedCurrentImage _CurrentImage {};
 };
 } // namespace gabe

@@ -4,7 +4,9 @@
 
 #pragma once
 #include <X11/Xutil.h>
+#include <X11/extensions/XTest.h>
 #include <cassert>
+#include <condition_variable>
 #include <cstring>
 #include <jpeglib.h>
 #include <types.hpp>
@@ -92,9 +94,11 @@ private:
 
 class ScreenshotEvent : public Event {
 public:
-  ScreenshotEvent() = default;
+  ScreenshotEvent() = delete;
   ScreenshotEvent(ScreenshotEvent const&) = default;
   ScreenshotEvent(ScreenshotEvent&&) noexcept = default;
+
+  explicit ScreenshotEvent(unsigned char* targetData) : _pTargetData(targetData) {}
 
   auto solve(Display* display, Window window) -> void override {
     XWindowAttributes attr;
@@ -102,7 +106,6 @@ public:
 
     XImage* img = XGetImage(display, window, 0, 0, attr.width, attr.height, AllPlanes, ZPixmap);
     char const* data = img->data;
-    auto* jpgData = new unsigned char[attr.width * attr.height * 3];
     assert(attr.width == expectedScreenWidth && attr.height == expectedScreenHeight
            && "Window does not match expected sizes");
 
@@ -113,12 +116,11 @@ public:
         int offset = y * bytesPerLine + x * bytesPerPixel;
         int jpgOffset = y * attr.width * 3 + x * 3;
 
-        jpgData[jpgOffset + 0] = data[offset + 2];
-        jpgData[jpgOffset + 1] = data[offset + 1];
-        jpgData[jpgOffset + 2] = data[offset + 0];
+        _pTargetData[jpgOffset + 0] = data[offset + 2];
+        _pTargetData[jpgOffset + 1] = data[offset + 1];
+        _pTargetData[jpgOffset + 2] = data[offset + 0];
       }
     }
-    delete[] jpgData;
     log("Treated screen capture event", OpState::INFO);
     XDestroyImage(img);
   }
@@ -153,6 +155,8 @@ private:
       jpeg_write_scanlines(&cinfo, &row_pointer, 1);
     }
   }
+
+  unsigned char* _pTargetData;
 };
 
 class MouseClickEvent : public Event {
@@ -194,6 +198,23 @@ public:
 private:
   static constexpr auto sleepTime = 100;
   Button _buttonType {};
+};
+
+class ShootEvent : public Event {
+public:
+  ShootEvent() = default;
+  ShootEvent(ShootEvent const&) = default;
+  ShootEvent(ShootEvent&&) noexcept = default;
+  explicit ShootEvent(Point const& movement) : _totalMovement {movement} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    StrafeEvent(_totalMovement).solve(display, window);
+    MouseClickEvent(MouseClickEvent::Button::LEFT_BUTTON).solve(display, window);
+    log("Treated shoot event", OpState::INFO);
+  }
+
+private:
+  Point _totalMovement {};
 };
 
 class KeyPressEvent : public Event {

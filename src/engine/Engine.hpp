@@ -14,7 +14,7 @@ public:
   Engine(Engine const&) = delete;
   Engine(Engine&&) noexcept = delete;
 
-  explicit Engine(WindowController& windowController) : _windowController {windowController} {}
+  explicit Engine(std::string const& controllerScript) : _windowController {controllerScript, _synchronizer} {}
 
   ~Engine() {
     _windowController.stop();
@@ -25,13 +25,13 @@ public:
   auto run() -> int {
     log("Started processing commands", OpState::SUCCESS);
     _windowControllerThread = _windowController.run();
-    _windowController.add_event(std::make_unique<ScreenshotEvent>());
     usleep(5000);
     return 0;
   }
 
 private:
-  WindowController& _windowController;
+  Synchronizer _synchronizer {};
+  WindowController _windowController;
   GameState _state {};
   std::jthread _windowControllerThread;
 };

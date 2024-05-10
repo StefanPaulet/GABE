@@ -5,7 +5,6 @@ using namespace gabe;
 }
 
 int main() {
-  WindowController wc {"../scripts/find_csXwindow.sh"};
-  Engine engine {wc};
+  Engine engine {"../scripts/find_csXwindow.sh"};
   return engine.run();
 }
