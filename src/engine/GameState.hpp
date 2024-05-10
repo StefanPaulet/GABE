@@ -21,7 +21,7 @@ struct Position {
   float z;
 };
 
-struct CurrentImage {
+struct Image {
   unsigned char* data;
 };
 
@@ -41,15 +41,19 @@ struct SharedPosition : Position, Shared {
     z = other.z;
     return *this;
   }
-};
-struct SharedCurrentImage : CurrentImage, Shared {
-  SharedCurrentImage() = default;
-  explicit SharedCurrentImage(CurrentImage const& other) : CurrentImage(other) {}
 
-  auto& operator=(CurrentImage&& other) {
+  auto position() -> Position { return Position {x, y, z}; }
+};
+struct SharedImage : Image, Shared {
+  SharedImage() = default;
+  explicit SharedImage(Image const& other) : Image(other) {}
+
+  auto& operator=(Image&& other) {
     data = std::exchange(other.data, nullptr);
     return *this;
   }
+
+  auto image() -> Image { return Image {data}; }
 };
 struct SharedOrientation : Orientation, Shared {
   SharedOrientation() : Orientation() {}
@@ -66,12 +70,12 @@ struct SharedOrientation : Orientation, Shared {
 
 class GameState {
 public:
-  enum class Properties { POSITION, ORIENTATION, ENEMIES };
+  enum class Properties { POSITION, ORIENTATION, IMAGE };
 
-  template <typename V> auto set(Properties property, V const& value) -> void {
-    auto setter = [value]<typename T>(T& target) {
+  template <typename V> auto set(Properties property, V&& value) -> void {
+    auto setter = [&value]<typename T>(T& target) {
       std::lock_guard lg {target.lock};
-      target = value;
+      target = std::forward<V>(value);
     };
 
     switch (property) {
@@ -88,9 +92,9 @@ public:
         }
         break;
       }
-      case ENEMIES: {
-        if constexpr (std::is_assignable_v<std::remove_cvref_t<decltype(_CurrentImage)>, V>) {
-          setter(_CurrentImage);
+      case IMAGE: {
+        if constexpr (std::is_assignable_v<std::remove_cvref_t<decltype(_image)>, V>) {
+          setter(_image);
         }
         break;
       }
@@ -100,9 +104,19 @@ public:
     }
   }
 
+  auto position() -> Position {
+    std::lock_guard lockGuard {_position.lock};
+    return _position.position();
+  }
+
+  auto image() -> Image {
+    std::lock_guard lockGuard {_image.lock};
+    return _image.image();
+  }
+
 private:
   SharedPosition _position {};
   SharedOrientation _orientation {};
-  SharedCurrentImage _CurrentImage {};
+  SharedImage _image {};
 };
 } // namespace gabe

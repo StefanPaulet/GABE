@@ -2,7 +2,7 @@
 
 while :
 do
-  result=$(xwininfo -root -tree | grep --ignore-case "GABE")
+  result=$(xwininfo -root -tree | grep --ignore-case "Counter-Strike 2")
   if [ -n "$result" ]; then
     IFS=' ' read -r -a array <<< "$result"
     echo $array

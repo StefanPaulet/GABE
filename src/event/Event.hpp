@@ -15,7 +15,42 @@
 
 namespace gabe {
 static constexpr auto expectedScreenWidth = 1920;
-static constexpr auto expectedScreenHeight = 1036;
+static constexpr auto expectedScreenHeight = 1080;
+
+static constexpr auto detectionWidth = 640;
+static constexpr auto detectionHeight = 640;
+
+
+static auto saveImage(std::string_view filename, unsigned char* data, int width, int height) -> void {
+  struct jpeg_compress_struct cinfo {};
+  struct jpeg_error_mgr jerr {};
+
+  JSAMPROW row_pointer;
+
+  cinfo.err = jpeg_std_error(&jerr);
+
+  jpeg_create_compress(&cinfo);
+  auto* outfile = fopen(filename.data(), "wb");
+
+  jpeg_stdio_dest(&cinfo, outfile);
+
+  cinfo.image_width = width;
+  cinfo.image_height = height;
+  cinfo.input_components = 3;
+  cinfo.in_color_space = JCS_RGB;
+
+  jpeg_set_defaults(&cinfo);
+
+  jpeg_start_compress(&cinfo, TRUE);
+
+  auto const row_stride = width * 3;
+
+  while (cinfo.next_scanline < cinfo.image_height) {
+    row_pointer = &data[cinfo.next_scanline * row_stride];
+    jpeg_write_scanlines(&cinfo, &row_pointer, 1);
+  }
+}
+
 
 class Event {
 public:
@@ -30,6 +65,17 @@ public:
   }
 };
 
+class EmptyEvent : public Event {
+public:
+  EmptyEvent() = default;
+  EmptyEvent(EmptyEvent const&) = default;
+  EmptyEvent(EmptyEvent&&) noexcept = default;
+
+  auto solve(Display* display, Window window) -> void override {
+    //empty on purpose
+  }
+};
+
 class MouseMoveEvent : public Event {
 public:
   MouseMoveEvent() = default;
@@ -38,7 +84,6 @@ public:
   explicit MouseMoveEvent(Point const& point) : _point {point} {}
 
   auto solve(Display* display, Window window) -> void override {
-    _point = _point + translateCoordinates(display, window);
     XSetInputFocus(display, window, RevertToParent, CurrentTime);
     XFlush(display);
 
@@ -47,7 +92,6 @@ public:
 
     XTestFakeMotionEvent(display, -1, _point.x, _point.y, CurrentTime);
     XFlush(display);
-
     log(std::format("Treated move mouse event at x={}, y={}", _point.x, _point.y), OpState::INFO);
   }
 
@@ -73,7 +117,16 @@ public:
 
     Point p {};
     for (auto idx = 0; idx < itCount; ++idx) {
-      p = _totalMovement * idx / itCount;
+      p = _totalMovement / itCount;
+      XSelectInput(display, window, PointerMotionMask);
+      XFlush(display);
+
+      XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
+      log(std::format("Moved mouse to x={}, y={}", p.x, p.y), OpState::SUCCESS);
+      XFlush(display);
+      usleep(sleepTime);
+    }
+    for (auto idx = 0; idx < std::min(_totalMovement.x % itCount, _totalMovement.y % itCount); ++idx) {
       XSelectInput(display, window, PointerMotionMask);
       XFlush(display);
 
@@ -87,7 +140,7 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 3000;
+  static constexpr auto sleepTime = 10000;
   static constexpr auto itCount = 50;
   Point _totalMovement {};
 };
@@ -126,36 +179,6 @@ public:
   }
 
 private:
-  static auto saveImage(std::string_view filename, unsigned char* data, int width, int height) -> void {
-    struct jpeg_compress_struct cinfo {};
-    struct jpeg_error_mgr jerr {};
-
-    JSAMPROW row_pointer;
-
-    cinfo.err = jpeg_std_error(&jerr);
-
-    jpeg_create_compress(&cinfo);
-    auto* outfile = fopen(filename.data(), "wb");
-
-    jpeg_stdio_dest(&cinfo, outfile);
-
-    cinfo.image_width = width;
-    cinfo.image_height = height;
-    cinfo.input_components = 3;
-    cinfo.in_color_space = JCS_RGB;
-
-    jpeg_set_defaults(&cinfo);
-
-    jpeg_start_compress(&cinfo, TRUE);
-
-    auto const row_stride = width * 3;
-
-    while (cinfo.next_scanline < cinfo.image_height) {
-      row_pointer = &data[cinfo.next_scanline * row_stride];
-      jpeg_write_scanlines(&cinfo, &row_pointer, 1);
-    }
-  }
-
   unsigned char* _pTargetData;
 };
 

@@ -111,7 +111,6 @@ private:
     do {
       read(_channel[0], response, 128);
     } while (std::string(response).find("**finishedsetup**") == std::string::npos);
-    std::cout << "Roboflow finished setup\n";
     delete[] response;
   }
 

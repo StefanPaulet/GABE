@@ -5,43 +5,15 @@
 #pragma once
 
 #include "Exceptions.hpp"
+#include "Synchronizer.hpp"
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <cstdio>
 #include <event/Event.hpp>
 #include <queue>
 #include <thread>
-#include <utils/logger/Logger.hpp>
 
 namespace gabe {
-class Synchronizer {
-public:
-  Synchronizer() = default;
-  Synchronizer(Synchronizer const&) = delete;
-  Synchronizer(Synchronizer&&) noexcept = delete;
-
-  auto requestSynchronization() -> void {
-    log("Synchronization between engine and window controller required", OpState::INFO);
-    std::unique_lock lockGuard {mutex};
-    synchronize = true;
-    conditionVariable.wait(lockGuard, [this] { return !synchronize; });
-  }
-
-  auto handleSynchronization() -> void {
-    std::unique_lock lockGuard {mutex};
-    synchronize = false;
-    conditionVariable.notify_all();
-    log("Synchronization between engine and window controller handled", OpState::INFO);
-  }
-
-  auto synchronizationRequired() -> bool { return synchronize; }
-
-private:
-  bool synchronize {false};
-  std::mutex mutex {};
-  std::condition_variable conditionVariable {};
-};
-
 class WindowController {
 public:
   WindowController() = delete;
@@ -72,8 +44,11 @@ public:
         if (_windowState.focused == false) {
           continue;
         }
-        if (_eventQueue.empty() && _synchronizer.synchronizationRequired()) {
-          _synchronizer.handleSynchronization();
+        if (_eventQueue.empty()) {
+          if (_synchronizer.synchronizationRequired()) {
+            _synchronizer.handleSynchronization();
+          }
+          continue;
         }
         auto event = std::move(_eventQueue.front());
         _eventQueue.pop();
@@ -84,7 +59,7 @@ public:
     return std::jthread {eventLoop};
   }
 
-  auto add_event(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
+  auto addEvent(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
 
   auto stop() { stopped = true; }
 

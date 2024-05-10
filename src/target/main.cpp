@@ -5,6 +5,6 @@ using namespace gabe;
 }
 
 int main() {
-  Engine engine {"../scripts/find_csXwindow.sh"};
+  Engine engine {"../scripts"};
   return engine.run();
 }

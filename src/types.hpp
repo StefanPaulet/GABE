@@ -24,6 +24,13 @@ struct Point {
     return *this;
   }
 
+  auto operator-(Point const& other) const -> Point { return {x - other.x, y - other.y}; }
+  auto operator-=(Point const& other) -> Point& {
+    x -= other.x;
+    y -= other.y;
+    return *this;
+  }
+
   auto operator/(int value) const -> Point { return {x / value, y / value}; }
   auto operator/=(int value) -> Point& {
     x /= value;
