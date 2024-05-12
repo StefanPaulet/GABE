@@ -106,29 +106,25 @@ public:
 
   auto randomDecision() -> Decision override { return {}; }
   auto act() -> std::unique_ptr<Event> override {
-    auto* recognitionZone = new unsigned char[detectionHeight * detectionWidth * 3];
     auto* image = _state.image().data;
 
-    auto lineStart = (expectedScreenHeight - detectionHeight) / 2;
-    auto colStart = (expectedScreenWidth - detectionWidth) / 2;
-
-    for (auto lIdx = 0; lIdx < detectionHeight; ++lIdx) {
-      for (auto cIdx = 0; cIdx < detectionWidth; ++cIdx) {
-        for (auto channel = 0; channel < 3; ++channel) {
-          recognitionZone[lIdx * detectionWidth * 3 + cIdx * 3 + channel] =
-              image[(lIdx + lineStart) * expectedScreenWidth * 3 + (cIdx + colStart) * 3 + channel];
-        }
+    if (auto enemyList = _objectDetectionController.analyzeImage(image); !enemyList.empty()) {
+      auto shootingPoint = (enemyList[0].topLeft + (enemyList[0].bottomRight - enemyList[0].topLeft) / Point {2, 5})
+          - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+      ShootEvent::AimType aimType;
+      if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
+        aimType = ShootEvent::AimType::FLICK;
+        shootingPoint *= 2;
+      } else {
+        aimType = ShootEvent::AimType::TAP;
       }
-    }
-
-    if (auto enemyList = _objectDetectionController.analyzeImage(recognitionZone); !enemyList.empty()) {
-      auto shootingPoint =
-          (enemyList[0].bottomRight + enemyList[0].topLeft) / 2 - Point {detectionWidth, detectionHeight} / 2;
       log(std::format("Detected enemy at x={}, y={}", shootingPoint.x, shootingPoint.y), OpState::INFO);
-      return std::make_unique<ShootEvent>(shootingPoint);
+      return std::make_unique<ShootEvent>(shootingPoint, aimType);
     }
     return std::make_unique<EmptyEvent>();
   }
+
+  auto postEvaluation() -> void override { usleep(100000); }
 
 private:
   utils::ObjectDetectionController _objectDetectionController;

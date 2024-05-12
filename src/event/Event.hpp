@@ -3,6 +3,8 @@
 //
 
 #pragma once
+
+#include "../engine/Weapon.hpp"
 #include <X11/Xutil.h>
 #include <X11/extensions/XTest.h>
 #include <cassert>
@@ -17,8 +19,7 @@ namespace gabe {
 static constexpr auto expectedScreenWidth = 1920;
 static constexpr auto expectedScreenHeight = 1080;
 
-static constexpr auto detectionWidth = 640;
-static constexpr auto detectionHeight = 640;
+static constexpr auto dpiScalingFactor = 1;
 
 
 static auto saveImage(std::string_view filename, unsigned char* data, int width, int height) -> void {
@@ -76,6 +77,22 @@ public:
   }
 };
 
+class MouseScanEvent : public Event {
+public:
+  MouseScanEvent() = default;
+  MouseScanEvent(MouseScanEvent const&) = default;
+  MouseScanEvent(MouseScanEvent&&) noexcept = default;
+
+  auto solve(Display* display, Window window) -> void override {
+    Window childWindow;
+    int rootX, rootY, winX, winY;
+    unsigned int mask;
+
+    XQueryPointer(display, window, &window, &childWindow, &rootX, &rootY, &winX, &winY, &mask);
+    log(std::format("Treated mouse scan event; x={}, y={}", rootX, rootY), OpState::INFO);
+  }
+};
+
 class MouseMoveEvent : public Event {
 public:
   MouseMoveEvent() = default;
@@ -84,6 +101,8 @@ public:
   explicit MouseMoveEvent(Point const& point) : _point {point} {}
 
   auto solve(Display* display, Window window) -> void override {
+    _point *= dpiScalingFactor;
+
     XSetInputFocus(display, window, RevertToParent, CurrentTime);
     XFlush(display);
 
@@ -104,7 +123,8 @@ public:
   StrafeEvent() = default;
   StrafeEvent(StrafeEvent const&) = default;
   StrafeEvent(StrafeEvent&&) noexcept = default;
-  explicit StrafeEvent(Point const& movement) : _totalMovement {movement} {}
+  StrafeEvent(Point const& movement, int iterationCount, int strafeSpeed) :
+      _itCount {iterationCount}, _strafeSpeed {strafeSpeed}, _totalMovement {movement} {}
 
   auto solve(Display* display, Window window) -> void override {
     XWindowAttributes attr;
@@ -116,32 +136,25 @@ public:
     XFlush(display);
 
     Point p {};
-    for (auto idx = 0; idx < itCount; ++idx) {
-      p = _totalMovement / itCount;
+    for (auto idx = 0; idx < _itCount; ++idx) {
+      p = _totalMovement / _itCount;
       XSelectInput(display, window, PointerMotionMask);
       XFlush(display);
 
       XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
-      log(std::format("Moved mouse to x={}, y={}", p.x, p.y), OpState::SUCCESS);
       XFlush(display);
-      usleep(sleepTime);
+      usleep(_strafeSpeed);
     }
-    for (auto idx = 0; idx < std::min(_totalMovement.x % itCount, _totalMovement.y % itCount); ++idx) {
-      XSelectInput(display, window, PointerMotionMask);
-      XFlush(display);
 
-      XTestFakeMotionEvent(display, -1, p.x, p.y, CurrentTime);
-      log(std::format("Moved mouse to x={}, y={}", p.x, p.y), OpState::SUCCESS);
-      XFlush(display);
-      usleep(sleepTime);
-    }
+    _totalMovement = _totalMovement / _itCount * _itCount;
 
     log(std::format("Treated strafe mouse event of distance x={}, y={}", _totalMovement.x, _totalMovement.y), OpState::INFO);
   }
 
 private:
-  static constexpr auto sleepTime = 10000;
-  static constexpr auto itCount = 50;
+  static constexpr auto sleepTime = 5000;
+  int _itCount {};
+  int _strafeSpeed {};
   Point _totalMovement {};
 };
 
@@ -182,62 +195,144 @@ private:
   unsigned char* _pTargetData;
 };
 
-class MouseClickEvent : public Event {
-public:
+struct MouseButton {
   enum class Button : int {
-    LEFT_BUTTON = Button1, 
-    RIGHT_BUTTON = Button2, 
-    WHEEL_PRESSED = Button3, 
-    WHEEL_UP = Button4, 
-    WHEEL_DOWN = Button5 
+    LEFT_BUTTON = Button1,
+    RIGHT_BUTTON = Button2,
+    WHEEL_PRESSED = Button3,
+    WHEEL_UP = Button4,
+    WHEEL_DOWN = Button5
   };
 
-  MouseClickEvent() = default;
-  MouseClickEvent(MouseClickEvent const&) = default;
-  MouseClickEvent(MouseClickEvent&&) noexcept = default;
-  explicit MouseClickEvent(Button val) : _buttonType {val} {}
+  MouseButton() = default;
+  MouseButton(MouseButton const&) = default;
+  MouseButton(MouseButton&&) noexcept = default;
+  explicit MouseButton(Button value) : button {value} {}
+
+  [[nodiscard]] constexpr auto toString() const -> std::string {
+    switch (button) {
+      using enum MouseButton::Button;
+      case LEFT_BUTTON: return "left click";
+      case RIGHT_BUTTON: return "right click";
+      case WHEEL_PRESSED: return "middle click";
+      case WHEEL_UP: return "wheel up";
+      case WHEEL_DOWN: return "wheel down";
+    }
+    assert(false && "Button type undefined");
+    return "<undefined button type>";
+  };
+
+  Button button {};
+};
+
+class MouseActionEvent : public Event {
+public:
+  MouseActionEvent() = default;
+  MouseActionEvent(MouseActionEvent const&) = default;
+  MouseActionEvent(MouseActionEvent&&) noexcept = default;
+  MouseActionEvent(MouseButton::Button val, bool press) : _buttonType {val}, _press {press} {}
 
   auto solve(Display* display, Window window) -> void override {
-    auto toString = [this]() -> std::string {
-      switch(_buttonType) {
-        using enum Button;
-        case LEFT_BUTTON: return "left click";
-        case RIGHT_BUTTON: return "right click";
-        case WHEEL_PRESSED: return "middle click";
-        case WHEEL_UP: return "wheel up";
-        case WHEEL_DOWN: return "wheel down";
-      }
-      assert(false && "Button type undefined");
-      return "<undefined button type>";
-    };
-
-    auto buttonId = static_cast<std::underlying_type_t<Button>>(_buttonType);
-    XTestFakeButtonEvent(display, buttonId, True, CurrentTime);
+    auto buttonId = static_cast<std::underlying_type_t<MouseButton::Button>>(_buttonType.button);
+    XTestFakeButtonEvent(display, buttonId, _press, CurrentTime);
+    XFlush(display);
     usleep(sleepTime);
-    XTestFakeButtonEvent(display, buttonId, False, CurrentTime);
-    log("Treated mouse click event of type " + toString(), OpState::INFO);
   }
 
 private:
   static constexpr auto sleepTime = 100;
-  Button _buttonType {};
+  MouseButton _buttonType {};
+  bool _press {};
+};
+
+class MouseClickEvent : public Event {
+public:
+  MouseClickEvent() = default;
+  MouseClickEvent(MouseClickEvent const&) = default;
+  MouseClickEvent(MouseClickEvent&&) noexcept = default;
+  explicit MouseClickEvent(MouseButton::Button val) : _buttonType {val} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    MouseActionEvent(_buttonType.button, true).solve(display, window);
+    MouseActionEvent(_buttonType.button, false).solve(display, window);
+    log("Treated mouse click event of type " + _buttonType.toString(), OpState::INFO);
+  }
+
+private:
+  MouseButton _buttonType {};
 };
 
 class ShootEvent : public Event {
 public:
+  enum class AimType { FLICK, TAP };
+
   ShootEvent() = default;
   ShootEvent(ShootEvent const&) = default;
   ShootEvent(ShootEvent&&) noexcept = default;
-  explicit ShootEvent(Point const& movement) : _totalMovement {movement} {}
+  ShootEvent(Point const& movement, AimType aimType) : _totalMovement {movement}, _aimType {aimType} {}
 
   auto solve(Display* display, Window window) -> void override {
-    StrafeEvent(_totalMovement).solve(display, window);
-    MouseClickEvent(MouseClickEvent::Button::LEFT_BUTTON).solve(display, window);
-    log("Treated shoot event", OpState::INFO);
+    switch (_aimType) {
+      using enum AimType;
+      case FLICK: {
+        constexpr auto largeSteps = 50;
+        constexpr auto smallSteps = 2;
+        StrafeEvent(_totalMovement, largeSteps, 2500).solve(display, window);
+        StrafeEvent(_totalMovement % largeSteps, smallSteps, 3000).solve(display, window);
+        MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        break;
+      }
+      case TAP: {
+        StrafeEvent(_totalMovement, 1, 250).solve(display, window);
+        MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        break;
+      }
+    }
+
+    auto toString = [*this] {
+      switch (_aimType) {
+        using enum AimType;
+        case FLICK: {
+          return "flick";
+        }
+        case TAP: {
+          return "tap";
+        }
+        default: {
+          return "<unknown event>";
+        }
+      }
+    };
+    log(std::format("Treated shoot event of type {}", toString()), OpState::INFO);
   }
 
 private:
   Point _totalMovement {};
+  AimType _aimType {};
+};
+
+class SprayEvent : public Event {
+public:
+  SprayEvent() = default;
+  SprayEvent(SprayEvent const&) = default;
+  SprayEvent(SprayEvent&&) noexcept = default;
+  SprayEvent(Point const& startPoint, int bulletCount, Weapon const& weapon) :
+      _startPoint {startPoint}, _bulletCount {bulletCount}, _weapon {weapon} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    //TODO treat different weapon types in following pr
+    StrafeEvent(_startPoint, 1, 250).solve(display, window);
+    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
+    auto secondsToSleep = 1.0 / 11 * _bulletCount;
+    usleep(static_cast<int>(secondsToSleep * 1000000));
+    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
+    log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
+  }
+
+private:
+  Point _startPoint {};
+  int _bulletCount {};
+  Weapon _weapon {};
 };
 
 class KeyPressEvent : public Event {
