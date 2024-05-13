@@ -24,10 +24,31 @@ struct Point {
     return *this;
   }
 
+  auto operator-(Point const& other) const -> Point { return {x - other.x, y - other.y}; }
+  auto operator-=(Point const& other) -> Point& {
+    x -= other.x;
+    y -= other.y;
+    return *this;
+  }
+
   auto operator/(int value) const -> Point { return {x / value, y / value}; }
   auto operator/=(int value) -> Point& {
     x /= value;
     y /= value;
+    return *this;
+  }
+
+  auto operator/(Point value) const -> Point { return {x / value.x, y / value.y}; }
+  auto operator/=(Point value) -> Point& {
+    x /= value.x;
+    y /= value.y;
+    return *this;
+  }
+
+  auto operator%(int value) const -> Point { return {x % value, y % value}; }
+  auto operator%=(int value) -> Point& {
+    x %= value;
+    y %= value;
     return *this;
   }
 
@@ -38,9 +59,17 @@ struct Point {
     return *this;
   }
 
-  auto operator==(Point const& other) const -> bool = default;
+  auto operator*(double value) const -> Point { return {static_cast<int>(x * value), static_cast<int>(y * value)}; }
+  auto operator*=(double value) -> Point& {
+    x = static_cast<int>(x * value);
+    y = static_cast<int>(y * value);
+    return *this;
+  }
+
+  auto operator<=>(Point const& other) const = default;
 
   int x;
   int y;
 };
+
 } // namespace gabe

@@ -5,13 +5,13 @@
 #pragma once
 
 #include "Exceptions.hpp"
+#include "Synchronizer.hpp"
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <cstdio>
 #include <event/Event.hpp>
 #include <queue>
 #include <thread>
-#include <utils/logger/Logger.hpp>
 
 namespace gabe {
 class WindowController {
@@ -20,7 +20,8 @@ public:
   WindowController(WindowController const&) = delete;
   WindowController(WindowController&&) noexcept = delete;
 
-  explicit WindowController(std::string const& pathToWindowFinder) noexcept(false) {
+  explicit WindowController(std::string const& pathToWindowFinder, Synchronizer& synchronizer) noexcept(false) :
+      _synchronizer {synchronizer} {
     _display = XOpenDisplay(nullptr);
     if (_display == nullptr) {
       throw window::DisplayOpeningException {};
@@ -40,20 +41,25 @@ public:
         } catch (window::DisplayOpeningException const& e) {
           log("Error: " + std::string(e.what()), OpState::FAILURE);
         }
-        if (_windowState.focused == false || _eventQueue.empty()) {
+        if (_windowState.focused == false) {
+          continue;
+        }
+        if (_eventQueue.empty()) {
+          if (_synchronizer.synchronizationRequired()) {
+            _synchronizer.handleSynchronization();
+          }
           continue;
         }
         auto event = std::move(_eventQueue.front());
         _eventQueue.pop();
         event.get()->solve(_display, _window);
       }
-      usleep(500000);
       log("Finished running the event loop", OpState::SUCCESS);
     };
     return std::jthread {eventLoop};
   }
 
-  auto add_event(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
+  auto addEvent(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
 
   auto stop() { stopped = true; }
 
@@ -66,6 +72,7 @@ private:
   Window _window {};
   Display* _display;
   std::queue<std::unique_ptr<Event>> _eventQueue {};
+  Synchronizer& _synchronizer;
 
   auto checkWindowState() noexcept(false) -> void {
     Window focusedWindow;

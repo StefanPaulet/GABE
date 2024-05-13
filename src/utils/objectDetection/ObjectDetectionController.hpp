@@ -82,7 +82,9 @@ public:
     close(_channel[1]);
   }
 
-  auto analyzeImage(unsigned char* data, int imageSize) -> std::vector<BoundingBox> {
+  auto analyzeImage(unsigned char* data) -> std::vector<BoundingBox> {
+    static constexpr auto imageSize = 1920 * 1080 * 3;
+
     auto* response = new char[256];
     write(_channel[1], data, imageSize);
     read(_channel[0], response, 256);
@@ -109,7 +111,6 @@ private:
     do {
       read(_channel[0], response, 128);
     } while (std::string(response).find("**finishedsetup**") == std::string::npos);
-    std::cout << "Roboflow finished setup\n";
     delete[] response;
   }
 

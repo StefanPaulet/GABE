@@ -3,6 +3,8 @@
 //
 
 #pragma once
+
+#include <cassert>
 #include <format>
 #include <string>
 

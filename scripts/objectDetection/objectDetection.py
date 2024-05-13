@@ -4,11 +4,15 @@ import numpy as np
 from roboflow import Roboflow
 import supervision as sv
 
+imageWidth = 1920
+imageHeight = 1080
+totalImageSize = imageWidth * imageHeight * 3
+
 
 def read_image():
-    byte_data = sys.stdin.buffer.read(640 * 640 * 3)
+    byte_data = sys.stdin.buffer.read(totalImageSize)
     image_array = np.frombuffer(byte_data, dtype=np.uint8)
-    image_array = image_array.reshape((640, 640, 3))
+    image_array = image_array.reshape((imageHeight, imageWidth, 3))
     return image_array
 
 data = sys.stdin.readline().strip()
