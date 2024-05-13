@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <compare>
+
 namespace gabe {
 using uint8 = unsigned char;
 using uint16 = unsigned short int;
@@ -70,6 +72,18 @@ struct Point {
 
   int x;
   int y;
+};
+
+struct Position {
+  float x;
+  float y;
+  float z;
+};
+
+struct Orientation {
+  float x;
+  float y;
+  float z;
 };
 
 } // namespace gabe
