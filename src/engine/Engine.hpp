@@ -14,9 +14,9 @@ public:
   Engine(Engine const&) = delete;
   Engine(Engine&&) noexcept = delete;
 
-  explicit Engine(std::string const& controllerScript) :
-      _windowController {controllerScript + "/find_csXwindow.sh", _synchronizer} {
-    buildTrees(controllerScript);
+  explicit Engine(std::string const& rootFolder) :
+      _windowController {rootFolder + "scripts/find_csXwindow.sh", _synchronizer} {
+    buildTrees(rootFolder);
   }
 
   ~Engine() {
@@ -40,9 +40,10 @@ public:
   }
 
 private:
-  auto buildTrees(std::string const& scriptsRootPath) -> void {
+  auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
-    buildShootingTree(scriptsRootPath + "/objectDetection");
+    //    buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildMovementTree(rootFolder + "data/templateDigits");
   }
 
   auto buildImageCapturingTree() -> void {
@@ -51,6 +52,10 @@ private:
 
   auto buildShootingTree(std::string const& objectDetectionRootPath) -> void {
     _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
+  }
+
+  auto buildMovementTree(std::string const& templatePositionDigits) -> void {
+    _trees.push_back(std::make_unique<MovementTree>(_state, templatePositionDigits));
   }
 
   Synchronizer _synchronizer {};

@@ -4,21 +4,16 @@
 
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <types.hpp>
 #include <vector>
 
 namespace gabe {
 
-struct Obstacle {
-  Position firstCorner {};
-  Position secondCorner {};
-};
-
 struct MapZone {
-  Position firstCorner {};
-  Position secondCorner {};
-  std::vector<Obstacle> obstacles {};
+  Volume volume;
+  std::vector<Volume> obstacles {};
 };
 
 class Map {
@@ -39,13 +34,57 @@ public:
   };
   enum class RequiredMovement { NONE, JUMP, JUMP_AND_CROUCH, RUN_AND_JUMP, GO_TO_AND_JUMP };
   using Transition = std::pair<MapZone, RequiredMovement>;
-  using NamedZone = std::pair<MapZone, ZoneName>;
+  struct NamedZone {
+    MapZone zone;
+    ZoneName name;
 
+    auto toString() const -> std::string {
+      switch (name) {
+        using enum Map::ZoneName;
+        case T_SPAWN: {
+          return "T_SPAWN";
+        }
+        case T_SPAWN_TO_LONG: {
+          return "T_SPAWN_TO_LONG";
+        }
+        case T_DOORS: {
+          return "T_DOORS";
+        }
+        case DOORS_CORRIDOR: {
+          return "DOORS_CORRIDOR";
+        }
+        case LONG_DOORS: {
+          return "LONG_DOORS";
+        }
+        case OUTSIDE_DOORS_LONG: {
+          return "OUTSIDE_DOORS_LONG";
+        }
+        case NEAR_DOORS_LONG: {
+          return "NEAR_DOORS_LONG";
+        }
+        case PIT: {
+          return "PIT";
+        }
+        case FAR_LONG: {
+          return "FAR_LONG";
+        }
+        case A_SITE_LONG: {
+          return "A_SITE_LONG";
+        }
+        case RAMP: {
+          return "RAMP";
+        }
+        case A_SITE: {
+          return "A_SITE";
+        }
+      }
+    }
+  };
 
   Map() {
     using enum ZoneName;
     NamedZone tSpawn {MapZone {Position {-1176.63f, -665.08f, 187.94f}, Position {341.33f, -999.97f, 65.68f}}, T_SPAWN};
-    tSpawn.first.obstacles.emplace_back(Position {-878.56f, -722.03f, 186.22f}, Position {-982.03f, -638.03f, 192.16f});
+    tSpawn.zone.obstacles.emplace_back(Position {-878.56f, -722.03f, 186.22f}, Position {-982.03f, -638.03f, 192.16f});
     _zones.push_back(tSpawn);
 
     NamedZone tSpawnToLong {MapZone {Position {130.77f, -420.88f, 65.6f}, Position {747.97f, 235.97f, 72.28f}},
@@ -86,8 +125,15 @@ public:
 
     NamedZone aSite {MapZone {Position {1235.97f, 2348.03f, 163.02f}, Position {1051.03f, 3059.97f, 194.33f}}, A_SITE};
     _zones.push_back(aSite);
-    aSite.first.obstacles.emplace_back(Position {1264.87f, 2460.97f, 191.03f}, Position {1176.88f, 2561.03f, 159.96f});
-    aSite.first.obstacles.emplace_back(Position {1097.64f, 2575.82f, 160.12f}, Position {989.21f, 2411.97f, 191.09f});
+    aSite.zone.obstacles.emplace_back(Position {1264.87f, 2460.97f, 191.03f}, Position {1176.88f, 2561.03f, 159.96f});
+    aSite.zone.obstacles.emplace_back(Position {1097.64f, 2575.82f, 160.12f}, Position {989.21f, 2411.97f, 191.09f});
+  }
+
+  auto findZone(Position const& position) const -> NamedZone {
+    auto zoneCompare = [position](NamedZone const& z1, NamedZone const& z2) {
+      return z1.zone.volume.distance(position) < z2.zone.volume.distance(position);
+    };
+    return *std::ranges::min_element(_zones.begin(), _zones.end(), zoneCompare);
   }
 
 private:

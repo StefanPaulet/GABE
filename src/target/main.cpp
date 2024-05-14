@@ -5,6 +5,6 @@ using namespace gabe;
 }
 
 int main() {
-  Engine engine {"../scripts"};
+  Engine engine {"../"};
   return engine.run();
 }

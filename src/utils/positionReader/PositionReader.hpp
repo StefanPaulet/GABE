@@ -15,11 +15,9 @@ namespace gabe::utils {
 class PositionReader {
 public:
   static constexpr auto templateCount = 12;
-  static constexpr auto imageWidth = 335;
+  static constexpr auto imageWidth = 245;
   static constexpr auto imageHeight = 25;
   static constexpr auto templateWidth = 15;
-  static constexpr auto offsetX = 53;
-  static constexpr auto offsetY = 303;
   static constexpr float totalPixels = imageHeight * templateWidth;
 private:
   using TemplateDigit = math::LinearArray<float, 3, imageHeight, templateWidth>;
@@ -29,7 +27,9 @@ public:
   using Image = math::LinearArray<float, imageHeight, imageWidth>;
   using Template = math::LinearArray<float, templateCount, imageHeight, templateWidth>;
 
-  PositionReader() { _templates = Template::deserialize("templateDigits.gabe"); }
+  explicit PositionReader(std::string const& templatePath) {
+    _templates = Template::deserialize(templatePath + "/templateDigits.gabe");
+  }
 
   auto loadTemplates(std::string const& folderPath) {
     static constexpr auto imageCount = 3;
@@ -53,27 +53,6 @@ public:
     }
     adjustTemplates(11);
     _templates.serialize("templateDigits.gabe");
-  }
-
-  auto adjustTemplates(int templateIdx)-> void {
-    switch (templateIdx) {
-      case 11: {
-        constexpr auto activatedPixels = 9;
-        _templates[templateIdx].transform([](float x) {
-          if (x > .0f) {
-            return 1.0f / activatedPixels;
-          }
-          return -1.0f / (totalPixels - activatedPixels - 6 * imageHeight);
-        });
-        for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
-          for (auto cIdx = 0; cIdx < 3; ++cIdx) {
-            _templates[templateIdx][lIdx][cIdx] = _templates[11][lIdx][templateWidth - cIdx - 1] = 0;
-          }
-        }
-        break;
-      }
-      default: break;
-    }
   }
 
   auto identifyObjects(Image const& image) const -> std::array<float, 3> {
@@ -123,6 +102,27 @@ public:
   }
 
 private:
+  auto adjustTemplates(int templateIdx) -> void {
+    switch (templateIdx) {
+      case 11: {
+        constexpr auto activatedPixels = 9;
+        _templates[templateIdx].transform([](float x) {
+          if (x > .0f) {
+            return 1.0f / activatedPixels;
+          }
+          return -1.0f / (totalPixels - activatedPixels - 6 * imageHeight);
+        });
+        for (auto lIdx = 0; lIdx < imageHeight; ++lIdx) {
+          for (auto cIdx = 0; cIdx < 3; ++cIdx) {
+            _templates[templateIdx][lIdx][cIdx] = _templates[11][lIdx][templateWidth - cIdx - 1] = 0;
+          }
+        }
+        break;
+      }
+      default: break;
+    }
+  }
+
   static auto isActive(float red, float green, float blue) -> bool {
     static constexpr auto limit = 240.9f;
     return red >= limit && green >= limit && blue >= limit;
