@@ -30,7 +30,15 @@ public:
     FAR_LONG,
     A_SITE_LONG,
     RAMP,
-    A_SITE
+    A_SITE,
+    TOP_MID,
+    T_SPAWN_TO_MID,
+    BUNELU,
+    MID_TO_SHORT,
+    T_TO_SHORT,
+    SHORT_CORRIDOR,
+    SHORT_ABOVE_CT,
+    SHORT_TO_A
   };
   enum class RequiredMovement { NONE, JUMP, JUMP_AND_CROUCH, RUN_AND_JUMP, GO_TO_AND_JUMP };
   using Transition = std::pair<MapZone, RequiredMovement>;
@@ -80,6 +88,30 @@ public:
         case A_SITE: {
           return "A_SITE";
         }
+        case TOP_MID: {
+          return "TOP_MID";
+        }
+        case T_SPAWN_TO_MID: {
+          return "T_SPAWN_TO_MID";
+        }
+        case BUNELU: {
+          return "BUNELU";
+        }
+        case MID_TO_SHORT: {
+          return "MID_TO_SHORT";
+        }
+        case T_TO_SHORT: {
+          return "T_TO_SHORT";
+        }
+        case SHORT_CORRIDOR: {
+          return "SHORT_CORRIDOR";
+        }
+        case SHORT_ABOVE_CT: {
+          return "SHORT_ABOVE_CT";
+        }
+        case SHORT_TO_A: {
+          return "SHORT_TO_A";
+        }
       }
     }
   };
@@ -127,9 +159,47 @@ public:
     _zones.push_back(ramp);
 
     NamedZone aSite {MapZone {Position {1235.97f, 2348.03f, 163.02f}, Position {1051.03f, 3059.97f, 194.33f}}, A_SITE};
-    _zones.push_back(aSite);
     aSite.zone.obstacles.emplace_back(Position {1264.87f, 2460.97f, 191.03f}, Position {1176.88f, 2561.03f, 159.96f});
     aSite.zone.obstacles.emplace_back(Position {1097.64f, 2575.82f, 160.12f}, Position {989.21f, 2411.97f, 191.09f});
+    _zones.push_back(aSite);
+
+    NamedZone topMid {MapZone {Position {-361.07f, -593.97f, 64.98f}, Position {-491.97f, 189.88f, 65.03f}}, TOP_MID};
+    topMid.zone.obstacles.emplace_back(Position {-425.54f, -43.97f, 62.81f}, Position {-491.97f, -228.03f, 640.06f});
+    _zones.push_back(topMid);
+
+    NamedZone tSpawnToMid {MapZone {Position {-60.08f, -457.97f, 63.05f}, Position {447.79f, 265.12f, 65.53f}},
+                           T_SPAWN_TO_MID};
+    _zones.push_back(tSpawnToMid);
+
+    NamedZone bunelu {MapZone {Position {-511.01f, -212.03f, 66.21f}, Position {-621.97f, 627.97f, 72.09f}}, BUNELU};
+    _zones.push_back(bunelu);
+
+    NamedZone midToShort {MapZone {Position {-493.30f, 746.29f, 64.00f}, Position {-145.65f, 308.03f, 64.74f}},
+                          MID_TO_SHORT};
+    midToShort.zone.obstacles.emplace_back(Position {-171.09f, 539.17f, 63.63f}, Position {-258.75f, 582.25f, 64.16f});
+    _zones.push_back(midToShort);
+
+
+    NamedZone tToShort {MapZone {Position {-149.03f, 575.31f, 64.34f}, Position {-211.97f, 1516.97f, 64.54f}},
+                        T_TO_SHORT};
+    _zones.push_back(tToShort);
+
+    NamedZone shortCorridor {MapZone {Position {-50.15f, 1348.81f, 64.34f}, Position {273.04f, 1628.74f, 70.01f}},
+                             SHORT_CORRIDOR};
+    _zones.push_back(shortCorridor);
+
+
+    NamedZone shortAboveCt {MapZone {Position {273.06f, 1631.88f, 70.37f}, Position {503.72f, 2444.03f, 159.83f}},
+                            SHORT_ABOVE_CT};
+    shortAboveCt.zone.obstacles.emplace_back(Position {411.97f, 1952.03f, 160.0f}, Position {494.18f, 2052.0f, 160.0f});
+    _zones.push_back(shortAboveCt);
+
+
+    NamedZone shortToA {MapZone {Position {278.03f, 2437.36f, 161.86f}, Position {982.2f, 2762.22f, 163.58f}},
+                        SHORT_TO_A};
+    shortToA.zone.obstacles.emplace_back(Position {563.97f, 2697.82f, 160.4f}, Position {752.03f, 2763.97f, 161.62f});
+    shortToA.zone.obstacles.emplace_back(Position {833.73f, 2676.38f, 159.51f}, Position {904.25f, 2763.97f, 163.73f});
+    _zones.push_back(shortToA);
   }
 
   auto findZone(Position const& position) const -> NamedZone {
