@@ -79,6 +79,8 @@ struct Position {
   float x;
   float y;
   float z;
+
+  auto operator<=>(Position const& other) const = default;
 };
 
 struct Orientation {
@@ -90,6 +92,8 @@ struct Orientation {
 struct Volume {
   Position firstCorner;
   Position secondCorner;
+
+  auto operator<=>(Volume const& other) const = default;
 
   auto distance(Position const& position) const -> float {
     Position distance {};

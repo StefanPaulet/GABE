@@ -14,6 +14,8 @@ namespace gabe {
 struct MapZone {
   Volume volume;
   std::vector<Volume> obstacles {};
+
+  auto operator<=>(MapZone const& other) const { return volume.operator<=>(other.volume); }
 };
 
 class Map {
@@ -41,7 +43,10 @@ public:
     SHORT_TO_A
   };
   enum class RequiredMovement { NONE, JUMP, JUMP_AND_CROUCH, RUN_AND_JUMP, GO_TO_AND_JUMP };
-  using Transition = std::pair<MapZone, RequiredMovement>;
+  struct Transition {
+    MapZone zone;
+    RequiredMovement movement;
+  };
   struct NamedZone {
     MapZone zone;
     ZoneName name;
@@ -117,6 +122,19 @@ public:
   };
 
   Map() {
+    buildZones();
+    buildZoneTransitions();
+  }
+
+  auto findZone(Position const& position) const -> NamedZone {
+    auto zoneCompare = [position](NamedZone const& z1, NamedZone const& z2) {
+      return z1.zone.volume.distance(position) < z2.zone.volume.distance(position);
+    };
+    return *std::ranges::min_element(_zones.begin(), _zones.end(), zoneCompare);
+  }
+
+private:
+  auto buildZones() -> void {
     using enum ZoneName;
     NamedZone tSpawn {MapZone {Position {-1176.63f, -665.08f, 187.94f}, Position {341.33f, -999.97f, 65.68f}}, T_SPAWN};
     tSpawn.zone.obstacles.emplace_back(Position {-878.56f, -722.03f, 186.22f}, Position {-982.03f, -638.03f, 192.16f});
@@ -200,17 +218,71 @@ public:
     shortToA.zone.obstacles.emplace_back(Position {563.97f, 2697.82f, 160.4f}, Position {752.03f, 2763.97f, 161.62f});
     shortToA.zone.obstacles.emplace_back(Position {833.73f, 2676.38f, 159.51f}, Position {904.25f, 2763.97f, 163.73f});
     _zones.push_back(shortToA);
+
+    std::ranges::for_each(_zones, [this](NamedZone const& zone) { _transitions[zone.zone] = {}; });
   }
 
-  auto findZone(Position const& position) const -> NamedZone {
-    auto zoneCompare = [position](NamedZone const& z1, NamedZone const& z2) {
-      return z1.zone.volume.distance(position) < z2.zone.volume.distance(position);
-    };
-    return *std::ranges::min_element(_zones.begin(), _zones.end(), zoneCompare);
+  auto buildZoneTransitions() -> void {
+    using enum ZoneName;
+    using enum RequiredMovement;
+    addTransition(T_SPAWN, T_SPAWN_TO_LONG);
+    addTransition(T_SPAWN, TOP_MID, JUMP, true);
+
+    addTransition(T_SPAWN_TO_LONG, T_DOORS);
+    addTransition(T_SPAWN_TO_LONG, T_SPAWN_TO_MID);
+
+    addTransition(T_DOORS, DOORS_CORRIDOR);
+
+    addTransition(DOORS_CORRIDOR, LONG_DOORS);
+
+    addTransition(LONG_DOORS, OUTSIDE_DOORS_LONG);
+
+    addTransition(OUTSIDE_DOORS_LONG, NEAR_DOORS_LONG);
+    addTransition(OUTSIDE_DOORS_LONG, FAR_LONG);
+
+    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true);
+
+    addTransition(FAR_LONG, A_SITE_LONG);
+    addTransition(FAR_LONG, PIT);
+
+    addTransition(A_SITE_LONG, RAMP);
+
+    addTransition(RAMP, A_SITE, GO_TO_AND_JUMP, true);
+
+    addTransition(A_SITE, RAMP, JUMP, true);
+    addTransition(A_SITE, RAMP);
+
+    addTransition(TOP_MID, BUNELU);
+
+    addTransition(BUNELU, T_SPAWN_TO_MID);
+    addTransition(BUNELU, MID_TO_SHORT);
+
+    addTransition(T_SPAWN_TO_MID, MID_TO_SHORT);
+
+    addTransition(MID_TO_SHORT, T_TO_SHORT);
+
+    addTransition(T_TO_SHORT, SHORT_CORRIDOR);
+
+    addTransition(SHORT_CORRIDOR, SHORT_ABOVE_CT);
+
+    addTransition(SHORT_ABOVE_CT, SHORT_TO_A);
+
+    addTransition(SHORT_TO_A, A_SITE);
   }
 
-private:
-  std::map<MapZone, Transition> _transitions;
+  auto addTransition(ZoneName start, ZoneName target, RequiredMovement movement = RequiredMovement::NONE,
+                     bool oneWay = false) -> void {
+    auto zoneSelector = [](NamedZone const& z) { return z.name; };
+    auto startZone = std::ranges::find(_zones.begin(), _zones.end(), start, zoneSelector);
+    auto endZone = std::ranges::find(_zones.begin(), _zones.end(), target, zoneSelector);
+
+    _transitions[startZone->zone].emplace_back(endZone->zone, movement);
+    if (!oneWay) {
+      _transitions[endZone->zone].emplace_back(startZone->zone, movement);
+    }
+  }
+
+  std::map<MapZone, std::vector<Transition>> _transitions;
   std::vector<NamedZone> _zones;
 };
 
