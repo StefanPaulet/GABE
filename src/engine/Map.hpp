@@ -38,6 +38,9 @@ public:
     MapZone zone;
     ZoneName name;
 
+    auto operator==(NamedZone const& other) const -> bool { return name == other.name; }
+    auto operator!=(NamedZone const& other) const -> bool { return name != other.name; }
+
     auto toString() const -> std::string {
       switch (name) {
         using enum Map::ZoneName;

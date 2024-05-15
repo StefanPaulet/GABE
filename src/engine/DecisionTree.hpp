@@ -134,32 +134,20 @@ private:
 
 class MovementTree : public DecisionTree {
 public:
-  MovementTree(GameState& gameState, std::string const& dataPath) :
-      DecisionTree {gameState}, _positionReader {dataPath} {}
-
-  auto randomDecision() -> Decision override { return Decision(); }
+  using DecisionTree::DecisionTree;
+  auto randomDecision() -> Decision override { return {}; }
 
   auto act() -> std::unique_ptr<Event> override {
-    auto const* image = _state.image().data;
-    utils::PositionReader::Image positionImage;
-    for (auto lIdx = 0; lIdx < utils::PositionReader::imageHeight; ++lIdx) {
-      for (auto cIdx = 0; cIdx < utils::PositionReader::imageWidth; ++cIdx) {
-        auto offset = (lIdx + positionOffset.y) * expectedScreenWidth * 3 + (cIdx + positionOffset.x) * 3;
-        positionImage[lIdx][cIdx] =
-            static_cast<float>(static_cast<int>(image[offset]) + static_cast<int>(image[offset + 1])
-                               + static_cast<int>(image[offset + 2]));
-      }
+    auto position = _state.position();
+    if (auto newZone = _state.map.findZone(position); newZone != _lastZone) {
+      _lastZone = newZone;
+      log(std::format("Current zone is {}", newZone.toString()), OpState::INFO);
+      log(std::format("Current position is x={}, y={}, z={}", position.x, position.y, position.z), OpState::INFO);
     }
-    auto rez = _positionReader.identifyObjects(positionImage);
-    log(std::format("Current zone is {}", _state.map.findZone(Position {rez[0], rez[1], rez[2]}).toString()),
-        OpState::INFO);
     return std::make_unique<EmptyEvent>();
   }
 
 private:
-  utils::PositionReader _positionReader;
-
-  static constexpr Point positionOffset {64, 304};
-  static constexpr Point orientationOffset {64, 340};
+  Map::NamedZone _lastZone {};
 };
 } // namespace gabe

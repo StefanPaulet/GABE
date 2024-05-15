@@ -187,7 +187,6 @@ public:
         _pTargetData[jpgOffset + 2] = data[offset + 0];
       }
     }
-    log("Treated screen capture event", OpState::INFO);
     XDestroyImage(img);
   }
 

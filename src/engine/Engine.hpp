@@ -14,20 +14,24 @@ public:
   Engine(Engine const&) = delete;
   Engine(Engine&&) noexcept = delete;
 
-  explicit Engine(std::string const& rootFolder) :
-      _windowController {rootFolder + "scripts/find_csXwindow.sh", _synchronizer} {
+  explicit Engine(std::string const& rootFolder, std::string const& csgoRootPath) :
+      _windowController {rootFolder + "scripts/find_csXwindow.sh", _synchronizer},
+      _positionReader {_state, csgoRootPath + "game/csgo"} {
     buildTrees(rootFolder);
   }
 
   ~Engine() {
     _windowController.stop();
+    _positionReader.stop();
     _windowControllerThread.join();
+    _positionReaderThread.join();
     log("Stopped processing commands", OpState::SUCCESS);
   }
 
   auto run() -> int {
     log("Started processing commands", OpState::SUCCESS);
     _windowControllerThread = _windowController.run();
+    _positionReaderThread = _positionReader.run();
 
     while (true) {
       for (auto const& e : _trees) {
@@ -43,7 +47,7 @@ private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
     //    buildShootingTree(rootFolder + "scripts/objectDetection");
-    buildMovementTree(rootFolder + "data/templateDigits");
+    buildMovementTree();
   }
 
   auto buildImageCapturingTree() -> void {
@@ -54,14 +58,14 @@ private:
     _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
   }
 
-  auto buildMovementTree(std::string const& templatePositionDigits) -> void {
-    _trees.push_back(std::make_unique<MovementTree>(_state, templatePositionDigits));
-  }
+  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree>(_state)); }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;
-  GameState _state {};
   std::jthread _windowControllerThread;
+  GameState _state {};
+  utils::PositionReader _positionReader;
+  std::jthread _positionReaderThread;
   std::vector<std::unique_ptr<DecisionTree>> _trees {};
 };
 } // namespace gabe
