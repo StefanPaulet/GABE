@@ -334,25 +334,112 @@ private:
   Weapon _weapon {};
 };
 
+class KeyActionEvent : public Event {
+public:
+  KeyActionEvent() = default;
+  KeyActionEvent(KeyActionEvent const&) = default;
+  KeyActionEvent(KeyActionEvent&&) noexcept = default;
+  KeyActionEvent(char key, int sleepTime, bool press) : _key {key}, _sleepTime {sleepTime}, _press {press} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    KeySym keyCode {static_cast<KeySym>(_key)};
+    if (static_cast<int>(_key) >= 0x20) {
+      keyCode = XKeysymToKeycode(display, _key);
+    } else {
+      switch (_key) {
+        case '\n': {
+          keyCode = XKeysymToKeycode(display, XK_Return);
+          break;
+        }
+        case 27: {
+          keyCode = XKeysymToKeycode(display, XK_Escape);
+          break;
+        }
+      }
+    }
+    XTestFakeKeyEvent(display, keyCode, _press, CurrentTime);
+    XSync(display, False);
+    usleep(_sleepTime);
+  }
+
+private:
+  char _key {};
+  int _sleepTime {};
+  bool _press {};
+};
+
 class KeyPressEvent : public Event {
 public:
   KeyPressEvent() = default;
   KeyPressEvent(KeyPressEvent const&) = default;
   KeyPressEvent(KeyPressEvent&&) noexcept = default;
-  explicit KeyPressEvent(char key) : _key {key} {}
+  KeyPressEvent(char key, int sleepTime) : _key {key}, _sleepTime {sleepTime} {}
 
   auto solve(Display* display, Window window) -> void override {
-    KeySym keyCode = XKeysymToKeycode(display, _key);
-    XTestFakeKeyEvent(display, keyCode, True, CurrentTime);
-    XSync(display, False);
-    usleep(sleepTime);
-    XTestFakeKeyEvent(display, keyCode, False, CurrentTime);
-    XSync(display, False);
-    log(std::format("Treated key pres event of {}", _key), OpState::INFO);
+    KeyActionEvent(_key, _sleepTime / 2, true).solve(display, window);
+    KeyActionEvent(_key, _sleepTime / 2, false).solve(display, window);
   }
 
 private:
-  static constexpr auto sleepTime = 100;
   char _key {};
+  int _sleepTime {};
+};
+
+class KeyCombinationEvent : public KeyPressEvent {
+public:
+  enum class Modifiers { SHIFT, CTRL };
+  KeyCombinationEvent() = default;
+  KeyCombinationEvent(KeyCombinationEvent const&) = default;
+  KeyCombinationEvent(KeyCombinationEvent&&) noexcept = default;
+  KeyCombinationEvent(char key, int sleepTime, Modifiers modifier) :
+      KeyPressEvent {key, sleepTime}, _modifier {modifier} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    KeySym keySym;
+    switch (_modifier) {
+      using enum Modifiers;
+      case SHIFT: {
+        keySym = XKeysymToKeycode(display, XK_Shift_L);
+        break;
+      }
+      case CTRL: {
+        keySym = XKeysymToKeycode(display, XK_Control_L);
+        break;
+      }
+    }
+    XTestFakeKeyEvent(display, keySym, True, CurrentTime);
+    XSync(display, False);
+    KeyPressEvent::solve(display, window);
+    XTestFakeKeyEvent(display, keySym, False, CurrentTime);
+    XSync(display, False);
+  }
+
+private:
+  Modifiers _modifier {};
+};
+
+class CommandEvent : public Event {
+public:
+  CommandEvent() = default;
+  CommandEvent(CommandEvent const&) = default;
+  CommandEvent(CommandEvent&&) noexcept = default;
+  explicit CommandEvent(std::string const& _other) : _command {_other} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    KeyPressEvent('~', sleepTime).solve(display, window);
+    for (auto const& c : _command) {
+      if (c == '_') {
+        KeyCombinationEvent(c, sleepTime, KeyCombinationEvent::Modifiers::SHIFT).solve(display, window);
+      } else {
+        KeyPressEvent(c, sleepTime).solve(display, window);
+      }
+    }
+    KeyPressEvent(10, sleepTime).solve(display, window);
+    KeyPressEvent(27, sleepTime).solve(display, window);
+  }
+
+private:
+  static constexpr auto sleepTime = 2500;
+  std::string _command {};
 };
 } // namespace gabe

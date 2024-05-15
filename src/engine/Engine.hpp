@@ -33,11 +33,14 @@ public:
     _windowControllerThread = _windowController.run();
     _positionReaderThread = _positionReader.run();
 
+    setupCommands();
+
     while (true) {
       for (auto const& e : _trees) {
         _windowController.addEvent(e->evaluate());
         e->postEvaluation();
       }
+      _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
     }
     usleep(5000);
     return 0;
@@ -50,6 +53,11 @@ private:
     buildMovementTree();
   }
 
+  auto setupCommands() -> void {
+    _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
+  }
+
   auto buildImageCapturingTree() -> void {
     _trees.push_back(std::make_unique<ImageCapturingTree>(_state, _synchronizer));
   }
@@ -58,7 +66,11 @@ private:
     _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
   }
 
-  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree>(_state)); }
+  auto buildMovementTree() -> void {
+    auto movementTree = std::make_unique<PositionGettingTree>(_state);
+    movementTree.get()->addDecision(1, std::make_unique<MovementTree>(_state));
+    _trees.push_back(std::move(movementTree));
+  }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;

@@ -132,6 +132,14 @@ private:
   utils::ObjectDetectionController _objectDetectionController;
 };
 
+class PositionGettingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto randomDecision() -> Decision override { return {}; }
+  auto act() -> std::unique_ptr<Event> override { return std::make_unique<KeyPressEvent>('p', 100); }
+};
+
 class MovementTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
@@ -142,7 +150,6 @@ public:
     if (auto newZone = _state.map.findZone(position); newZone != _lastZone) {
       _lastZone = newZone;
       log(std::format("Current zone is {}", newZone.toString()), OpState::INFO);
-      log(std::format("Current position is x={}, y={}, z={}", position.x, position.y, position.z), OpState::INFO);
     }
     return std::make_unique<EmptyEvent>();
   }
