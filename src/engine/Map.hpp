@@ -16,11 +16,13 @@ struct MapZone {
   std::vector<Volume> obstacles {};
 
   auto operator<=>(MapZone const& other) const { return volume.operator<=>(other.volume); }
+  auto operator==(MapZone const& other) const -> bool { return volume == other.volume; }
 };
 
 class Map {
 public:
   enum class ZoneName {
+    NO_ZONE,
     T_SPAWN,
     T_SPAWN_TO_LONG,
     T_DOORS,
@@ -43,10 +45,6 @@ public:
     SHORT_TO_A
   };
   enum class RequiredMovement { NONE, JUMP, JUMP_AND_CROUCH, RUN_AND_JUMP, GO_TO_AND_JUMP };
-  struct Transition {
-    MapZone zone;
-    RequiredMovement movement;
-  };
   struct NamedZone {
     MapZone zone;
     ZoneName name;
@@ -117,8 +115,15 @@ public:
         case SHORT_TO_A: {
           return "SHORT_TO_A";
         }
+        default: {
+          return "NO ZONE";
+        }
       }
     }
+  };
+  struct Transition {
+    MapZone zone;
+    RequiredMovement movement;
   };
 
   Map() {
@@ -132,6 +137,21 @@ public:
     };
     return *std::ranges::min_element(_zones.begin(), _zones.end(), zoneCompare);
   }
+
+  auto getZone(ZoneName zoneName) const -> MapZone {
+    return std::ranges::find(_zones.begin(), _zones.end(), zoneName, [](NamedZone const& z) { return z.name; })->zone;
+  }
+
+  auto getZoneName(MapZone const& mapZone) const -> ZoneName {
+    for (auto const& e : _zones) {
+      if (e.zone == mapZone) {
+        return e.name;
+      }
+    }
+    return ZoneName::NO_ZONE;
+  }
+
+  [[nodiscard]] auto const& transitions() const { return _transitions; }
 
 private:
   auto buildZones() -> void {

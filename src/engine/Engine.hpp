@@ -5,6 +5,7 @@
 #pragma once
 #include "DecisionTree.hpp"
 #include "GameState.hpp"
+#include "Path.hpp"
 #include "windowController/WindowController.hpp"
 
 namespace gabe {
@@ -49,8 +50,9 @@ public:
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
-    //    buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildShootingTree(rootFolder + "scripts/objectDetection");
     buildMovementTree();
+    buildTargetChoosingTree();
   }
 
   auto setupCommands() -> void {
@@ -68,8 +70,14 @@ private:
 
   auto buildMovementTree() -> void {
     auto movementTree = std::make_unique<PositionGettingTree>(_state);
-    movementTree.get()->addDecision(1, std::make_unique<MovementTree>(_state));
+    movementTree->addDecision(1, std::make_unique<MovementTree>(_state));
     _trees.push_back(std::move(movementTree));
+  }
+
+  auto buildTargetChoosingTree() -> void {
+    auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
+    destinationTree->addDecision(1, std::make_unique<PathChoosingTree<path::ShortestPathPolicy>>(_state));
+    _trees.push_back(std::move(destinationTree));
   }
 
   Synchronizer _synchronizer {};

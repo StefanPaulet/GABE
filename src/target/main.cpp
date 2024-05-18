@@ -3,6 +3,7 @@
 namespace {
 using namespace gabe;
 using namespace gabe::utils;
+using namespace gabe::path;
 }
 
 int main() {

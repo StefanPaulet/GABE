@@ -110,5 +110,7 @@ private:
 
 public:
   Map const map {};
+  Map::NamedZone targetZone {MapZone {}, Map::ZoneName::NO_ZONE};
+  Map::NamedZone nextZone {MapZone {}, Map::ZoneName::NO_ZONE};
 };
 } // namespace gabe
