@@ -33,7 +33,7 @@ struct ShortestPathPolicy : public PathFindingPolicy<ShortestPathPolicy> {
     std::queue<MapZone> zoneQueue {};
     zoneQueue.push(startMapZone);
     parents[startMapZone] = startMapZone;
-    while (true) {
+    while (!zoneQueue.empty()) {
       auto currZone = zoneQueue.front();
       zoneQueue.pop();
       for (auto const& zone : map.transitions().at(currZone)) {
