@@ -147,7 +147,8 @@ public:
         aimType = ShootEvent::AimType::TAP;
       }
       log(std::format("Detected enemy at x={}, y={}", shootingPoint.x, shootingPoint.y), OpState::INFO);
-      return std::make_unique<ShootEvent>(shootingPoint, aimType);
+      //return std::make_unique<ShootEvent>(shootingPoint, aimType);
+      return std::make_unique<EmptyEvent>();
     }
     return std::make_unique<EmptyEvent>();
   }

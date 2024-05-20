@@ -88,7 +88,7 @@ public:
     auto* response = new char[256];
     write(_channel[1], data, imageSize);
     read(_channel[0], response, 256);
-    std::regex regex {R"(\[[^\[]*\d+.*\d+.*\d+.*\d+[^\]]*\])"};
+    std::regex regex {R"(\[\d+(,| )*\d+(,| )*\d+(,| )*\d+\])"};
     std::string string {response};
     delete[] response;
 
@@ -96,10 +96,10 @@ public:
     for (std::smatch stringMatch; std::regex_search(string, stringMatch, regex);) {
       auto match = stringMatch.str();
       std::stringstream stringstream {match.substr(1, match.size() - 1)};
-      float x, y, z, t;
-      stringstream >> x >> y >> z >> t;
-      result.emplace_back(Point {static_cast<int>(x), static_cast<int>(y)},
-                          Point {static_cast<int>(z), static_cast<int>(t)});
+      int x, y, z, t;
+      char delim;
+      stringstream >> x >> delim >> y >> delim >> z >> delim >> t;
+      result.emplace_back(Point {x, y}, Point {z, t});
       string = stringMatch.suffix();
     }
     return result;
