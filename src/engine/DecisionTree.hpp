@@ -137,8 +137,11 @@ public:
     auto* image = _state.image().data;
 
     if (auto enemyList = _objectDetectionController.analyzeImage(image); !enemyList.empty()) {
-      auto shootingPoint = (enemyList[0].topLeft + (enemyList[0].bottomRight - enemyList[0].topLeft) / Point {2, 5})
-          - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+      auto pointChooser = [](utils::BoundingBox const& boundingBox) {
+        return (boundingBox.topLeft + (boundingBox.bottomRight - boundingBox.topLeft) / Point {2, 5})
+            - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+      };
+      auto shootingPoint = pointChooser(*std::ranges::min_element(enemyList, std::less {}, pointChooser));
       ShootEvent::AimType aimType;
       if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
         aimType = ShootEvent::AimType::FLICK;
@@ -147,13 +150,12 @@ public:
         aimType = ShootEvent::AimType::TAP;
       }
       log(std::format("Detected enemy at x={}, y={}", shootingPoint.x, shootingPoint.y), OpState::INFO);
-      //return std::make_unique<ShootEvent>(shootingPoint, aimType);
-      return std::make_unique<EmptyEvent>();
+      return std::make_unique<ShootEvent>(shootingPoint, aimType);
     }
     return std::make_unique<EmptyEvent>();
   }
 
-  auto postEvaluation() -> void override { usleep(100000); }
+  auto postEvaluation() -> void override { usleep(50000); }
 
 private:
   utils::ObjectDetectionController _objectDetectionController;

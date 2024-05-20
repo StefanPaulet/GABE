@@ -8,6 +8,9 @@
 #include <compare>
 
 namespace gabe {
+static constexpr auto expectedScreenWidth = 1920;
+static constexpr auto expectedScreenHeight = 1080;
+
 using uint8 = unsigned char;
 using uint16 = unsigned short int;
 using uint32 = unsigned int;

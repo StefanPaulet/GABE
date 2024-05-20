@@ -30,7 +30,7 @@ sys.stdout.flush()
 
 while True:
     image = read_image()
-    results = model(image, conf=0.7, max_det=5, verbose=False)
+    results = model(image, conf=0.8, max_det=50, verbose=False)
     boxes = []
     for result in results:
         for box in result.boxes:

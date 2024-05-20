@@ -51,8 +51,8 @@ private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
     buildShootingTree(rootFolder + "scripts/objectDetection");
-    buildMovementTree();
-    buildTargetChoosingTree();
+    //buildMovementTree();
+    //buildTargetChoosingTree();
   }
 
   auto setupCommands() -> void {

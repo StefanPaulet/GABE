@@ -16,9 +16,6 @@
 #include <utils/logger/Logger.hpp>
 
 namespace gabe {
-static constexpr auto expectedScreenWidth = 1920;
-static constexpr auto expectedScreenHeight = 1080;
-
 static constexpr auto dpiScalingFactor = 1;
 
 
@@ -188,6 +185,7 @@ public:
       }
     }
     XDestroyImage(img);
+    log("Treated screenshot event", OpState::INFO);
   }
 
 private:
@@ -284,6 +282,7 @@ public:
       case TAP: {
         StrafeEvent(_totalMovement, 1, 250).solve(display, window);
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        usleep(1500);
         break;
       }
     }
