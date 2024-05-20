@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <cmath>
+#include <compare>
+
 namespace gabe {
 using uint8 = unsigned char;
 using uint16 = unsigned short int;
@@ -15,7 +18,7 @@ using Size = uint64;
 struct Point {
   Point() = default;
   Point(Point const&) = default;
-  Point(int x, int y) : x {x}, y {y} {}
+  constexpr Point(int x, int y) : x {x}, y {y} {}
 
   auto operator+(Point const& other) const -> Point { return {x + other.x, y + other.y}; }
   auto operator+=(Point const& other) -> Point& {
@@ -70,6 +73,41 @@ struct Point {
 
   int x;
   int y;
+};
+
+struct Position {
+  float x;
+  float y;
+  float z;
+
+  auto operator<=>(Position const& other) const = default;
+};
+
+struct Orientation {
+  float x;
+  float y;
+  float z;
+};
+
+struct Volume {
+  Position firstCorner;
+  Position secondCorner;
+
+  auto operator<=>(Volume const& other) const = default;
+
+  auto distance(Position const& position) const -> float {
+    Position distance {};
+    auto localDistance = [](float val, float t1, float t2) {
+      if (val < std::min(t1, t2) || val > std::max(t1, t2)) {
+        return std::min(std::abs(val - t1), std::abs(val - t2));
+      }
+      return .0f;
+    };
+    distance.x = localDistance(position.x, firstCorner.x, secondCorner.x);
+    distance.y = localDistance(position.y, firstCorner.y, secondCorner.y);
+    distance.z = localDistance(position.z, firstCorner.z, secondCorner.z);
+    return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+  }
 };
 
 } // namespace gabe

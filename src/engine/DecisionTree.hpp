@@ -4,9 +4,12 @@
 
 #pragma once
 
+#include "../utils/objectDetection/ObjectDetectionController.hpp"
+#include "../utils/positionReader/PositionReader.hpp"
 #include "../windowController/Synchronizer.hpp"
 #include "Exceptions.hpp"
 #include "GameState.hpp"
+#include "Path.hpp"
 #include "event/Event.hpp"
 #include <memory>
 #include <numeric>
@@ -26,6 +29,8 @@ struct Decision {
   float weight {};
   std::unique_ptr<DecisionTree> decision;
 };
+
+Decision emptyDecision;
 
 class DecisionTree {
 public:
@@ -50,32 +55,57 @@ public:
     _children.emplace_back(weight, std::move(decision));
   }
 
-  virtual auto randomDecision() -> Decision = 0;
-  virtual auto act() -> std::unique_ptr<Event> = 0;
+  virtual auto randomDecision() -> Decision& { return emptyDecision; }
+  virtual auto act() -> std::unique_ptr<Event> { return std::make_unique<EmptyEvent>(); }
   virtual auto postEvaluation() -> void {}
 
-  auto evaluate() -> std::unique_ptr<Event> {
+  virtual auto evaluate() -> std::unique_ptr<Event> {
     if (_children.empty()) {
       return act();
     }
 
-    std::random_device rd {};
-    auto targetValue = std::uniform_real_distribution<float> {}(rd);
-    auto chosenValue = .0f;
-    for (auto const& e : _children) {
-      chosenValue += e.weight;
-      if (chosenValue > targetValue) {
-        return e.decision->evaluate();
-      }
-    }
-    return randomDecision().decision->evaluate();
+    auto const& child = selectChild();
+    return child.decision->evaluate();
   }
 
 protected:
-  GameState& _state;
+  auto selectChild() -> Decision& {
+    std::random_device rd {};
+    auto targetValue = std::uniform_real_distribution<float> {}(rd);
+    auto chosenValue = .0f;
+    for (auto& e : _children) {
+      chosenValue += e.weight;
+      if (chosenValue >= targetValue) {
+        return e;
+      }
+    }
+    return randomDecision();
+  }
 
-private:
+  GameState& _state;
   std::vector<Decision> _children;
+};
+
+class ConditionalTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (!evaluationNeeded() && _lastActiveChild != nullptr) {
+      return _lastActiveChild->decision->evaluate();
+    }
+
+    if (_children.empty()) {
+      return act();
+    }
+    auto& child = selectChild();
+    _lastActiveChild = &child;
+    return child.decision->evaluate();
+  }
+  virtual auto evaluationNeeded() -> bool = 0;
+
+protected:
+  Decision* _lastActiveChild;
 };
 
 class ImageCapturingTree : public DecisionTree {
@@ -87,7 +117,6 @@ public:
 
   ~ImageCapturingTree() override { delete[] _image; }
 
-  auto randomDecision() -> Decision override { return {}; }
   auto act() -> std::unique_ptr<Event> override { return std::make_unique<ScreenshotEvent>(_image); }
   auto postEvaluation() -> void override {
     _synchronizer.requestSynchronization();
@@ -104,7 +133,6 @@ public:
   ShootingTree(GameState& gameState, std::string const& scriptPath) :
       DecisionTree {gameState}, _objectDetectionController {scriptPath} {}
 
-  auto randomDecision() -> Decision override { return {}; }
   auto act() -> std::unique_ptr<Event> override {
     auto* image = _state.image().data;
 
@@ -128,5 +156,65 @@ public:
 
 private:
   utils::ObjectDetectionController _objectDetectionController;
+};
+
+class PositionGettingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override { return std::make_unique<KeyPressEvent>('p', 100); }
+};
+
+class DestinationChoosingTree : public ConditionalTree {
+public:
+  using ConditionalTree::ConditionalTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (evaluationNeeded() || _lastActiveChild == nullptr) {
+      _state.targetZone.name = Map::ZoneName::A_SITE;
+      log("Evaluating destination choosing tree to set destination to " + _state.targetZone.toString(), OpState::INFO);
+    }
+    return ConditionalTree::evaluate();
+  }
+
+  auto evaluationNeeded() -> bool override {
+    auto currentZone = _state.map.findZone(_state.position());
+    return currentZone.name == _state.targetZone.name;
+  }
+};
+
+template <typename PathChoosingPolicy> class PathChoosingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
+    auto nextZone = _policy.path.back();
+    if (_state.nextZone.name != nextZone) {
+      _state.nextZone.name = nextZone;
+      log("Evaluated path choosing tree; must go to " + _state.nextZone.toString(), OpState::INFO);
+    }
+    return std::make_unique<EmptyEvent>();
+  }
+
+private:
+  PathChoosingPolicy _policy {_state.map};
+};
+
+class MovementTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    auto position = _state.position();
+    if (auto newZone = _state.map.findZone(position); newZone != _lastZone) {
+      _lastZone = newZone;
+      log(std::format("Current zone is {}", newZone.toString()), OpState::INFO);
+    }
+    return std::make_unique<EmptyEvent>();
+  }
+
+private:
+  Map::NamedZone _lastZone {};
 };
 } // namespace gabe

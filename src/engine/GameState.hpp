@@ -4,9 +4,10 @@
 
 #pragma once
 
+#include "Map.hpp"
 #include <cassert>
 #include <mutex>
-#include <utils/objectDetection/ObjectDetectionController.hpp>
+#include <types.hpp>
 #include <vector>
 
 namespace gabe {
@@ -15,20 +16,8 @@ struct Shared {
   std::mutex lock;
 };
 
-struct Position {
-  float x;
-  float y;
-  float z;
-};
-
 struct Image {
   unsigned char* data;
-};
-
-struct Orientation {
-  float x;
-  float y;
-  float z;
 };
 
 struct SharedPosition : Position, Shared {
@@ -42,7 +31,7 @@ struct SharedPosition : Position, Shared {
     return *this;
   }
 
-  auto position() -> Position { return Position {x, y, z}; }
+  auto position() const -> Position { return Position {x, y, z}; }
 };
 struct SharedImage : Image, Shared {
   SharedImage() = default;
@@ -118,5 +107,10 @@ private:
   SharedPosition _position {};
   SharedOrientation _orientation {};
   SharedImage _image {};
+
+public:
+  Map const map {};
+  Map::NamedZone targetZone {MapZone {}, Map::ZoneName::NO_ZONE};
+  Map::NamedZone nextZone {MapZone {}, Map::ZoneName::NO_ZONE};
 };
 } // namespace gabe

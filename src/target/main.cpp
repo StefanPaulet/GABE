@@ -2,9 +2,11 @@
 
 namespace {
 using namespace gabe;
+using namespace gabe::utils;
+using namespace gabe::path;
 }
 
 int main() {
-  Engine engine {"../scripts"};
+  Engine engine {"../", "/mnt/SSD-SATA/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/"};
   return engine.run();
 }
