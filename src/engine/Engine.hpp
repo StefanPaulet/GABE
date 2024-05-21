@@ -65,7 +65,10 @@ private:
   }
 
   auto buildShootingTree(std::string const& objectDetectionRootPath) -> void {
-    _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
+    auto shootingTreeRoot = std::make_unique<EnemyDetectionTree>(_state, objectDetectionRootPath);
+    shootingTreeRoot->addDecision(0.7, std::make_unique<SlowShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.3, std::make_unique<SprayShootingTree>(_state));
+    _trees.push_back(std::move(shootingTreeRoot));
   }
 
   auto buildMovementTree() -> void {

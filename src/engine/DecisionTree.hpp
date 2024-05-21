@@ -128,37 +128,75 @@ private:
   unsigned char* _image {};
 };
 
-class ShootingTree : public DecisionTree {
+class EnemyDetectionTree : public DecisionTree {
 public:
-  ShootingTree(GameState& gameState, std::string const& scriptPath) :
+  EnemyDetectionTree(GameState& gameState, std::string const& scriptPath) :
       DecisionTree {gameState}, _objectDetectionController {scriptPath} {}
 
-  auto act() -> std::unique_ptr<Event> override {
+  auto evaluate() -> std::unique_ptr<Event> override {
     auto* image = _state.image().data;
-
     if (auto enemyList = _objectDetectionController.analyzeImage(image); !enemyList.empty()) {
       auto pointChooser = [](utils::BoundingBox const& boundingBox) {
-        return (boundingBox.topLeft + (boundingBox.bottomRight - boundingBox.topLeft) / Point {2, 5})
-            - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+        return ((boundingBox.topLeft + boundingBox.bottomRight) / 2).abs();
       };
-      auto shootingPoint = pointChooser(*std::ranges::min_element(enemyList, std::less {}, pointChooser));
-      ShootEvent::AimType aimType;
-      if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
-        aimType = ShootEvent::AimType::FLICK;
-        shootingPoint *= 2;
-      } else {
-        aimType = ShootEvent::AimType::TAP;
-      }
-      log(std::format("Detected enemy at x={}, y={}", shootingPoint.x, shootingPoint.y), OpState::INFO);
-      return std::make_unique<ShootEvent>(shootingPoint, aimType);
+      _state.enemy = *std::ranges::min_element(enemyList, std::less {}, pointChooser);
+      log(std::format("Detected enemy between x1={}, y1={}, x2={}, y2={}", _state.enemy.topLeft.x,
+                      _state.enemy.topLeft.y, _state.enemy.bottomRight.x, _state.enemy.bottomRight.y),
+          OpState::INFO);
+    } else {
+      _state.enemy = utils::sentinelBox;
     }
-    return std::make_unique<EmptyEvent>();
+    return DecisionTree::evaluate();
   }
 
   auto postEvaluation() -> void override { usleep(50000); }
 
 private:
   utils::ObjectDetectionController _objectDetectionController;
+};
+
+class ShootingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    if (_state.enemy == utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+    return shoot();
+  }
+
+  virtual auto shoot() -> std::unique_ptr<Event> = 0;
+};
+
+class SlowShootingTree : public ShootingTree {
+public:
+  using ShootingTree::ShootingTree;
+
+  auto shoot() -> std::unique_ptr<Event> override {
+    auto shootingPoint = _state.enemy.topLeft + (_state.enemy.topLeft + _state.enemy.bottomRight) / Point {2, 5}
+        - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+    ShootEvent::AimType aimType;
+    if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
+      aimType = ShootEvent::AimType::FLICK;
+      shootingPoint *= 2;
+    } else {
+      aimType = ShootEvent::AimType::TAP;
+    }
+    return std::make_unique<ShootEvent>(shootingPoint, aimType);
+  }
+};
+
+class SprayShootingTree : public ShootingTree {
+public:
+  using ShootingTree::ShootingTree;
+
+  auto shoot() -> std::unique_ptr<Event> override {
+    auto shootingPoint =
+        (_state.enemy.topLeft + _state.enemy.bottomRight) / 2 - Point {expectedScreenWidth, expectedScreenHeight} / 2;
+    auto bulletCount = 10;
+    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.weapon);
+  }
 };
 
 class PositionGettingTree : public DecisionTree {

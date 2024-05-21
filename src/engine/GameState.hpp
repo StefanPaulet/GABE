@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Map.hpp"
+#include "Weapon.hpp"
 #include <cassert>
 #include <mutex>
 #include <types.hpp>
@@ -112,5 +113,7 @@ public:
   Map const map {};
   Map::NamedZone targetZone {MapZone {}, Map::ZoneName::NO_ZONE};
   Map::NamedZone nextZone {MapZone {}, Map::ZoneName::NO_ZONE};
+  utils::BoundingBox enemy {utils::sentinelBox};
+  Weapon weapon {AK_47};
 };
 } // namespace gabe

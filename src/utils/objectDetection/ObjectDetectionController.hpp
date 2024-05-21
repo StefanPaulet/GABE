@@ -23,6 +23,8 @@ struct BoundingBox {
   auto operator==(BoundingBox const& other) const -> bool = default;
 };
 
+BoundingBox const sentinelBox = BoundingBox {Point {0, 0}, Point {0, 0}};
+
 class ObjectDetectionController {
 public:
   ObjectDetectionController() = delete;

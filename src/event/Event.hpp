@@ -301,7 +301,8 @@ public:
         }
       }
     };
-    log(std::format("Treated shoot event of type {}", toString()), OpState::INFO);
+    log(std::format("Treated shoot event of type {} at x={} y={}", toString(), _totalMovement.x, _totalMovement.y),
+        OpState::INFO);
   }
 
 private:
@@ -318,11 +319,12 @@ public:
       _startPoint {startPoint}, _bulletCount {bulletCount}, _weapon {weapon} {}
 
   auto solve(Display* display, Window window) -> void override {
-    //TODO treat different weapon types in following pr
     StrafeEvent(_startPoint, 1, 250).solve(display, window);
     MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
-    auto secondsToSleep = 1.0 / 11 * _bulletCount;
-    usleep(static_cast<int>(secondsToSleep * 1000000));
+    for (auto idx = 0; idx < _bulletCount; ++idx) {
+      StrafeEvent(_weapon.getSpray(), 1, 0).solve(display, window);
+      usleep(static_cast<int>(55000000 / _weapon.firerate));
+    }
     MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
     log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
   }

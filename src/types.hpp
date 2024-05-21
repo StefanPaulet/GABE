@@ -72,6 +72,8 @@ struct Point {
     return *this;
   }
 
+  [[nodiscard]] auto abs() const -> Point { return {std::abs(x), std::abs(y)}; }
+
   auto operator<=>(Point const& other) const = default;
 
   int x;
