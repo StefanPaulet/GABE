@@ -85,7 +85,7 @@ public:
   }
 
   auto analyzeImage(unsigned char* data) -> std::vector<BoundingBox> {
-    static constexpr auto imageSize = expectedScreenWidth * expectedScreenHeight * 3;
+    static constexpr auto imageSize = expectedScreenWidth * (expectedScreenHeight - screenHeightOffset) * 3;
 
     auto* response = new char[256];
     write(_channel[1], data, imageSize);

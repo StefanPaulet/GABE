@@ -47,6 +47,7 @@ static auto saveImage(std::string_view filename, unsigned char* data, int width,
     row_pointer = &data[cinfo.next_scanline * row_stride];
     jpeg_write_scanlines(&cinfo, &row_pointer, 1);
   }
+  fclose(outfile);
 }
 
 
@@ -320,12 +321,19 @@ public:
 
   auto solve(Display* display, Window window) -> void override {
     StrafeEvent(_startPoint, 1, 250).solve(display, window);
-    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
-    for (auto idx = 0; idx < _bulletCount; ++idx) {
-      StrafeEvent(_weapon.getSpray(), 1, 0).solve(display, window);
-      usleep(static_cast<int>(55000000 / _weapon.firerate));
+    if (_weapon.automatic) {
+      MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
+      for (auto idx = 0; idx < _bulletCount; ++idx) {
+        StrafeEvent(_weapon.getSpray(), 1, 0).solve(display, window);
+        usleep(static_cast<int>(55000000 / _weapon.firerate));
+      }
+      MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
+    } else {
+      for (auto idx = 0; idx < _bulletCount; ++idx) {
+        MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        usleep(static_cast<int>(60000000 / _weapon.firerate));
+      }
     }
-    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
     log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
   }
 

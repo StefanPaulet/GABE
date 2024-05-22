@@ -4,13 +4,14 @@ import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
+from PIL import Image as im
 
 model = YOLO("../scripts/objectDetection/weights.pt")
 
 
 def read_image():
     imageWidth = 1920
-    imageHeight = 1080
+    imageHeight = 1080 - 64
     totalImageSize = imageWidth * imageHeight * 3
     byte_data = sys.stdin.buffer.read(totalImageSize)
     image_array = np.frombuffer(byte_data, dtype=np.uint8)

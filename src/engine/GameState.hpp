@@ -114,6 +114,6 @@ public:
   Map::NamedZone targetZone {MapZone {}, Map::ZoneName::NO_ZONE};
   Map::NamedZone nextZone {MapZone {}, Map::ZoneName::NO_ZONE};
   utils::BoundingBox enemy {utils::sentinelBox};
-  Weapon weapon {AK_47};
+  Weapon weapon {GLOCK};
 };
 } // namespace gabe

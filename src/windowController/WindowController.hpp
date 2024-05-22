@@ -36,6 +36,11 @@ public:
   [[nodiscard]] auto run() -> std::jthread {
     auto eventLoop = [this] {
       while (!stopped) {
+        if (_cleaningRequired) {
+          while (!_eventQueue.empty()) {
+            _eventQueue.pop();
+          }
+        }
         try {
           checkWindowState();
         } catch (window::DisplayOpeningException const& e) {
@@ -63,11 +68,14 @@ public:
 
   auto stop() { stopped = true; }
 
+  auto cleanQueue() { _cleaningRequired = true; }
+
 private:
   struct WindowState {
     bool focused {true};
   };
   bool volatile stopped {false};
+  bool volatile _cleaningRequired {false};
   WindowState _windowState {};
   Window _window {};
   Display* _display;

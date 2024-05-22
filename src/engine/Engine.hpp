@@ -42,8 +42,9 @@ public:
         e->postEvaluation();
       }
       _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
+      usleep(250000);
+      _windowController.cleanQueue();
     }
-    usleep(5000);
     return 0;
   }
 
@@ -55,10 +56,26 @@ private:
     //buildTargetChoosingTree();
   }
 
+#ifndef NDEBUG
+  auto setupCommands() -> void {
+    _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
+
+    _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    for (auto idx = 0; idx < 5; ++idx) {
+      _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
+    }
+  }
+
+#else
   auto setupCommands() -> void {
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
     _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
   }
+#endif
 
   auto buildImageCapturingTree() -> void {
     _trees.push_back(std::make_unique<ImageCapturingTree>(_state, _synchronizer));
@@ -66,8 +83,8 @@ private:
 
   auto buildShootingTree(std::string const& objectDetectionRootPath) -> void {
     auto shootingTreeRoot = std::make_unique<EnemyDetectionTree>(_state, objectDetectionRootPath);
-    shootingTreeRoot->addDecision(0.7, std::make_unique<SlowShootingTree>(_state));
-    shootingTreeRoot->addDecision(0.3, std::make_unique<SprayShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.0001f, std::make_unique<SlowShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.99f, std::make_unique<SprayShootingTree>(_state));
     _trees.push_back(std::move(shootingTreeRoot));
   }
 
