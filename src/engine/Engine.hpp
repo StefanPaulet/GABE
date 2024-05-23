@@ -64,10 +64,10 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
 
-    _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    for (auto idx = 0; idx < 5; ++idx) {
-      _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
-    }
+    // _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    // for (auto idx = 0; idx < 5; ++idx) {
+    //   _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
+    // }
   }
 
 #else
@@ -83,8 +83,8 @@ private:
 
   auto buildShootingTree(std::string const& objectDetectionRootPath) -> void {
     auto shootingTreeRoot = std::make_unique<EnemyDetectionTree>(_state, objectDetectionRootPath);
-    shootingTreeRoot->addDecision(0.0001f, std::make_unique<SlowShootingTree>(_state));
-    shootingTreeRoot->addDecision(0.99f, std::make_unique<SprayShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.8f, std::make_unique<SlowShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.2f, std::make_unique<SprayShootingTree>(_state));
     _trees.push_back(std::move(shootingTreeRoot));
   }
 

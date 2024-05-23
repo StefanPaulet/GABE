@@ -448,7 +448,7 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 4500;
+  static constexpr auto sleepTime = 7500;
   std::string _command {};
 };
 } // namespace gabe

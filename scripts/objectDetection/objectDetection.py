@@ -1,10 +1,11 @@
 import time
 
-import cv2
 import numpy as np
 import sys
 from ultralytics import YOLO
-from PIL import Image as im
+from PIL import Image
+
+
 
 model = YOLO("../scripts/objectDetection/weights.pt")
 
@@ -17,7 +18,6 @@ def read_image():
     image_array = np.frombuffer(byte_data, dtype=np.uint8)
     image_array = image_array.reshape((imageHeight, imageWidth, 3))
     return image_array
-
 
 data = sys.stdin.readline().strip()
 response = "response:" + data
