@@ -51,8 +51,8 @@ private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
     buildShootingTree(rootFolder + "scripts/objectDetection");
-    buildMovementTree();
     buildTargetChoosingTree();
+    buildMovementTree();
   }
 
   auto setupCommands() -> void {
@@ -68,15 +68,13 @@ private:
     _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
   }
 
-  auto buildMovementTree() -> void {
-    auto movementTree = std::make_unique<PositionGettingTree>(_state);
-    movementTree->addDecision(1, std::make_unique<MovementTree>(_state));
-    _trees.push_back(std::move(movementTree));
-  }
+  auto buildMovementTree() -> void { _trees.push_back(std::move(std::make_unique<MovementTree>(_state))); }
 
   auto buildTargetChoosingTree() -> void {
+    auto positionGettingTree = std::make_unique<PositionGettingTree>(_state);
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
     destinationTree->addDecision(1, std::make_unique<PathChoosingTree<path::ShortestPathPolicy>>(_state));
+    positionGettingTree->addDecision(1, std::move(destinationTree));
     _trees.push_back(std::move(destinationTree));
   }
 
