@@ -64,10 +64,10 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
 
-    // _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    // for (auto idx = 0; idx < 5; ++idx) {
-    //   _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
-    // }
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    //for (auto idx = 0; idx < 5; ++idx) {
+    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
+    //}
   }
 
 #else

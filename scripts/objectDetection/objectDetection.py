@@ -3,12 +3,11 @@ import time
 import numpy as np
 import sys
 from ultralytics import YOLO
-from PIL import Image
+import cv2
 
 
 
 model = YOLO("../scripts/objectDetection/weights.pt")
-
 
 def read_image():
     imageWidth = 1920
@@ -31,7 +30,7 @@ sys.stdout.flush()
 
 while True:
     image = read_image()
-    results = model(image, conf=0.8, max_det=50, verbose=False)
+    results = model(cv2.cvtColor(image, cv2.COLOR_RGB2BGR), conf=0.7, max_det=5, verbose=False)
     boxes = []
     for result in results:
         for box in result.boxes:
