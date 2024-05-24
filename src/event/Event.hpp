@@ -442,4 +442,30 @@ private:
   static constexpr auto sleepTime = 4500;
   std::string _command {};
 };
+
+class RotationEvent : public Event {
+public:
+  enum class Axis { OX, OY };
+
+  RotationEvent() = default;
+  RotationEvent(RotationEvent const&) = default;
+  RotationEvent(RotationEvent&&) noexcept = default;
+  RotationEvent(float angle, Axis axis) : _angle {angle}, _axis {axis} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    if (_axis == Axis::OX) {
+      StrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 50, sleepTime).solve(display, window);
+    } else {
+      StrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 50, sleepTime).solve(display, window);
+    }
+    log(std::format("Treated rotation event on the {} axis with angle={}", _axis == Axis::OX ? "OX" : "OY", _angle),
+        OpState::INFO);
+  }
+
+private:
+  static constexpr auto degreeToPixelRatio = 26.6667f;
+  static constexpr auto sleepTime = 5000;
+  float _angle;
+  Axis _axis;
+};
 } // namespace gabe

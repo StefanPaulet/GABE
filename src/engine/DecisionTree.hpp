@@ -189,9 +189,8 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
-    auto nextZone = _policy.path.back();
-    if (_state.nextZone.name != nextZone) {
-      _state.nextZone.name = nextZone;
+    if (auto nextZone = _policy.path.back(); _state.nextZone != nextZone) {
+      _state.nextZone = nextZone;
       log("Evaluated path choosing tree; must go to " + _state.nextZone.toString(), OpState::INFO);
     }
     return std::make_unique<EmptyEvent>();
@@ -207,9 +206,14 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
-    if (auto newZone = _state.map.findZone(position); newZone != _lastZone) {
-      _lastZone = newZone;
-      log(std::format("Current zone is {}", newZone.toString()), OpState::INFO);
+    auto orientation = _state.orientation();
+    if (auto currentZone = _state.map.findZone(position); currentZone != _state.nextZone) {
+      auto nextPoint = _state.nextZone.zone.volume.center();
+      if (orientation.y < 0) {
+        orientation.y += 360;
+      }
+      auto angle = _state.orientation().y - Vector(position, nextPoint).getAngle();
+      return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
     }
     return std::make_unique<EmptyEvent>();
   }

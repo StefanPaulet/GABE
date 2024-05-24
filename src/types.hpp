@@ -89,13 +89,41 @@ struct Orientation {
   float z;
 };
 
+struct Vector {
+  Vector() = default;
+  Vector(Vector const&) = default;
+  Vector(Vector&&) = default;
+  Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} { normalize(); }
+
+  auto normalize() -> void {
+    auto sum = std::sqrt(x * x + y * y);
+    x = x / sum;
+    y = y / sum;
+  }
+
+  [[nodiscard]] auto getAngle() const -> float { return std::atanf(y / x) * 180 / std::numbers::pi; }
+
+  float x;
+  float y;
+};
+
 struct Volume {
   Position firstCorner;
   Position secondCorner;
 
   auto operator<=>(Volume const& other) const = default;
 
-  auto distance(Position const& position) const -> float {
+  [[nodiscard]] auto center() const -> Position {
+    return {(firstCorner.x + secondCorner.x) / 2, (firstCorner.y + secondCorner.y) / 2,
+            (firstCorner.z + secondCorner.z) / 2};
+  }
+
+  [[nodiscard]] auto distance(Position const& position) const -> float {
+    Position distance = closestPoint(position);
+    return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+  }
+
+  [[nodiscard]] auto closestPoint(Position const& position) const -> Position {
     Position distance {};
     auto localDistance = [](float val, float t1, float t2) {
       if (val < std::min(t1, t2) || val > std::max(t1, t2)) {
@@ -106,7 +134,7 @@ struct Volume {
     distance.x = localDistance(position.x, firstCorner.x, secondCorner.x);
     distance.y = localDistance(position.y, firstCorner.y, secondCorner.y);
     distance.z = localDistance(position.z, firstCorner.z, secondCorner.z);
-    return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+    return distance;
   }
 };
 
