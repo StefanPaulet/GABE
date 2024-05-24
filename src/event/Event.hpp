@@ -158,6 +158,26 @@ private:
   Point _totalMovement {};
 };
 
+class FullStrafeEvent : public Event {
+public:
+  FullStrafeEvent() = default;
+  FullStrafeEvent(FullStrafeEvent const&) = default;
+  FullStrafeEvent(FullStrafeEvent&&) noexcept = default;
+  FullStrafeEvent(Point const& movement, int large, int small, int sleep) :
+      _totalMovement {movement}, _largeSteps {large}, _smallSteps {small}, _sleepTime {sleep} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    StrafeEvent(_totalMovement, _largeSteps, _sleepTime).solve(display, window);
+    StrafeEvent(_totalMovement % _largeSteps, _smallSteps, _sleepTime).solve(display, window);
+  }
+
+private:
+  Point _totalMovement {};
+  int _largeSteps {};
+  int _smallSteps {};
+  int _sleepTime {};
+};
+
 class ScreenshotEvent : public Event {
 public:
   ScreenshotEvent() = delete;
@@ -276,8 +296,7 @@ public:
       case FLICK: {
         constexpr auto largeSteps = 50;
         constexpr auto smallSteps = 2;
-        StrafeEvent(_totalMovement, largeSteps, 2500).solve(display, window);
-        StrafeEvent(_totalMovement % largeSteps, smallSteps, 3000).solve(display, window);
+        FullStrafeEvent(_totalMovement, largeSteps, smallSteps, 2750).solve(display, window);
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
         break;
       }
@@ -359,6 +378,8 @@ public:
     }
     XTestFakeKeyEvent(display, keyCode, _press, CurrentTime);
     XSync(display, False);
+    log(std::format("Treated key press action event of type {} for key={}", _press ? "PRESS" : "RELEASE", _key),
+        OpState::INFO);
     usleep(_sleepTime);
   }
 
@@ -454,9 +475,11 @@ public:
 
   auto solve(Display* display, Window window) -> void override {
     if (_axis == Axis::OX) {
-      StrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 50, sleepTime).solve(display, window);
+      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 50, 2, sleepTime)
+          .solve(display, window);
     } else {
-      StrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 50, sleepTime).solve(display, window);
+      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 50, 2, sleepTime)
+          .solve(display, window);
     }
     log(std::format("Treated rotation event on the {} axis with angle={}", _axis == Axis::OX ? "OX" : "OY", _angle),
         OpState::INFO);
@@ -467,5 +490,36 @@ private:
   static constexpr auto sleepTime = 5000;
   float _angle;
   Axis _axis;
+};
+
+class MovementEvent : public Event {
+public:
+  MovementEvent() = default;
+  MovementEvent(MovementEvent const&) = default;
+  MovementEvent(MovementEvent&&) noexcept = default;
+  MovementEvent(Vector const& vector, int duration) : _movementVector {vector}, _duration {duration} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    std::vector<char> inputs;
+    if (_movementVector.x != 0) {
+      inputs.push_back(_movementVector.x > 0 ? 'd' : 'a');
+    }
+    if (_movementVector.y != 0) {
+      inputs.push_back(_movementVector.y > 0 ? 'w' : 's');
+    }
+    for (auto const& input : inputs) {
+      KeyActionEvent(input, 50, true).solve(display, window);
+    }
+    usleep(_duration);
+    for (auto const& input : inputs) {
+      KeyActionEvent(input, 50, false).solve(display, window);
+    }
+    log(std::format("Treated movement event for vector x={}, y={}", _movementVector.x, _movementVector.y),
+        OpState::INFO);
+  }
+
+private:
+  Vector _movementVector {};
+  int _duration {};
 };
 } // namespace gabe

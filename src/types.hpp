@@ -93,15 +93,16 @@ struct Vector {
   Vector() = default;
   Vector(Vector const&) = default;
   Vector(Vector&&) = default;
-  Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} { normalize(); }
+  Vector(float x, float y) : x {x}, y {y} {}
+  Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} {}
 
-  auto normalize() -> void {
-    auto sum = std::sqrt(x * x + y * y);
-    x = x / sum;
-    y = y / sum;
+  [[nodiscard]] auto getAngle() const -> float {
+    auto angle = std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
+    if (angle < 0) {
+      angle += 360;
+    }
+    return angle;
   }
-
-  [[nodiscard]] auto getAngle() const -> float { return std::atanf(y / x) * 180 / std::numbers::pi; }
 
   float x;
   float y;

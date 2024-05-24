@@ -160,9 +160,14 @@ private:
 
 class PositionGettingTree : public DecisionTree {
 public:
-  using DecisionTree::DecisionTree;
+  PositionGettingTree(GameState& gameState, Synchronizer& synchronizer) :
+      DecisionTree {gameState}, _synchronizer {synchronizer} {}
 
   auto act() -> std::unique_ptr<Event> override { return std::make_unique<KeyPressEvent>('p', 100); }
+  auto postEvaluation() -> void override { _synchronizer.requestSynchronization(); }
+
+private:
+  Synchronizer& _synchronizer;
 };
 
 class DestinationChoosingTree : public ConditionalTree {
@@ -206,14 +211,15 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
+    log("Current zone is " + _state.map.findZone(position).toString(), OpState::INFO);
     auto orientation = _state.orientation();
     if (auto currentZone = _state.map.findZone(position); currentZone != _state.nextZone) {
       auto nextPoint = _state.nextZone.zone.volume.center();
-      if (orientation.y < 0) {
-        orientation.y += 360;
+      auto expectedAngle = Vector(position, nextPoint).getAngle();
+      if (auto angle = orientation.y - expectedAngle; std::abs(angle) > 1.0f) {
+        return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
       }
-      auto angle = _state.orientation().y - Vector(position, nextPoint).getAngle();
-      return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
+      return std::make_unique<MovementEvent>(Vector {0, 1}, 1000000);
     }
     return std::make_unique<EmptyEvent>();
   }
