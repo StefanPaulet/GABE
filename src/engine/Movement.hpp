@@ -27,7 +27,8 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
     if (startZone.volume.containsInXY(firstPossibility) || targetZone.volume.containsInXY(firstPossibility)) {
       return firstPossibility;
     }
-    return Position {targetPoint.x, startPoint.y, startPoint.z};
+    auto secondPossibility = Position {targetPoint.x, startPoint.y, 0};
+    return Position {targetPoint.x, startPoint.y, 0};
   }
 };
 

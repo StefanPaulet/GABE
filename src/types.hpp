@@ -97,11 +97,7 @@ struct Vector {
   Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} {}
 
   [[nodiscard]] auto getAngle() const -> float {
-    auto angle = std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
-    if (angle < 0) {
-      angle += 360;
-    }
-    return angle;
+    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
   }
 
   float x;
@@ -117,6 +113,7 @@ struct Line {
       m {(pos2.y - pos1.y) / (pos2.x - pos1.x)}, b {pos2.y - m * pos2.x} {}
 
   [[nodiscard]] auto value(Position const& point) const -> float { return m * point.x + b; }
+  [[nodiscard]] auto inverse(Position const& point) const -> float { return (point.y - b) / m; }
 
   float m;
   float b;
@@ -163,10 +160,10 @@ struct Volume {
         return inside(position.x, firstCorner.x, secondCorner.x);
       }
       case Y: {
-        return inside(position.y, firstCorner.y, secondCorner.z);
+        return inside(position.y, firstCorner.y, secondCorner.y);
       }
       case Z: {
-        return inside(position.z, firstCorner.x, secondCorner.z);
+        return inside(position.z, firstCorner.z, secondCorner.z);
       }
     }
     return false;
@@ -197,7 +194,10 @@ struct Volume {
   [[nodiscard]] auto containsLine(Line const& line) const -> bool {
     auto firstIntersectionPoint = Position {firstCorner.x, line.value(firstCorner), 0};
     auto secondIntersectionPoint = Position {secondCorner.x, line.value(secondCorner), 0};
-    return containsInXY(firstIntersectionPoint) || containsInXY(secondIntersectionPoint);
+    auto thirdIntersectionPoint = Position {line.inverse(firstCorner), firstCorner.y, 0};
+    auto forthIntersectionPoint = Position {line.inverse(secondCorner), secondCorner.y, 0};
+    return containsInXY(firstIntersectionPoint) || containsInXY(secondIntersectionPoint)
+        || containsInXY(thirdIntersectionPoint) || containsInXY(forthIntersectionPoint);
   }
 };
 

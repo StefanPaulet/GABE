@@ -209,14 +209,33 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
-    log("Current zone is " + _state.map.findZone(position).toString(), OpState::INFO);
-    auto nextPoint = MovementPolicy().getNextPoint(position, _state.map.findZone(position).zone, _state.currentPath);
-    auto orientation = _state.orientation();
-    auto expectedAngle = Vector(position, nextPoint).getAngle();
-    if (auto angle = orientation.y - expectedAngle; std::abs(angle) > 1.0f) {
+    auto currentZone = _state.map.findZone(position);
+    auto nextPoint = MovementPolicy().getNextPoint(position, currentZone.zone, _state.currentPath);
+    auto angle = _state.orientation().y - Vector(position, nextPoint).getAngle();
+    if (std::abs(angle) > 180.0f) {
+      angle = 360 - angle * (angle < 0.0f ? -1 : 1);
+    }
+    if (std::abs(angle) > 5.0f) {
       return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
     }
-    return std::make_unique<MovementEvent>(Vector {0, 1}, 500000);
+    for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, _state.targetZone.zone);
+         auto const& transition : possibleTransitions) {
+      if (transition.transitionArea.contains(position)) {
+        switch (transition.movement) {
+          using enum Map::RequiredMovement;
+          case JUMP: {
+            return std::make_unique<JumpEvent>(Vector {0, 1}, false);
+          }
+          case JUMP_AND_CROUCH: {
+            return std::make_unique<JumpEvent>(Vector {0, 1}, true);
+          }
+          default: {
+            break;
+          }
+        }
+      }
+    }
+    return std::make_unique<MovementEvent>(Vector {0, 1}, 6000 * 10);
   }
 
 private:

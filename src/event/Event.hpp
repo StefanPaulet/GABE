@@ -370,6 +370,10 @@ public:
           keyCode = XKeysymToKeycode(display, XK_Return);
           break;
         }
+        case ' ': {
+          keyCode = XKeysymToKeycode(display, XK_space);
+          break;
+        }
         case 27: {
           keyCode = XKeysymToKeycode(display, XK_Escape);
           break;
@@ -492,21 +496,36 @@ private:
   Axis _axis;
 };
 
-class MovementEvent : public Event {
+class Movement {
 public:
-  MovementEvent() = default;
-  MovementEvent(MovementEvent const&) = default;
-  MovementEvent(MovementEvent&&) noexcept = default;
-  MovementEvent(Vector const& vector, int duration) : _movementVector {vector}, _duration {duration} {}
+  Movement() = default;
+  Movement(Movement const&) = default;
+  Movement(Movement&&) noexcept = default;
+  explicit Movement(Vector const& movement) : _movementVector {movement} {}
 
-  auto solve(Display* display, Window window) -> void override {
-    std::vector<char> inputs;
+protected:
+  auto getKeys() -> std::vector<char> {
+    std::vector<char> inputs {};
     if (_movementVector.x != 0) {
       inputs.push_back(_movementVector.x > 0 ? 'd' : 'a');
     }
     if (_movementVector.y != 0) {
       inputs.push_back(_movementVector.y > 0 ? 'w' : 's');
     }
+    return inputs;
+  }
+  Vector _movementVector {};
+};
+
+class MovementEvent : public Movement, public Event {
+public:
+  MovementEvent() = default;
+  MovementEvent(MovementEvent const&) = default;
+  MovementEvent(MovementEvent&&) noexcept = default;
+  MovementEvent(Vector const& vector, int duration) : Movement(vector), _duration {duration} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    auto inputs = getKeys();
     for (auto const& input : inputs) {
       KeyActionEvent(input, 50, true).solve(display, window);
     }
@@ -519,7 +538,31 @@ public:
   }
 
 private:
-  Vector _movementVector {};
   int _duration {};
+};
+
+class JumpEvent : public Movement, public Event {
+public:
+  JumpEvent() = default;
+  JumpEvent(JumpEvent const&) = default;
+  JumpEvent(JumpEvent&&) noexcept = default;
+  JumpEvent(Vector const& vector, bool crouched) : Movement {vector}, _crouched {crouched} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    KeyPressEvent(' ', sleepTime).solve(display, window);
+    auto inputs = getKeys();
+    for (auto const& input : inputs) {
+      if (_crouched) {
+        KeyCombinationEvent(input, sleepTime, KeyCombinationEvent::Modifiers::CTRL).solve(display, input);
+      } else {
+        KeyPressEvent(input, sleepTime).solve(display, input);
+      }
+    }
+    log("Treated jump event", OpState::INFO);
+  }
+
+private:
+  static constexpr auto sleepTime = 200;
+  bool _crouched {false};
 };
 } // namespace gabe

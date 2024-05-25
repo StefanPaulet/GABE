@@ -42,7 +42,8 @@ public:
         e->postEvaluation();
       }
       _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
-      usleep(6000);
+      _synchronizer.requestSynchronization();
+      usleep(20000);
     }
     usleep(5000);
     return 0;

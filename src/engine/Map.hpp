@@ -169,6 +169,16 @@ public:
 
   [[nodiscard]] auto const& transitions() const { return _transitions; }
 
+  auto possibleTransitions(Zone const& startZone, Zone const& targetZone) const -> std::vector<Transition> {
+    std::vector<Transition> result {};
+    for (auto const& transition : _transitions.at(startZone)) {
+      if (transition.zone == targetZone) {
+        result.push_back(transition);
+      }
+    }
+    return result;
+  }
+
 private:
   auto buildZones() -> void {
     using enum ZoneName;
@@ -287,40 +297,40 @@ private:
   auto buildZoneTransitions() -> void {
     using enum ZoneName;
     using enum RequiredMovement;
-    addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true);
-    addTransition(T_SPAWN, T_SPAWN_EXIT);
+    addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true, {{-507.37f, -661.95f, 184.66f}, {-1.93f, -660.03f, 69.35f}});
+    addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{22.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
 
     addTransition(T_SPAWN_EXIT, T_SPAWN_TO_LONG);
     addTransition(T_SPAWN_EXIT, TOP_MID);
 
-    addTransition(T_SPAWN_TO_LONG, T_DOORS);
+    addTransition(T_SPAWN_TO_LONG, T_DOORS, NONE, false, {{576.74f, 248.7f, 63.1f}, {622.43f, 249.67f, 63.33f}});
     addTransition(T_SPAWN_TO_LONG, T_SPAWN_TO_MID);
 
     addTransition(T_DOORS, DOORS_CORRIDOR);
 
-    addTransition(DOORS_CORRIDOR, LONG_DOORS);
+    addTransition(DOORS_CORRIDOR, LONG_DOORS, NONE, false, {{629.97f, 705.0f, 64.65f}, {566.55f, 702.553f, 64.99f}});
 
-    addTransition(LONG_DOORS, OUTSIDE_DOORS_LONG);
+    addTransition(LONG_DOORS, OUTSIDE_DOORS_LONG, NONE, false, {{650.03f, 790.3f, 64.26f}, {698.7f, 784.7f, 64.06f}});
 
     addTransition(OUTSIDE_DOORS_LONG, NEAR_DOORS_LONG);
     addTransition(OUTSIDE_DOORS_LONG, FAR_LONG);
 
-    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true);
+    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true, {{1227.97f, 342.84f, 72.75f}, {1227.97f, 743.17f, 71.3f}});
 
     addTransition(FAR_LONG, A_SITE_LONG);
     addTransition(FAR_LONG, PIT);
 
     addTransition(A_SITE_LONG, RAMP);
 
-    addTransition(RAMP, A_SITE, JUMP, true);
+    addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
+    addTransition(RAMP, A_SITE, NONE, true, {{1297.82f, 2802.3f, 183.72f}, {1305.22f, 2711.42f, 170.18f}});
     addTransition(RAMP, TOP_OF_RAMP);
 
     addTransition(TOP_OF_RAMP, GOOSE);
 
     addTransition(GOOSE, A_SITE);
 
-    addTransition(A_SITE, RAMP, JUMP, true);
-    addTransition(A_SITE, RAMP);
+    addTransition(A_SITE, RAMP, JUMP, true, {{1235.9f, 2460.97f, 160.79f}, {1235.97f, 2348.03f, 162.14f}});
 
     addTransition(TOP_MID, BUNELU);
     addTransition(TOP_MID, OUTSIDE_TOP_MID);
@@ -334,7 +344,7 @@ private:
 
     addTransition(T_TO_SHORT, SHORT_CORRIDOR);
 
-    addTransition(SHORT_CORRIDOR, SHORT_STAIRS);
+    addTransition(SHORT_CORRIDOR, SHORT_STAIRS, NONE, true, {{273.03f, 1625.75f, 67.71f}, {404.02f, 1622.72f, 68.89f}});
 
     addTransition(SHORT_STAIRS, SHORT_ABOVE_CT);
 
