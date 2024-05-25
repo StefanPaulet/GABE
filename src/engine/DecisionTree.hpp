@@ -17,6 +17,7 @@
 #include <vector>
 
 namespace gabe {
+constexpr Point screenPoint {expectedScreenWidth, expectedScreenHeight};
 
 class DecisionTree;
 
@@ -57,7 +58,9 @@ public:
 
   virtual auto randomDecision() -> Decision& { return emptyDecision; }
   virtual auto act() -> std::unique_ptr<Event> { return std::make_unique<EmptyEvent>(); }
-  virtual auto postEvaluation() -> void {}
+  virtual auto postEvaluation() -> void {
+    //empty on purpose
+  }
 
   virtual auto evaluate() -> std::unique_ptr<Event> {
     if (_children.empty()) {
@@ -128,34 +131,86 @@ private:
   unsigned char* _image {};
 };
 
-class ShootingTree : public DecisionTree {
+class EnemyDetectionTree : public DecisionTree {
 public:
-  ShootingTree(GameState& gameState, std::string const& scriptPath) :
+  EnemyDetectionTree(GameState& gameState, std::string const& scriptPath) :
       DecisionTree {gameState}, _objectDetectionController {scriptPath} {}
 
-  auto act() -> std::unique_ptr<Event> override {
+  auto evaluate() -> std::unique_ptr<Event> override {
     auto* image = _state.image().data;
-
     if (auto enemyList = _objectDetectionController.analyzeImage(image); !enemyList.empty()) {
-      auto shootingPoint = (enemyList[0].topLeft + (enemyList[0].bottomRight - enemyList[0].topLeft) / Point {2, 5})
-          - Point {expectedScreenWidth, expectedScreenHeight} / 2;
-      ShootEvent::AimType aimType;
-      if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
-        aimType = ShootEvent::AimType::FLICK;
-        shootingPoint *= 2;
-      } else {
-        aimType = ShootEvent::AimType::TAP;
-      }
-      log(std::format("Detected enemy at x={}, y={}", shootingPoint.x, shootingPoint.y), OpState::INFO);
-      return std::make_unique<ShootEvent>(shootingPoint, aimType);
+      auto pointChooser = [](utils::BoundingBox const& b1, utils::BoundingBox const& b2) {
+        return ((b1.topLeft + b1.bottomRight - screenPoint) / 2).abs()
+            < ((b2.topLeft + b2.bottomRight - screenPoint) / 2).abs();
+      };
+      _state.enemy = *std::ranges::min_element(enemyList, pointChooser);
+      log(std::format("Detected enemy between x1={}, y1={}, x2={}, y2={}", _state.enemy.topLeft.x,
+                      _state.enemy.topLeft.y, _state.enemy.bottomRight.x, _state.enemy.bottomRight.y),
+          OpState::INFO);
+    } else {
+      _state.enemy = utils::sentinelBox;
     }
-    return std::make_unique<EmptyEvent>();
+    return DecisionTree::evaluate();
   }
-
-  auto postEvaluation() -> void override { usleep(100000); }
 
 private:
   utils::ObjectDetectionController _objectDetectionController;
+};
+
+class ShootingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    if (_state.enemy == utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+    return shoot();
+  }
+
+  virtual auto shoot() -> std::unique_ptr<Event> = 0;
+};
+
+class SlowShootingTree : public ShootingTree {
+public:
+  using ShootingTree::ShootingTree;
+
+  auto shoot() -> std::unique_ptr<Event> override {
+    auto timeNow = std::chrono::system_clock::now();
+
+    if (std::chrono::duration_cast<std::chrono::microseconds>(timeNow - lastShootTime).count() < shootWaitTime) {
+      return std::make_unique<EmptyEvent>();
+    }
+
+    auto shootingPoint =
+        (_state.enemy.topLeft + (_state.enemy.bottomRight - _state.enemy.topLeft) / Point {2, 5} - screenPoint / 2) * 2;
+    ShootEvent::AimType aimType;
+    if (std::abs(shootingPoint.x) > 50 || std::abs(shootingPoint.y) > 50) {
+      aimType = ShootEvent::AimType::FLICK;
+    } else {
+      aimType = ShootEvent::AimType::TAP;
+    }
+    lastShootTime = timeNow;
+    log(std::format("Decided to use slow shooting of type {}", aimType == ShootEvent::AimType::FLICK ? "flick" : "tap"),
+        OpState::INFO);
+    return std::make_unique<ShootEvent>(shootingPoint, aimType);
+  }
+
+private:
+  static constexpr auto shootWaitTime = 250000;
+  decltype(std::chrono::system_clock::now()) lastShootTime {};
+};
+
+class SprayShootingTree : public ShootingTree {
+public:
+  using ShootingTree::ShootingTree;
+
+  auto shoot() -> std::unique_ptr<Event> override {
+    auto shootingPoint = (_state.enemy.topLeft + _state.enemy.bottomRight) - screenPoint;
+    auto bulletCount = 5;
+    log("Decided to use spray shooting", OpState::INFO);
+    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.weapon);
+  }
 };
 
 class PositionGettingTree : public DecisionTree {
@@ -189,8 +244,7 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
-    auto nextZone = _policy.path.back();
-    if (_state.nextZone.name != nextZone) {
+    if (auto nextZone = _policy.path.back(); _state.nextZone.name != nextZone) {
       _state.nextZone.name = nextZone;
       log("Evaluated path choosing tree; must go to " + _state.nextZone.toString(), OpState::INFO);
     }

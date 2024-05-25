@@ -8,6 +8,10 @@
 #include <compare>
 
 namespace gabe {
+static constexpr auto expectedScreenWidth = 1920;
+static constexpr auto expectedScreenHeight = 1080;
+static constexpr auto screenHeightOffset = 64;
+
 using uint8 = unsigned char;
 using uint16 = unsigned short int;
 using uint32 = unsigned int;
@@ -68,6 +72,8 @@ struct Point {
     y = static_cast<int>(y * value);
     return *this;
   }
+
+  [[nodiscard]] auto abs() const -> Point { return {std::abs(x), std::abs(y)}; }
 
   auto operator<=>(Point const& other) const = default;
 
