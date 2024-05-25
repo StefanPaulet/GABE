@@ -7,14 +7,14 @@
 #include "Map.hpp"
 #include <queue>
 
-namespace gabe::path {
+namespace gabe {
 
 template <typename Policy> struct PathFindingPolicy {
   auto computePath(Map::ZoneName startZone, Map::ZoneName targetZone) -> void {
     static_cast<Policy*>(this)->getPath(startZone, targetZone);
   }
   Map const& map;
-  std::vector<Map::NamedZone> path;
+  std::vector<Zone> path;
 };
 
 struct ShortestPathPolicy : public PathFindingPolicy<ShortestPathPolicy> {
@@ -25,7 +25,7 @@ struct ShortestPathPolicy : public PathFindingPolicy<ShortestPathPolicy> {
     auto targetMapZone = map.getZoneByName(targetZone);
 
     if (startZone == targetZone) {
-      path.push_back(startMapZone);
+      path.push_back(startMapZone.zone);
       return;
     }
 
@@ -39,9 +39,9 @@ struct ShortestPathPolicy : public PathFindingPolicy<ShortestPathPolicy> {
       for (auto const& zone : map.transitions().at(currZone)) {
         if (!parents.contains(zone.zone)) {
           if (zone.zone == targetMapZone.zone) {
-            path.push_back(map.getZoneByName(targetZone));
+            path.push_back(map.getZoneByName(targetZone).zone);
             while (currZone != startMapZone.zone) {
-              path.push_back(map.getZoneByVolume(currZone));
+              path.push_back(map.getZoneByVolume(currZone).zone);
               currZone = parents[currZone];
             }
             return;
@@ -53,4 +53,4 @@ struct ShortestPathPolicy : public PathFindingPolicy<ShortestPathPolicy> {
     }
   }
 };
-} // namespace gabe::path
+} // namespace gabe

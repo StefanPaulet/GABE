@@ -42,6 +42,12 @@ public:
             std::string angleDelimiter;
             stringStream >> position.x >> position.y >> position.z;
             stringStream >> angleDelimiter >> orientation.x >> orientation.y >> orientation.z;
+            if (orientation.x < 0) {
+              orientation.x += 360;
+            }
+            if (orientation.y < 0) {
+              orientation.y += 360;
+            }
             _gameState.set(GameState::Properties::POSITION, position);
             _gameState.set(GameState::Properties::ORIENTATION, orientation);
           }

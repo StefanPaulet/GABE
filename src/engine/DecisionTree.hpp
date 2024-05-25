@@ -9,6 +9,7 @@
 #include "../windowController/Synchronizer.hpp"
 #include "Exceptions.hpp"
 #include "GameState.hpp"
+#include "Movement.hpp"
 #include "Path.hpp"
 #include "event/Event.hpp"
 #include <memory>
@@ -194,10 +195,7 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
-    if (auto nextZone = _policy.path.back(); _state.nextZone != nextZone) {
-      _state.nextZone = nextZone;
-      log("Evaluated path choosing tree; must go to " + _state.nextZone.toString(), OpState::INFO);
-    }
+    _state.currentPath = _policy.path;
     return std::make_unique<EmptyEvent>();
   }
 
@@ -205,23 +203,20 @@ private:
   PathChoosingPolicy _policy {_state.map};
 };
 
-class MovementTree : public DecisionTree {
+template <typename MovementPolicy> class MovementTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
     log("Current zone is " + _state.map.findZone(position).toString(), OpState::INFO);
+    auto nextPoint = MovementPolicy().getNextPoint(position, _state.map.findZone(position).zone, _state.currentPath);
     auto orientation = _state.orientation();
-    if (auto currentZone = _state.map.findZone(position); currentZone != _state.nextZone) {
-      auto nextPoint = _state.nextZone.zone.volume.center();
-      auto expectedAngle = Vector(position, nextPoint).getAngle();
-      if (auto angle = orientation.y - expectedAngle; std::abs(angle) > 1.0f) {
-        return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
-      }
-      return std::make_unique<MovementEvent>(Vector {0, 1}, 1000000);
+    auto expectedAngle = Vector(position, nextPoint).getAngle();
+    if (auto angle = orientation.y - expectedAngle; std::abs(angle) > 1.0f) {
+      return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
     }
-    return std::make_unique<EmptyEvent>();
+    return std::make_unique<MovementEvent>(Vector {0, 1}, 500000);
   }
 
 private:

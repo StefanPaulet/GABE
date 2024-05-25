@@ -118,6 +118,6 @@ private:
 public:
   Map const map {};
   Map::NamedZone targetZone {Zone {}, Map::ZoneName::NO_ZONE};
-  Map::NamedZone nextZone {Zone {}, Map::ZoneName::NO_ZONE};
+  std::vector<Zone> currentPath {};
 };
 } // namespace gabe

@@ -108,7 +108,22 @@ struct Vector {
   float y;
 };
 
+struct Line {
+  Line() = default;
+  Line(Line const&) = default;
+  Line(Line&&) noexcept = default;
+  Line(float m, float b) : m {m}, b {b} {}
+  Line(Position const& pos1, Position const& pos2) :
+      m {(pos2.y - pos1.y) / (pos2.x - pos1.x)}, b {pos2.y - m * pos2.x} {}
+
+  [[nodiscard]] auto value(Position const& point) const -> float { return m * point.x + b; }
+
+  float m;
+  float b;
+};
+
 struct Volume {
+  enum class Projection { X, Y, Z };
   Position firstCorner;
   Position secondCorner;
 
@@ -136,6 +151,53 @@ struct Volume {
     distance.y = localDistance(position.y, firstCorner.y, secondCorner.y);
     distance.z = localDistance(position.z, firstCorner.z, secondCorner.z);
     return distance;
+  }
+
+  [[nodiscard]] auto containsProjection(Position const& position, Projection projection) const -> bool {
+    auto inside = [](float target, float t1, float t2) {
+      return target >= std::min(t1, t2) && target <= std::max(t1, t2);
+    };
+    switch (projection) {
+      using enum Projection;
+      case X: {
+        return inside(position.x, firstCorner.x, secondCorner.x);
+      }
+      case Y: {
+        return inside(position.y, firstCorner.y, secondCorner.z);
+      }
+      case Z: {
+        return inside(position.z, firstCorner.x, secondCorner.z);
+      }
+    }
+    return false;
+  }
+
+  [[nodiscard]] auto perpendicularTo(Position const& position) const -> bool {
+    return containsProjection(position, Projection::X) || containsProjection(position, Projection::Y);
+  }
+
+  [[nodiscard]] auto containsInXY(Position const& position) const -> bool {
+    return containsProjection(position, Projection::X) && containsProjection(position, Projection::Y);
+  }
+
+  [[nodiscard]] auto contains(Position const& position) const -> bool {
+    return containsInXY(position) && containsProjection(position, Projection::Z);
+  }
+
+  [[nodiscard]] auto commonRegion(Volume const& other) const -> Volume {
+    Position resultFirstCorner = {
+        std::max(std::min(firstCorner.x, secondCorner.x), std::min(other.firstCorner.x, other.secondCorner.x)),
+        std::max(std::min(firstCorner.y, secondCorner.y), std::min(other.firstCorner.y, other.secondCorner.y))};
+    Position resultSecondCorner = {
+        std::min(std::max(firstCorner.x, secondCorner.x), std::max(other.firstCorner.x, other.secondCorner.x)),
+        std::min(std::max(firstCorner.y, secondCorner.y), std::max(other.firstCorner.y, other.secondCorner.y))};
+    return {resultFirstCorner, resultSecondCorner};
+  }
+
+  [[nodiscard]] auto containsLine(Line const& line) const -> bool {
+    auto firstIntersectionPoint = Position {firstCorner.x, line.value(firstCorner), 0};
+    auto secondIntersectionPoint = Position {secondCorner.x, line.value(secondCorner), 0};
+    return containsInXY(firstIntersectionPoint) || containsInXY(secondIntersectionPoint);
   }
 };
 
