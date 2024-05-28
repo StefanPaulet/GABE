@@ -6,6 +6,7 @@
 
 #include "Exceptions.hpp"
 #include "engine/GameState.hpp"
+#include "synchronizer/Synchronizer.hpp"
 #include <cstdio>
 #include <thread>
 
@@ -44,6 +45,9 @@ public:
             stringStream >> angleDelimiter >> orientation.x >> orientation.y >> orientation.z;
             _gameState.set(GameState::Properties::POSITION, position);
             _gameState.set(GameState::Properties::ORIENTATION, orientation);
+            if (synchronizer.synchronizationRequired()) {
+              synchronizer.handleSynchronization();
+            }
           }
           currentString = std::string {};
         } else {
@@ -55,6 +59,8 @@ public:
   }
 
   auto stop() -> void { _stopped = true; }
+
+  Synchronizer synchronizer;
 
 private:
   std::string _filePath;

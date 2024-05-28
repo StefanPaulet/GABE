@@ -55,6 +55,8 @@ struct SharedOrientation : Orientation, Shared {
     z = other.z;
     return *this;
   }
+
+  auto orientation() const -> Orientation { return Orientation {x, y, z}; }
 };
 
 
@@ -99,6 +101,11 @@ public:
     return _position.position();
   }
 
+  auto orientation() -> Orientation {
+    std::lock_guard lockGuard {_orientation.lock};
+    return _orientation.orientation();
+  }
+
   auto image() -> Image {
     std::lock_guard lockGuard {_image.lock};
     return _image.image();
@@ -111,8 +118,8 @@ private:
 
 public:
   Map const map {};
-  Map::NamedZone targetZone {MapZone {}, Map::ZoneName::NO_ZONE};
-  Map::NamedZone nextZone {MapZone {}, Map::ZoneName::NO_ZONE};
+  Map::NamedZone targetZone {Zone {}, Map::ZoneName::NO_ZONE};
+  std::vector<Zone> currentPath {};
   utils::BoundingBox enemy {utils::sentinelBox};
   Weapon weapon {GLOCK};
 };

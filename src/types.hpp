@@ -95,13 +95,54 @@ struct Orientation {
   float z;
 };
 
+struct Vector {
+  Vector() = default;
+  Vector(Vector const&) = default;
+  Vector(Vector&&) = default;
+  Vector(float x, float y) : x {x}, y {y} {}
+  Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} {}
+
+  [[nodiscard]] auto getAngle() const -> float {
+    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
+  }
+
+  float x;
+  float y;
+};
+
+struct Line {
+  Line() = default;
+  Line(Line const&) = default;
+  Line(Line&&) noexcept = default;
+  Line(float m, float b) : m {m}, b {b} {}
+  Line(Position const& pos1, Position const& pos2) :
+      m {(pos2.y - pos1.y) / (pos2.x - pos1.x)}, b {pos2.y - m * pos2.x} {}
+
+  [[nodiscard]] auto value(Position const& point) const -> float { return m * point.x + b; }
+  [[nodiscard]] auto inverse(Position const& point) const -> float { return (point.y - b) / m; }
+
+  float m;
+  float b;
+};
+
 struct Volume {
+  enum class Projection { X, Y, Z };
   Position firstCorner;
   Position secondCorner;
 
   auto operator<=>(Volume const& other) const = default;
 
-  auto distance(Position const& position) const -> float {
+  [[nodiscard]] auto center() const -> Position {
+    return {(firstCorner.x + secondCorner.x) / 2, (firstCorner.y + secondCorner.y) / 2,
+            (firstCorner.z + secondCorner.z) / 2};
+  }
+
+  [[nodiscard]] auto distance(Position const& position) const -> float {
+    Position distance = closestPoint(position);
+    return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+  }
+
+  [[nodiscard]] auto closestPoint(Position const& position) const -> Position {
     Position distance {};
     auto localDistance = [](float val, float t1, float t2) {
       if (val < std::min(t1, t2) || val > std::max(t1, t2)) {
@@ -112,7 +153,61 @@ struct Volume {
     distance.x = localDistance(position.x, firstCorner.x, secondCorner.x);
     distance.y = localDistance(position.y, firstCorner.y, secondCorner.y);
     distance.z = localDistance(position.z, firstCorner.z, secondCorner.z);
-    return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+    return distance;
+  }
+
+  [[nodiscard]] auto containsProjection(Position const& position, Projection projection) const -> bool {
+    auto inside = [](float target, float t1, float t2) {
+      return target >= std::min(t1, t2) && target <= std::max(t1, t2);
+    };
+    switch (projection) {
+      using enum Projection;
+      case X: {
+        return inside(position.x, firstCorner.x, secondCorner.x);
+      }
+      case Y: {
+        return inside(position.y, firstCorner.y, secondCorner.y);
+      }
+      case Z: {
+        return inside(position.z, firstCorner.z, secondCorner.z);
+      }
+    }
+    return false;
+  }
+
+  [[nodiscard]] auto perpendicularTo(Position const& position) const -> bool {
+    return containsProjection(position, Projection::X) || containsProjection(position, Projection::Y);
+  }
+
+  [[nodiscard]] auto containsInXY(Position const& position) const -> bool {
+    return containsProjection(position, Projection::X) && containsProjection(position, Projection::Y);
+  }
+
+  [[nodiscard]] auto contains(Position const& position) const -> bool {
+    return containsInXY(position) && containsProjection(position, Projection::Z);
+  }
+
+  [[nodiscard]] auto commonRegion(Volume const& other) const -> Volume {
+    Position resultFirstCorner = {
+        std::max(std::min(firstCorner.x, secondCorner.x), std::min(other.firstCorner.x, other.secondCorner.x)),
+        std::max(std::min(firstCorner.y, secondCorner.y), std::min(other.firstCorner.y, other.secondCorner.y))};
+    Position resultSecondCorner = {
+        std::min(std::max(firstCorner.x, secondCorner.x), std::max(other.firstCorner.x, other.secondCorner.x)),
+        std::min(std::max(firstCorner.y, secondCorner.y), std::max(other.firstCorner.y, other.secondCorner.y))};
+    return {resultFirstCorner, resultSecondCorner};
+  }
+
+  [[nodiscard]] auto containsLine(Line const& line) const -> bool {
+    auto firstVerticalIntersection = Position {firstCorner.x, line.value(firstCorner), 0};
+    auto secondVerticalIntersection = Position {secondCorner.x, line.value(secondCorner), 0};
+    if (containsProjection(firstVerticalIntersection, Projection::Y)
+        && containsProjection(secondVerticalIntersection, Projection::Y)) {
+      return true;
+    }
+    auto firstHorizontalIntersection = Position {line.inverse(firstCorner), firstCorner.y, 0};
+    auto secondHorizontalIntersection = Position {line.inverse(secondCorner), secondCorner.y, 0};
+    return containsProjection(firstHorizontalIntersection, Projection::X)
+        && containsProjection(secondHorizontalIntersection, Projection::X);
   }
 };
 

@@ -4,13 +4,14 @@
 
 #pragma once
 
-#include "../utils/objectDetection/ObjectDetectionController.hpp"
-#include "../utils/positionReader/PositionReader.hpp"
-#include "../windowController/Synchronizer.hpp"
 #include "Exceptions.hpp"
 #include "GameState.hpp"
+#include "Movement.hpp"
 #include "Path.hpp"
 #include "event/Event.hpp"
+#include "synchronizer/Synchronizer.hpp"
+#include "utils/objectDetection/ObjectDetectionController.hpp"
+#include "utils/positionReader/PositionReader.hpp"
 #include <memory>
 #include <numeric>
 #include <random>
@@ -215,9 +216,14 @@ public:
 
 class PositionGettingTree : public DecisionTree {
 public:
-  using DecisionTree::DecisionTree;
+  PositionGettingTree(GameState& gameState, Synchronizer& synchronizer) :
+      DecisionTree {gameState}, _synchronizer {synchronizer} {}
 
   auto act() -> std::unique_ptr<Event> override { return std::make_unique<KeyPressEvent>('p', 100); }
+  auto postEvaluation() -> void override { _synchronizer.requestSynchronization(); }
+
+private:
+  Synchronizer& _synchronizer;
 };
 
 class DestinationChoosingTree : public ConditionalTree {
@@ -244,10 +250,7 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
-    if (auto nextZone = _policy.path.back(); _state.nextZone.name != nextZone) {
-      _state.nextZone.name = nextZone;
-      log("Evaluated path choosing tree; must go to " + _state.nextZone.toString(), OpState::INFO);
-    }
+    _state.currentPath = _policy.path
     return std::make_unique<EmptyEvent>();
   }
 
@@ -255,17 +258,39 @@ private:
   PathChoosingPolicy _policy {_state.map};
 };
 
-class MovementTree : public DecisionTree {
+template <typename MovementPolicy> class MovementTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
-    if (auto newZone = _state.map.findZone(position); newZone != _lastZone) {
-      _lastZone = newZone;
-      log(std::format("Current zone is {}", newZone.toString()), OpState::INFO);
+    auto currentZone = _state.map.findZone(position);
+    auto nextPoint = MovementPolicy().getNextPoint(position, currentZone.zone, _state.currentPath);
+    auto angle = _state.orientation().y - Vector(position, nextPoint).getAngle();
+    if (std::abs(angle) > 180.0f) {
+      angle = 360 - angle * (angle < 0.0f ? -1 : 1);
     }
-    return std::make_unique<EmptyEvent>();
+    if (std::abs(angle) > 5.0f) {
+      return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
+    }
+    for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, _state.targetZone.zone);
+         auto const& transition : possibleTransitions) {
+      if (transition.transitionArea.contains(position)) {
+        switch (transition.movement) {
+          using enum Map::RequiredMovement;
+          case JUMP: {
+            return std::make_unique<JumpEvent>(Vector {0, 1}, false);
+          }
+          case JUMP_AND_CROUCH: {
+            return std::make_unique<JumpEvent>(Vector {0, 1}, true);
+          }
+          default: {
+            break;
+          }
+        }
+      }
+    }
+    return std::make_unique<MovementEvent>(Vector {0, 1}, 6000 * 10);
   }
 
 private:

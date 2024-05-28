@@ -156,6 +156,26 @@ private:
   Point _totalMovement {};
 };
 
+class FullStrafeEvent : public Event {
+public:
+  FullStrafeEvent() = default;
+  FullStrafeEvent(FullStrafeEvent const&) = default;
+  FullStrafeEvent(FullStrafeEvent&&) noexcept = default;
+  FullStrafeEvent(Point const& movement, int large, int small, int sleep) :
+      _totalMovement {movement}, _largeSteps {large}, _smallSteps {small}, _sleepTime {sleep} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    StrafeEvent(_totalMovement, _largeSteps, _sleepTime).solve(display, window);
+    StrafeEvent(_totalMovement % _largeSteps, _smallSteps, _sleepTime).solve(display, window);
+  }
+
+private:
+  Point _totalMovement {};
+  int _largeSteps {};
+  int _smallSteps {};
+  int _sleepTime {};
+};
+
 class ScreenshotEvent : public Event {
 public:
   ScreenshotEvent() = delete;
@@ -275,8 +295,7 @@ public:
       case FLICK: {
         constexpr auto largeSteps = 50;
         constexpr auto smallSteps = 2;
-        StrafeEvent(_totalMovement, largeSteps, 2500).solve(display, window);
-        StrafeEvent(_totalMovement % largeSteps, smallSteps, 3000).solve(display, window);
+        FullStrafeEvent(_totalMovement, largeSteps, smallSteps, 2750).solve(display, window);
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
         break;
       }
@@ -360,6 +379,10 @@ public:
           keyCode = XKeysymToKeycode(display, XK_Return);
           break;
         }
+        case ' ': {
+          keyCode = XKeysymToKeycode(display, XK_space);
+          break;
+        }
         case 27: {
           keyCode = XKeysymToKeycode(display, XK_Escape);
           break;
@@ -368,6 +391,8 @@ public:
     }
     XTestFakeKeyEvent(display, keyCode, _press, CurrentTime);
     XSync(display, False);
+    log(std::format("Treated key press action event of type {} for key={}", _press ? "PRESS" : "RELEASE", _key),
+        OpState::INFO);
     usleep(_sleepTime);
   }
 
@@ -450,5 +475,103 @@ public:
 private:
   static constexpr auto sleepTime = 7500;
   std::string _command {};
+};
+
+class RotationEvent : public Event {
+public:
+  enum class Axis { OX, OY };
+
+  RotationEvent() = default;
+  RotationEvent(RotationEvent const&) = default;
+  RotationEvent(RotationEvent&&) noexcept = default;
+  RotationEvent(float angle, Axis axis) : _angle {angle}, _axis {axis} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    if (_axis == Axis::OX) {
+      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 50, 2, sleepTime)
+          .solve(display, window);
+    } else {
+      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 50, 2, sleepTime)
+          .solve(display, window);
+    }
+    log(std::format("Treated rotation event on the {} axis with angle={}", _axis == Axis::OX ? "OX" : "OY", _angle),
+        OpState::INFO);
+  }
+
+private:
+  static constexpr auto degreeToPixelRatio = 26.6667f;
+  static constexpr auto sleepTime = 5000;
+  float _angle;
+  Axis _axis;
+};
+
+class Movement {
+public:
+  Movement() = default;
+  Movement(Movement const&) = default;
+  Movement(Movement&&) noexcept = default;
+  explicit Movement(Vector const& movement) : _movementVector {movement} {}
+
+protected:
+  auto getKeys() -> std::vector<char> {
+    std::vector<char> inputs {};
+    if (_movementVector.x != 0) {
+      inputs.push_back(_movementVector.x > 0 ? 'd' : 'a');
+    }
+    if (_movementVector.y != 0) {
+      inputs.push_back(_movementVector.y > 0 ? 'w' : 's');
+    }
+    return inputs;
+  }
+  Vector _movementVector {};
+};
+
+class MovementEvent : public Movement, public Event {
+public:
+  MovementEvent() = default;
+  MovementEvent(MovementEvent const&) = default;
+  MovementEvent(MovementEvent&&) noexcept = default;
+  MovementEvent(Vector const& vector, int duration) : Movement(vector), _duration {duration} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    auto inputs = getKeys();
+    for (auto const& input : inputs) {
+      KeyActionEvent(input, 50, true).solve(display, window);
+    }
+    usleep(_duration);
+    for (auto const& input : inputs) {
+      KeyActionEvent(input, 50, false).solve(display, window);
+    }
+    log(std::format("Treated movement event for vector x={}, y={}", _movementVector.x, _movementVector.y),
+        OpState::INFO);
+  }
+
+private:
+  int _duration {};
+};
+
+class JumpEvent : public Movement, public Event {
+public:
+  JumpEvent() = default;
+  JumpEvent(JumpEvent const&) = default;
+  JumpEvent(JumpEvent&&) noexcept = default;
+  JumpEvent(Vector const& vector, bool crouched) : Movement {vector}, _crouched {crouched} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    KeyPressEvent(' ', sleepTime).solve(display, window);
+    auto inputs = getKeys();
+    for (auto const& input : inputs) {
+      if (_crouched) {
+        KeyCombinationEvent(input, sleepTime, KeyCombinationEvent::Modifiers::CTRL).solve(display, input);
+      } else {
+        KeyPressEvent(input, sleepTime).solve(display, input);
+      }
+    }
+    log("Treated jump event", OpState::INFO);
+  }
+
+private:
+  static constexpr auto sleepTime = 200;
+  bool _crouched {false};
 };
 } // namespace gabe

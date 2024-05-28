@@ -34,7 +34,7 @@ public:
     _windowControllerThread = _windowController.run();
     _positionReaderThread = _positionReader.run();
 
-    setupCommands();
+    //setupCommands();
 
     while (true) {
       for (auto const& e : _trees) {
@@ -42,18 +42,18 @@ public:
         e->postEvaluation();
       }
       _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
-      usleep(250000);
-      _windowController.cleanQueue();
+      _synchronizer.requestSynchronization();
+      usleep(6000);
     }
     return 0;
   }
 
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
-    buildImageCapturingTree();
-    buildShootingTree(rootFolder + "scripts/objectDetection");
-    //buildMovementTree();
-    //buildTargetChoosingTree();
+    //buildImageCapturingTree();
+    //buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildTargetChoosingTree();
+    buildMovementTree();
   }
 
 #ifndef NDEBUG
@@ -88,16 +88,14 @@ private:
     _trees.push_back(std::move(shootingTreeRoot));
   }
 
-  auto buildMovementTree() -> void {
-    auto movementTree = std::make_unique<PositionGettingTree>(_state);
-    movementTree->addDecision(1, std::make_unique<MovementTree>(_state));
-    _trees.push_back(std::move(movementTree));
-  }
+  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
 
   auto buildTargetChoosingTree() -> void {
+    auto positionGettingTree = std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer);
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
-    destinationTree->addDecision(1, std::make_unique<PathChoosingTree<path::ShortestPathPolicy>>(_state));
-    _trees.push_back(std::move(destinationTree));
+    destinationTree->addDecision(1.0f, std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state));
+    positionGettingTree->addDecision(1.0f, std::move(destinationTree));
+    _trees.push_back(std::move(positionGettingTree));
   }
 
   Synchronizer _synchronizer {};
