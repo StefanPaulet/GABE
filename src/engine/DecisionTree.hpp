@@ -250,7 +250,7 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
-    _state.currentPath = _policy.path
+    _state.currentPath = _policy.path;
     return std::make_unique<EmptyEvent>();
   }
 

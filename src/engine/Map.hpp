@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "utils/math/geometry/Geometry.hpp"
 #include <algorithm>
 #include <map>
 #include <types.hpp>
