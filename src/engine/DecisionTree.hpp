@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include "../utils/objectDetection/ObjectDetectionController.hpp"
-#include "../utils/positionReader/PositionReader.hpp"
-#include "../windowController/Synchronizer.hpp"
 #include "Exceptions.hpp"
 #include "GameState.hpp"
 #include "Movement.hpp"
 #include "Path.hpp"
 #include "event/Event.hpp"
+#include "synchronizer/Synchronizer.hpp"
+#include "utils/objectDetection/ObjectDetectionController.hpp"
+#include "utils/positionReader/PositionReader.hpp"
 #include <memory>
 #include <numeric>
 #include <random>

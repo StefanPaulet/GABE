@@ -43,7 +43,7 @@ public:
       }
       _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
       _synchronizer.requestSynchronization();
-      usleep(20000);
+      usleep(6000);
     }
     usleep(5000);
     return 0;
@@ -73,7 +73,7 @@ private:
   auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
 
   auto buildTargetChoosingTree() -> void {
-    auto positionGettingTree = std::make_unique<PositionGettingTree>(_state, _synchronizer);
+    auto positionGettingTree = std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer);
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
     destinationTree->addDecision(1.0f, std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state));
     positionGettingTree->addDecision(1.0f, std::move(destinationTree));

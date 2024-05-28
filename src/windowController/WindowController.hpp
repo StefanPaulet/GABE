@@ -5,7 +5,7 @@
 #pragma once
 
 #include "Exceptions.hpp"
-#include "Synchronizer.hpp"
+#include "synchronizer/Synchronizer.hpp"
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <cstdio>

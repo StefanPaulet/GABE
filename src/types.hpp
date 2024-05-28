@@ -192,12 +192,16 @@ struct Volume {
   }
 
   [[nodiscard]] auto containsLine(Line const& line) const -> bool {
-    auto firstIntersectionPoint = Position {firstCorner.x, line.value(firstCorner), 0};
-    auto secondIntersectionPoint = Position {secondCorner.x, line.value(secondCorner), 0};
-    auto thirdIntersectionPoint = Position {line.inverse(firstCorner), firstCorner.y, 0};
-    auto forthIntersectionPoint = Position {line.inverse(secondCorner), secondCorner.y, 0};
-    return containsInXY(firstIntersectionPoint) || containsInXY(secondIntersectionPoint)
-        || containsInXY(thirdIntersectionPoint) || containsInXY(forthIntersectionPoint);
+    auto firstVerticalIntersection = Position {firstCorner.x, line.value(firstCorner), 0};
+    auto secondVerticalIntersection = Position {secondCorner.x, line.value(secondCorner), 0};
+    if (containsProjection(firstVerticalIntersection, Projection::Y)
+        && containsProjection(secondVerticalIntersection, Projection::Y)) {
+      return true;
+    }
+    auto firstHorizontalIntersection = Position {line.inverse(firstCorner), firstCorner.y, 0};
+    auto secondHorizontalIntersection = Position {line.inverse(secondCorner), secondCorner.y, 0};
+    return containsProjection(firstHorizontalIntersection, Projection::X)
+        && containsProjection(secondHorizontalIntersection, Projection::X);
   }
 };
 
