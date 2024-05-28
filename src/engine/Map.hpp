@@ -13,11 +13,50 @@
 namespace gabe {
 
 struct Zone {
+  struct SubZone {
+    Volume volume;
+    bool accessible {true};
+    std::pair<int, int> indices {};
+
+    auto operator<=>(SubZone const& other) const { return volume.operator<=>(other.volume); }
+    auto operator!=(SubZone const& other) const -> bool { return volume == other.volume; }
+  };
+
   Volume volume;
   std::vector<Volume> obstacles {};
 
   auto operator<=>(Zone const& other) const { return volume.operator<=>(other.volume); }
   auto operator==(Zone const& other) const -> bool { return volume == other.volume; }
+  [[nodiscard]] auto subzones() const -> std::vector<std::vector<SubZone>> {
+    std::vector<std::vector<SubZone>> result {};
+    static constexpr auto subzoneRatio = 25;
+    auto lowerCorner = Position {std::min(volume.firstCorner.x, volume.secondCorner.x),
+                                 std::min(volume.firstCorner.y, volume.secondCorner.y),
+                                 std::min(volume.firstCorner.z, volume.secondCorner.z)};
+    auto upperCorner = Position {std::max(volume.firstCorner.x, volume.secondCorner.x),
+                                 std::max(volume.firstCorner.y, volume.secondCorner.y),
+                                 std::max(volume.firstCorner.z, volume.secondCorner.z)};
+    int i = 0;
+    for (auto x = lowerCorner.x; x < upperCorner.x; x += subzoneRatio, ++i) {
+      auto tempResult = std::vector<SubZone> {};
+      int j = 0;
+      for (auto y = lowerCorner.y; y < upperCorner.y; y += subzoneRatio, ++j) {
+        auto newVolume = Volume {
+            {x, y, lowerCorner.z},
+            {std::min(x + subzoneRatio, upperCorner.x), std::min(y + subzoneRatio, upperCorner.y), upperCorner.z}};
+        bool accessible = true;
+        for (auto const& ob : obstacles) {
+          if (newVolume.intersects(ob)) {
+            accessible = false;
+            break;
+          }
+        }
+        tempResult.emplace_back(newVolume, accessible, std::pair<int, int> {i, j});
+      }
+      result.emplace_back(tempResult);
+    }
+    return result;
+  }
 };
 
 class Map {
@@ -201,6 +240,7 @@ private:
     _zones.push_back(tSpawnToLong);
 
     NamedZone tDoors {Zone {Position {584.03f, 261.05f, 63.74f}, Position {700.69f, 339.08f, 64.48f}}, T_DOORS};
+    tDoors.zone.obstacles.emplace_back(Position {639.4f, 359.03f, 64.79f}, Position {584.03f, 276.99f, 64.63f});
     _zones.push_back(tDoors);
 
     NamedZone doorsCorridor {Zone {Position {539.03f, 346.59f, 65.31f}, Position {733.76f, 707.08f, 71.95f}},
@@ -316,7 +356,7 @@ private:
     addTransition(OUTSIDE_DOORS_LONG, NEAR_DOORS_LONG);
     addTransition(OUTSIDE_DOORS_LONG, FAR_LONG);
 
-    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true, {{1227.97f, 342.84f, 72.75f}, {1227.97f, 743.17f, 71.3f}});
+    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true, {{1226.97f, 342.84f, 72.75f}, {1228.97f, 743.17f, 71.3f}});
 
     addTransition(FAR_LONG, A_SITE_LONG);
     addTransition(FAR_LONG, PIT);

@@ -75,6 +75,7 @@ struct Position {
   float z;
 
   auto operator<=>(Position const& other) const = default;
+  auto empty() const -> bool { return x == 0 && y == 0 && z == 0; }
 };
 
 struct Orientation {
@@ -98,27 +99,27 @@ struct Vector {
   float y;
 };
 
-struct Line {
-  Line() = default;
-  Line(Line const&) = default;
-  Line(Line&&) noexcept = default;
-  Line(float m, float b) : m {m}, b {b} {}
-  Line(Position const& pos1, Position const& pos2) :
-      m {(pos2.y - pos1.y) / (pos2.x - pos1.x)}, b {pos2.y - m * pos2.x} {}
-
-  [[nodiscard]] auto value(Position const& point) const -> float { return m * point.x + b; }
-  [[nodiscard]] auto inverse(Position const& point) const -> float { return (point.y - b) / m; }
-
-  float m;
-  float b;
-};
-
 struct Volume {
   enum class Projection { X, Y, Z };
   Position firstCorner;
   Position secondCorner;
 
   auto operator<=>(Volume const& other) const = default;
+
+  auto empty() const -> bool { return firstCorner.empty() && secondCorner.empty(); }
+
+  [[nodiscard]] auto intersects(Volume const& other) const -> bool {
+    auto firstAlternativeCorner = Position {firstCorner.x, secondCorner.y};
+    auto secondAlternativeCorner = Position {secondCorner.x, firstCorner.y};
+
+    auto otherFirstAlternativeCorner = Position {other.firstCorner.x, other.secondCorner.y};
+    auto otherSecondAlternativeCorner = Position {other.secondCorner.x, other.firstCorner.y};
+
+    return containsInXY(other.firstCorner) || containsInXY(other.secondCorner)
+        || containsInXY(otherFirstAlternativeCorner) || containsInXY(otherSecondAlternativeCorner)
+        || other.containsInXY(firstCorner) || other.containsInXY(secondCorner)
+        || other.containsInXY(firstAlternativeCorner) || other.containsInXY(secondAlternativeCorner);
+  }
 
   [[nodiscard]] auto center() const -> Position {
     return {(firstCorner.x + secondCorner.x) / 2, (firstCorner.y + secondCorner.y) / 2,
@@ -129,6 +130,8 @@ struct Volume {
     Position distance = closestPoint(position);
     return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
   }
+
+  [[nodiscard]] auto distance(Volume const& other) const -> float { return distance(other.closestPoint(firstCorner)); }
 
   [[nodiscard]] auto closestPoint(Position const& position) const -> Position {
     Position distance {};
@@ -178,24 +181,13 @@ struct Volume {
   [[nodiscard]] auto commonRegion(Volume const& other) const -> Volume {
     Position resultFirstCorner = {
         std::max(std::min(firstCorner.x, secondCorner.x), std::min(other.firstCorner.x, other.secondCorner.x)),
-        std::max(std::min(firstCorner.y, secondCorner.y), std::min(other.firstCorner.y, other.secondCorner.y))};
+        std::max(std::min(firstCorner.y, secondCorner.y), std::min(other.firstCorner.y, other.secondCorner.y)),
+        std::max(std::min(firstCorner.z, secondCorner.z), std::min(other.firstCorner.z, other.secondCorner.z))};
     Position resultSecondCorner = {
         std::min(std::max(firstCorner.x, secondCorner.x), std::max(other.firstCorner.x, other.secondCorner.x)),
-        std::min(std::max(firstCorner.y, secondCorner.y), std::max(other.firstCorner.y, other.secondCorner.y))};
+        std::min(std::max(firstCorner.y, secondCorner.y), std::max(other.firstCorner.y, other.secondCorner.y)),
+        std::min(std::max(firstCorner.z, secondCorner.z), std::max(other.firstCorner.z, other.secondCorner.z))};
     return {resultFirstCorner, resultSecondCorner};
-  }
-
-  [[nodiscard]] auto containsLine(Line const& line) const -> bool {
-    auto firstVerticalIntersection = Position {firstCorner.x, line.value(firstCorner), 0};
-    auto secondVerticalIntersection = Position {secondCorner.x, line.value(secondCorner), 0};
-    if (containsProjection(firstVerticalIntersection, Projection::Y)
-        && containsProjection(secondVerticalIntersection, Projection::Y)) {
-      return true;
-    }
-    auto firstHorizontalIntersection = Position {line.inverse(firstCorner), firstCorner.y, 0};
-    auto secondHorizontalIntersection = Position {line.inverse(secondCorner), secondCorner.y, 0};
-    return containsProjection(firstHorizontalIntersection, Projection::X)
-        && containsProjection(secondHorizontalIntersection, Projection::X);
   }
 };
 } // namespace gabe
