@@ -1,15 +1,18 @@
-import sys
+import time
+
 import numpy as np
+import sys
+from ultralytics import YOLO
+import cv2
 
-from roboflow import Roboflow
-import supervision as sv
 
-imageWidth = 1920
-imageHeight = 1080
-totalImageSize = imageWidth * imageHeight * 3
 
+model = YOLO("../scripts/objectDetection/weights.pt")
 
 def read_image():
+    imageWidth = 1920
+    imageHeight = 1080 - 64
+    totalImageSize = imageWidth * imageHeight * 3
     byte_data = sys.stdin.buffer.read(totalImageSize)
     image_array = np.frombuffer(byte_data, dtype=np.uint8)
     image_array = image_array.reshape((imageHeight, imageWidth, 3))
@@ -20,18 +23,22 @@ response = "response:" + data
 sys.stdout.write(response)
 sys.stdout.flush()
 
-
-rf = Roboflow(api_key="xL0E5GuDc339bLtw3p1A")
-project = rf.workspace().project("csgo-2-hfa81")
-model = project.version(1).model
+time.sleep(1)
 
 sys.stdout.write("**finishedsetup**")
 sys.stdout.flush()
 
 while True:
-    data = read_image()
-    result = model.predict(data, confidence=40, overlap=30).json()
-
-    detections = sv.Detections.from_inference(result)
-    sys.stdout.write(str(detections.xyxy))
+    image = read_image()
+    results = model(cv2.cvtColor(image, cv2.COLOR_RGB2BGR), conf=0.7, max_det=5, verbose=False)
+    boxes = []
+    for result in results:
+        for box in result.boxes:
+            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+            x1 = int(x1)
+            x2 = int(x2)
+            y1 = int(y1)
+            y2 = int(y2)
+            boxes.append([x1, y1, x2, y2])
+    sys.stdout.write(str(boxes))
     sys.stdout.flush()

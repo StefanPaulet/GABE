@@ -16,9 +16,6 @@
 #include <utils/logger/Logger.hpp>
 
 namespace gabe {
-static constexpr auto expectedScreenWidth = 1920;
-static constexpr auto expectedScreenHeight = 1080;
-
 static constexpr auto dpiScalingFactor = 1;
 
 
@@ -50,6 +47,7 @@ static auto saveImage(std::string_view filename, unsigned char* data, int width,
     row_pointer = &data[cinfo.next_scanline * row_stride];
     jpeg_write_scanlines(&cinfo, &row_pointer, 1);
   }
+  fclose(outfile);
 }
 
 
@@ -208,6 +206,7 @@ public:
       }
     }
     XDestroyImage(img);
+    log("Treated screenshot event", OpState::INFO);
   }
 
 private:
@@ -303,6 +302,7 @@ public:
       case TAP: {
         StrafeEvent(_totalMovement, 1, 250).solve(display, window);
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        usleep(1500);
         break;
       }
     }
@@ -321,7 +321,8 @@ public:
         }
       }
     };
-    log(std::format("Treated shoot event of type {}", toString()), OpState::INFO);
+    log(std::format("Treated shoot event of type {} at x={} y={}", toString(), _totalMovement.x, _totalMovement.y),
+        OpState::INFO);
   }
 
 private:
@@ -338,12 +339,20 @@ public:
       _startPoint {startPoint}, _bulletCount {bulletCount}, _weapon {weapon} {}
 
   auto solve(Display* display, Window window) -> void override {
-    //TODO treat different weapon types in following pr
     StrafeEvent(_startPoint, 1, 250).solve(display, window);
-    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
-    auto secondsToSleep = 1.0 / 11 * _bulletCount;
-    usleep(static_cast<int>(secondsToSleep * 1000000));
-    MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
+    if (_weapon.automatic) {
+      MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
+      for (auto idx = 0; idx < _bulletCount; ++idx) {
+        StrafeEvent(_weapon.getSpray(), 1, 0).solve(display, window);
+        usleep(static_cast<int>(55000000 / _weapon.firerate));
+      }
+      MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
+    } else {
+      for (auto idx = 0; idx < _bulletCount; ++idx) {
+        MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+        usleep(static_cast<int>(60000000 / _weapon.firerate));
+      }
+    }
     log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
   }
 
@@ -464,7 +473,7 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 4500;
+  static constexpr auto sleepTime = 7500;
   std::string _command {};
 };
 

@@ -45,7 +45,6 @@ public:
       _synchronizer.requestSynchronization();
       usleep(6000);
     }
-    usleep(5000);
     return 0;
   }
 
@@ -57,17 +56,36 @@ private:
     buildMovementTree();
   }
 
+#ifndef NDEBUG
+  auto setupCommands() -> void {
+    _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
+
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    //for (auto idx = 0; idx < 5; ++idx) {
+    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
+    //}
+  }
+
+#else
   auto setupCommands() -> void {
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
     _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
   }
+#endif
 
   auto buildImageCapturingTree() -> void {
     _trees.push_back(std::make_unique<ImageCapturingTree>(_state, _synchronizer));
   }
 
   auto buildShootingTree(std::string const& objectDetectionRootPath) -> void {
-    _trees.push_back(std::make_unique<ShootingTree>(_state, objectDetectionRootPath));
+    auto shootingTreeRoot = std::make_unique<EnemyDetectionTree>(_state, objectDetectionRootPath);
+    shootingTreeRoot->addDecision(0.8f, std::make_unique<SlowShootingTree>(_state));
+    shootingTreeRoot->addDecision(0.2f, std::make_unique<SprayShootingTree>(_state));
+    _trees.push_back(std::move(shootingTreeRoot));
   }
 
   auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
