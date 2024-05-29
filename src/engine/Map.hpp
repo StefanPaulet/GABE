@@ -19,7 +19,7 @@ struct Zone {
     std::pair<int, int> indices {};
 
     auto operator<=>(SubZone const& other) const { return volume.operator<=>(other.volume); }
-    auto operator!=(SubZone const& other) const -> bool { return volume == other.volume; }
+    auto operator!=(SubZone const& other) const -> bool { return volume != other.volume; }
   };
 
   Volume volume;
@@ -230,7 +230,7 @@ private:
                           T_SPAWN_EXIT};
     _zones.push_back(tSpawnExit);
 
-    NamedZone tSpawnToLong {Zone {Position {111.07f, -481.46f, 65.3f}, Position {747.97f, 235.97f, 72.28f}},
+    NamedZone tSpawnToLong {Zone {Position {111.07f, -481.46f, 63.8f}, Position {747.97f, 235.97f, 72.28f}},
                             T_SPAWN_TO_LONG};
     tSpawnToLong.zone.obstacles.emplace_back(Position {375.97f, -499.79f, 63.87f},
                                              Position {572.03f, -370.01f, 74.45f});
@@ -339,7 +339,7 @@ private:
     using enum ZoneName;
     using enum RequiredMovement;
     addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true, {{-507.37f, -661.95f, 184.66f}, {-1.93f, -660.03f, 69.35f}});
-    addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{22.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
+    addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{25.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
 
     addTransition(T_SPAWN_EXIT, T_SPAWN_TO_LONG);
     addTransition(T_SPAWN_EXIT, TOP_MID);
@@ -400,9 +400,15 @@ private:
     auto startZone = std::ranges::find(_zones.begin(), _zones.end(), start, zoneSelector);
     auto endZone = std::ranges::find(_zones.begin(), _zones.end(), target, zoneSelector);
 
-    _transitions[startZone->zone].emplace_back(endZone->zone, movement, transitionArea);
+    auto startToTransition = transitionArea.empty()
+        ? transitionArea
+        : transitionArea.join(startZone->zone.volume.commonRegion(transitionArea));
+    _transitions[startZone->zone].emplace_back(endZone->zone, movement, startToTransition);
     if (!oneWay) {
-      _transitions[endZone->zone].emplace_back(startZone->zone, movement, transitionArea);
+      auto endToTransition = transitionArea.empty()
+          ? transitionArea
+          : transitionArea.join(endZone->zone.volume.commonRegion(transitionArea));
+      _transitions[endZone->zone].emplace_back(startZone->zone, movement, endToTransition);
     }
   }
 

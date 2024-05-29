@@ -46,7 +46,6 @@ public:
             _gameState.set(GameState::Properties::POSITION, position);
             _gameState.set(GameState::Properties::ORIENTATION, orientation);
             if (synchronizer.synchronizationRequired()) {
-              log("Synchronization sent", OpState::INFO);
               synchronizer.handleSynchronization();
             }
           }

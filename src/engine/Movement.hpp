@@ -22,7 +22,7 @@ template <typename Policy> struct MovementPolicy {
     std::vector<Zone> result {};
     for (auto const& t : transitions) {
       if (!t.transitionArea.empty()) {
-        result.emplace_back(t.transitionArea.commonRegion(start.volume));
+        result.emplace_back(t.transitionArea);
       }
     }
     if (result.empty()) {
@@ -41,17 +41,19 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
     auto targetSubzones = targetZone.subzones();
     auto transitionAreas = findTransitionZone(startZone, targetZone);
     auto currentSubzones = startZone.subzones();
-    std::pair<int, int> indices {};
+    std::pair<int, int> indices {0, 0};
 
+    auto currentZone = currentSubzones[0][0];
     for (auto lIdx = 0; lIdx < currentSubzones.size(); ++lIdx) {
       for (auto cIdx = 0; cIdx < currentSubzones[0].size(); ++cIdx) {
-        if (currentSubzones[lIdx][cIdx].volume.contains(startPoint)) {
+        if (currentSubzones[lIdx][cIdx].volume.distance(startPoint) < currentZone.volume.distance(startPoint)) {
           indices = {lIdx, cIdx};
+          currentZone = currentSubzones[lIdx][cIdx];
         }
       }
     }
     for (auto const& ta : transitionAreas) {
-      if (ta.volume.intersects(currentSubzones[indices.first][indices.second].volume)) {
+      if (ta.volume.intersects(currentZone.volume)) {
         return ta.volume.closestPoint(startPoint);
       }
     }
@@ -60,17 +62,19 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
 
   [[nodiscard]] auto astar(std::vector<std::vector<SubZone>> const& subzones, std::vector<Zone> const& transitionArea,
                            std::pair<int, int> const& startIndices) const -> Position {
+
     std::array<std::pair<int, int>, 4> neighbours {std::pair<int, int> {-1, 0}, std::pair<int, int> {0, 1},
                                                    std::pair<int, int> {1, 0}, std::pair<int, int> {0, -1}};
     std::map<SubZone, SubZone> parents {};
     std::map<SubZone, float> costs {};
-    auto comparator = [&costs](SubZone const& z1, SubZone const& z2) { return costs.at(z1) < costs.at(z2); };
+    auto comparator = [&costs](SubZone const& z1, SubZone const& z2) { return costs.at(z1) > costs.at(z2); };
     std::priority_queue<SubZone, std::vector<SubZone>, decltype(comparator)> queue {comparator};
 
     auto startZone = subzones[startIndices.first][startIndices.second];
     costs[startZone] = 0;
     parents[startZone] = startZone;
     queue.push(startZone);
+
     while (!queue.empty()) {
       auto zone = queue.top();
       queue.pop();

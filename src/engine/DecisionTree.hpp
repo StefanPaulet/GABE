@@ -220,10 +220,7 @@ public:
       DecisionTree {gameState}, _synchronizer {synchronizer} {}
 
   auto act() -> std::unique_ptr<Event> override { return std::make_unique<KeyPressEvent>('p', 100); }
-  auto postEvaluation() -> void override {
-    log("Synchronization required", OpState::INFO);
-    _synchronizer.requestSynchronization();
-  }
+  auto postEvaluation() -> void override { _synchronizer.requestSynchronization(); }
 
 private:
   Synchronizer& _synchronizer;
@@ -278,7 +275,8 @@ public:
     }
     for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, _state.targetZone.zone);
          auto const& transition : possibleTransitions) {
-      if (transition.transitionArea.contains(position)) {
+      if (transition.transitionArea.contains(position)
+          || transition.transitionArea.commonRegion(currentZone.zone.volume).contains(position)) {
         switch (transition.movement) {
           using enum Map::RequiredMovement;
           case JUMP: {

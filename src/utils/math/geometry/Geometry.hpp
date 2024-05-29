@@ -127,24 +127,25 @@ struct Volume {
   }
 
   [[nodiscard]] auto distance(Position const& position) const -> float {
-    Position distance = closestPoint(position);
+    Position closest = closestPoint(position);
+    auto distance = Position {closest.x - position.x, closest.y - position.y, closest.z - position.z};
     return std::sqrt(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
   }
 
   [[nodiscard]] auto distance(Volume const& other) const -> float { return distance(other.closestPoint(firstCorner)); }
 
   [[nodiscard]] auto closestPoint(Position const& position) const -> Position {
-    Position distance {};
-    auto localDistance = [](float val, float t1, float t2) {
+    Position closest {};
+    auto localClosest = [](float val, float t1, float t2) {
       if (val < std::min(t1, t2) || val > std::max(t1, t2)) {
-        return std::min(std::abs(val - t1), std::abs(val - t2));
+        return (std::abs(val - t1) < std::abs(val - t2)) ? t1 : t2;
       }
-      return .0f;
+      return val;
     };
-    distance.x = localDistance(position.x, firstCorner.x, secondCorner.x);
-    distance.y = localDistance(position.y, firstCorner.y, secondCorner.y);
-    distance.z = localDistance(position.z, firstCorner.z, secondCorner.z);
-    return distance;
+    closest.x = localClosest(position.x, firstCorner.x, secondCorner.x);
+    closest.y = localClosest(position.y, firstCorner.y, secondCorner.y);
+    closest.z = localClosest(position.z, firstCorner.z, secondCorner.z);
+    return closest;
   }
 
   [[nodiscard]] auto containsProjection(Position const& position, Projection projection) const -> bool {
@@ -188,6 +189,18 @@ struct Volume {
         std::min(std::max(firstCorner.y, secondCorner.y), std::max(other.firstCorner.y, other.secondCorner.y)),
         std::min(std::max(firstCorner.z, secondCorner.z), std::max(other.firstCorner.z, other.secondCorner.z))};
     return {resultFirstCorner, resultSecondCorner};
+  }
+
+  [[nodiscard]] auto join(Volume const& other) const -> Volume {
+    auto min = [](float v1, float v2, float v3, float v4) { return std::min(std::min(v1, v2), std::min(v3, v4)); };
+    auto max = [](float v1, float v2, float v3, float v4) { return std::max(std::max(v1, v2), std::max(v3, v4)); };
+    auto newFirstCorner = Position {min(firstCorner.x, secondCorner.x, other.firstCorner.x, other.secondCorner.x),
+                                    min(firstCorner.y, secondCorner.y, other.firstCorner.y, other.secondCorner.y),
+                                    min(firstCorner.z, secondCorner.z, other.firstCorner.z, other.secondCorner.z)};
+    auto newSecondCorner = Position {max(firstCorner.x, secondCorner.x, other.firstCorner.x, other.secondCorner.x),
+                                     max(firstCorner.y, secondCorner.y, other.firstCorner.y, other.secondCorner.y),
+                                     max(firstCorner.z, secondCorner.z, other.firstCorner.z, other.secondCorner.z)};
+    return {newFirstCorner, newSecondCorner};
   }
 };
 } // namespace gabe
