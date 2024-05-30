@@ -509,10 +509,10 @@ protected:
   auto getKeys() -> std::vector<char> {
     std::vector<char> inputs {};
     if (_movementVector.x != 0) {
-      inputs.push_back(_movementVector.x > 0 ? 'd' : 'a');
+      inputs.push_back(_movementVector.x > 0 ? 'w' : 's');
     }
     if (_movementVector.y != 0) {
-      inputs.push_back(_movementVector.y > 0 ? 'w' : 's');
+      inputs.push_back(_movementVector.y > 0 ? 'a' : 'd');
     }
     return inputs;
   }
@@ -524,7 +524,8 @@ public:
   MovementEvent() = default;
   MovementEvent(MovementEvent const&) = default;
   MovementEvent(MovementEvent&&) noexcept = default;
-  MovementEvent(Vector const& vector, int duration) : Movement(vector), _duration {duration} {}
+  MovementEvent(Vector const& vector, int duration, Orientation orientation) :
+      Movement(vector), _duration {duration}, _orientation {orientation} {}
 
   auto solve(Display* display, Window window) -> void override {
     auto inputs = getKeys();
@@ -539,6 +540,7 @@ public:
 
 private:
   int _duration {};
+  Orientation _orientation {};
 };
 
 class JumpEvent : public Movement, public Event {

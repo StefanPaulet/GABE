@@ -29,7 +29,7 @@ struct Zone {
   auto operator==(Zone const& other) const -> bool { return volume == other.volume; }
   [[nodiscard]] auto subzones() const -> std::vector<std::vector<SubZone>> {
     std::vector<std::vector<SubZone>> result {};
-    static constexpr auto subzoneRatio = 25;
+    static constexpr auto subzoneRatio = 15;
     auto lowerCorner = Position {std::min(volume.firstCorner.x, volume.secondCorner.x),
                                  std::min(volume.firstCorner.y, volume.secondCorner.y),
                                  std::min(volume.firstCorner.z, volume.secondCorner.z)};
@@ -257,6 +257,8 @@ private:
                                                  Position {925.3f, 1214.82f, 100.03f});
     outsideDoorsLong.zone.obstacles.emplace_back(Position {925.3f, 1214.82f, 100.03f},
                                                  Position {984.85f, 1123.97f, 64.55f});
+    outsideDoorsLong.zone.obstacles.emplace_back(Position {860.03f, 801.89f, 64.15f},
+                                                 Position {795.97f, 808.03f, 63.87f});
     _zones.push_back(outsideDoorsLong);
 
     NamedZone nearDoorsLong {Zone {Position {968.03f, 215.03f, 75.7f}, Position {1227.96f, 769.19f, 71.39f}},
@@ -363,7 +365,7 @@ private:
 
     addTransition(A_SITE_LONG, RAMP);
 
-    addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
+    //addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
     addTransition(RAMP, A_SITE, NONE, true, {{1297.82f, 2802.3f, 183.72f}, {1305.22f, 2711.42f, 170.18f}});
     addTransition(RAMP, TOP_OF_RAMP);
 

@@ -265,25 +265,23 @@ public:
   auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
-    auto nextPoint = MovementPolicy {_state.map}.getNextPoint(position, currentZone.zone, _state.currentPath);
-    auto angle = _state.orientation().y - Vector(position, nextPoint).getAngle();
-    if (std::abs(angle) > 180.0f) {
-      angle = 360 - angle * (angle < 0.0f ? -1 : 1);
-    }
-    if (std::abs(angle) > 5.0f) {
-      return std::make_unique<RotationEvent>(angle, RotationEvent::Axis::OX);
-    }
-    for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, _state.targetZone.zone);
+    auto nextZone = _state.currentPath.back();
+    _currentPath = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath);
+
+    auto nextPoint = _currentPath.back();
+    _currentPath.pop_back();
+    auto movementVector = Vector {position, nextPoint}.multiply(-_state.orientation().y);
+    for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, nextZone);
          auto const& transition : possibleTransitions) {
       if (transition.transitionArea.contains(position)
           || transition.transitionArea.commonRegion(currentZone.zone.volume).contains(position)) {
         switch (transition.movement) {
           using enum Map::RequiredMovement;
           case JUMP: {
-            return std::make_unique<JumpEvent>(Vector {0, 1}, false);
+            return std::make_unique<JumpEvent>(movementVector, false);
           }
           case JUMP_AND_CROUCH: {
-            return std::make_unique<JumpEvent>(Vector {0, 1}, true);
+            return std::make_unique<JumpEvent>(movementVector, true);
           }
           default: {
             break;
@@ -291,10 +289,11 @@ public:
         }
       }
     }
-    return std::make_unique<MovementEvent>(Vector {0, 1}, 6000 * 10);
+    return std::make_unique<MovementEvent>(movementVector, 6000 * 30, _state.orientation());
   }
 
 private:
   Map::NamedZone _lastZone {};
+  std::vector<Position> _currentPath {};
 };
 } // namespace gabe

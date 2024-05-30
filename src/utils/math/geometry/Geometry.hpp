@@ -5,6 +5,7 @@
 #pragma once
 
 #include <cmath>
+#include <ostream>
 
 namespace gabe {
 struct Point {
@@ -76,6 +77,10 @@ struct Position {
 
   auto operator<=>(Position const& other) const = default;
   auto empty() const -> bool { return x == 0 && y == 0 && z == 0; }
+  friend auto operator<<(std::ostream& out, Position const& position) -> std::ostream& {
+    out << position.x << " " << position.y << " " << position.z;
+    return out;
+  }
 };
 
 struct Orientation {
@@ -92,7 +97,18 @@ struct Vector {
   Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} {}
 
   [[nodiscard]] auto getAngle() const -> float {
-    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
+    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? (y < 0 ? 180.0f : -180.0f) : .0f);
+  }
+
+  [[nodiscard]] auto multiply(float angle) const -> Vector {
+    auto modifiedAngle = angle * std::numbers::pi_v<float> / 180.0f;
+    return {x * std::cos(modifiedAngle) - y * std::sin(modifiedAngle),
+            x * std::sin(modifiedAngle) + y * std::cos(modifiedAngle)};
+  }
+
+  friend auto operator<<(std::ostream& out, Vector const& vec) -> std::ostream& {
+    out << vec.x << " " << vec.y;
+    return out;
   }
 
   float x;
@@ -201,6 +217,11 @@ struct Volume {
                                      max(firstCorner.y, secondCorner.y, other.firstCorner.y, other.secondCorner.y),
                                      max(firstCorner.z, secondCorner.z, other.firstCorner.z, other.secondCorner.z)};
     return {newFirstCorner, newSecondCorner};
+  }
+
+  friend auto operator<<(std::ostream& out, Volume const& volume) -> std::ostream& {
+    out << "First corner:" << volume.firstCorner << ", second corner:" << volume.secondCorner;
+    return out;
   }
 };
 } // namespace gabe

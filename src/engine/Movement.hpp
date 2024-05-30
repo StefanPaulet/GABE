@@ -12,9 +12,9 @@ namespace gabe {
 template <typename Policy> struct MovementPolicy {
   using SubZone = Zone::SubZone;
 
-  [[nodiscard]] auto getNextPoint(Position const& startPoint, Zone const& startZone,
-                                  std::vector<Zone> const& path) const -> Position {
-    return static_cast<Policy const*>(this)->getPoint(startPoint, startZone, path);
+  [[nodiscard]] auto getNextPoints(Position const& startPoint, Zone const& startZone,
+                                   std::vector<Zone> const& path) const -> std::vector<Position> {
+    return static_cast<Policy const*>(this)->getPoints(startPoint, startZone, path);
   }
 
   [[nodiscard]] auto findTransitionZone(Zone const& start, Zone const& target) const -> std::vector<Zone> {
@@ -35,8 +35,8 @@ template <typename Policy> struct MovementPolicy {
 };
 
 struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
-  [[nodiscard]] auto getPoint(Position const& startPoint, Zone const& startZone, std::vector<Zone> const& path) const
-      -> Position {
+  [[nodiscard]] auto getPoints(Position const& startPoint, Zone const& startZone, std::vector<Zone> const& path) const
+      -> std::vector<Position> {
     auto targetZone = path.back();
     auto targetSubzones = targetZone.subzones();
     auto transitionAreas = findTransitionZone(startZone, targetZone);
@@ -52,16 +52,20 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
         }
       }
     }
-    for (auto const& ta : transitionAreas) {
-      if (ta.volume.intersects(currentZone.volume)) {
-        return ta.volume.closestPoint(startPoint);
+
+    for (auto const& transition : transitionAreas) {
+      if (transition.volume.containsInXY(startPoint)) {
+        std::vector<Position> result;
+        result.push_back(targetZone.volume.closestPoint(startPoint));
+        return result;
       }
     }
+
     return astar(currentSubzones, transitionAreas, indices);
   }
 
-  [[nodiscard]] auto astar(std::vector<std::vector<SubZone>> const& subzones, std::vector<Zone> const& transitionArea,
-                           std::pair<int, int> const& startIndices) const -> Position {
+  [[nodiscard]] auto astar(std::vector<std::vector<SubZone>> const& subzones, std::vector<Zone> const& transitionAreas,
+                           std::pair<int, int> const& startIndices) const -> std::vector<Position> {
 
     std::array<std::pair<int, int>, 4> neighbours {std::pair<int, int> {-1, 0}, std::pair<int, int> {0, 1},
                                                    std::pair<int, int> {1, 0}, std::pair<int, int> {0, -1}};
@@ -78,12 +82,15 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
     while (!queue.empty()) {
       auto zone = queue.top();
       queue.pop();
-      for (auto const& transition : transitionArea) {
+      for (auto const& transition : transitionAreas) {
         if (transition.volume.intersects(zone.volume)) {
-          while (parents[zone] != startZone) {
+          std::vector<Position> result {};
+          result.push_back(transition.volume.center());
+          while (zone != startZone) {
+            result.push_back(zone.volume.center());
             zone = parents[zone];
           }
-          return zone.volume.center();
+          return result;
         }
       }
       for (auto const& neighbour : neighbours) {
@@ -99,7 +106,7 @@ struct DirectMovementPolicy : public MovementPolicy<DirectMovementPolicy> {
         }
       }
     }
-    return Position {};
+    return {};
   }
 
   [[nodiscard]] auto heuristic(SubZone const& subzone) const -> float {
