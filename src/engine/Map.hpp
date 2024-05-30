@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "utils/math/geometry/Geometry.hpp"
 #include <algorithm>
 #include <map>
 #include <types.hpp>
@@ -12,11 +13,50 @@
 namespace gabe {
 
 struct Zone {
+  struct SubZone {
+    Volume volume;
+    bool accessible {true};
+    std::pair<int, int> indices {};
+
+    auto operator<=>(SubZone const& other) const { return volume.operator<=>(other.volume); }
+    auto operator!=(SubZone const& other) const -> bool { return volume != other.volume; }
+  };
+
   Volume volume;
   std::vector<Volume> obstacles {};
 
   auto operator<=>(Zone const& other) const { return volume.operator<=>(other.volume); }
   auto operator==(Zone const& other) const -> bool { return volume == other.volume; }
+  [[nodiscard]] auto subzones() const -> std::vector<std::vector<SubZone>> {
+    std::vector<std::vector<SubZone>> result {};
+    static constexpr auto subzoneRatio = 15;
+    auto lowerCorner = Position {std::min(volume.firstCorner.x, volume.secondCorner.x),
+                                 std::min(volume.firstCorner.y, volume.secondCorner.y),
+                                 std::min(volume.firstCorner.z, volume.secondCorner.z)};
+    auto upperCorner = Position {std::max(volume.firstCorner.x, volume.secondCorner.x),
+                                 std::max(volume.firstCorner.y, volume.secondCorner.y),
+                                 std::max(volume.firstCorner.z, volume.secondCorner.z)};
+    int i = 0;
+    for (auto x = lowerCorner.x; x < upperCorner.x; x += subzoneRatio, ++i) {
+      auto tempResult = std::vector<SubZone> {};
+      int j = 0;
+      for (auto y = lowerCorner.y; y < upperCorner.y; y += subzoneRatio, ++j) {
+        auto newVolume = Volume {
+            {x, y, lowerCorner.z},
+            {std::min(x + subzoneRatio, upperCorner.x), std::min(y + subzoneRatio, upperCorner.y), upperCorner.z}};
+        bool accessible = true;
+        for (auto const& ob : obstacles) {
+          if (newVolume.intersects(ob)) {
+            accessible = false;
+            break;
+          }
+        }
+        tempResult.emplace_back(newVolume, accessible, std::pair<int, int> {i, j});
+      }
+      result.emplace_back(tempResult);
+    }
+    return result;
+  }
 };
 
 class Map {
@@ -190,7 +230,7 @@ private:
                           T_SPAWN_EXIT};
     _zones.push_back(tSpawnExit);
 
-    NamedZone tSpawnToLong {Zone {Position {111.07f, -481.46f, 65.3f}, Position {747.97f, 235.97f, 72.28f}},
+    NamedZone tSpawnToLong {Zone {Position {111.07f, -481.46f, 63.8f}, Position {747.97f, 235.97f, 72.28f}},
                             T_SPAWN_TO_LONG};
     tSpawnToLong.zone.obstacles.emplace_back(Position {375.97f, -499.79f, 63.87f},
                                              Position {572.03f, -370.01f, 74.45f});
@@ -200,6 +240,7 @@ private:
     _zones.push_back(tSpawnToLong);
 
     NamedZone tDoors {Zone {Position {584.03f, 261.05f, 63.74f}, Position {700.69f, 339.08f, 64.48f}}, T_DOORS};
+    tDoors.zone.obstacles.emplace_back(Position {639.4f, 359.03f, 64.79f}, Position {584.03f, 276.99f, 64.63f});
     _zones.push_back(tDoors);
 
     NamedZone doorsCorridor {Zone {Position {539.03f, 346.59f, 65.31f}, Position {733.76f, 707.08f, 71.95f}},
@@ -216,6 +257,8 @@ private:
                                                  Position {925.3f, 1214.82f, 100.03f});
     outsideDoorsLong.zone.obstacles.emplace_back(Position {925.3f, 1214.82f, 100.03f},
                                                  Position {984.85f, 1123.97f, 64.55f});
+    outsideDoorsLong.zone.obstacles.emplace_back(Position {860.03f, 801.89f, 64.15f},
+                                                 Position {795.97f, 808.03f, 63.87f});
     _zones.push_back(outsideDoorsLong);
 
     NamedZone nearDoorsLong {Zone {Position {968.03f, 215.03f, 75.7f}, Position {1227.96f, 769.19f, 71.39f}},
@@ -298,7 +341,7 @@ private:
     using enum ZoneName;
     using enum RequiredMovement;
     addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true, {{-507.37f, -661.95f, 184.66f}, {-1.93f, -660.03f, 69.35f}});
-    addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{22.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
+    addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{25.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
 
     addTransition(T_SPAWN_EXIT, T_SPAWN_TO_LONG);
     addTransition(T_SPAWN_EXIT, TOP_MID);
@@ -315,14 +358,14 @@ private:
     addTransition(OUTSIDE_DOORS_LONG, NEAR_DOORS_LONG);
     addTransition(OUTSIDE_DOORS_LONG, FAR_LONG);
 
-    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true, {{1227.97f, 342.84f, 72.75f}, {1227.97f, 743.17f, 71.3f}});
+    addTransition(NEAR_DOORS_LONG, PIT, JUMP, true, {{1226.97f, 342.84f, 72.75f}, {1228.97f, 743.17f, 71.3f}});
 
     addTransition(FAR_LONG, A_SITE_LONG);
     addTransition(FAR_LONG, PIT);
 
     addTransition(A_SITE_LONG, RAMP);
 
-    addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
+    //addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
     addTransition(RAMP, A_SITE, NONE, true, {{1297.82f, 2802.3f, 183.72f}, {1305.22f, 2711.42f, 170.18f}});
     addTransition(RAMP, TOP_OF_RAMP);
 
@@ -359,9 +402,15 @@ private:
     auto startZone = std::ranges::find(_zones.begin(), _zones.end(), start, zoneSelector);
     auto endZone = std::ranges::find(_zones.begin(), _zones.end(), target, zoneSelector);
 
-    _transitions[startZone->zone].emplace_back(endZone->zone, movement, transitionArea);
+    auto startToTransition = transitionArea.empty()
+        ? transitionArea
+        : transitionArea.join(startZone->zone.volume.commonRegion(transitionArea));
+    _transitions[startZone->zone].emplace_back(endZone->zone, movement, startToTransition);
     if (!oneWay) {
-      _transitions[endZone->zone].emplace_back(startZone->zone, movement, transitionArea);
+      auto endToTransition = transitionArea.empty()
+          ? transitionArea
+          : transitionArea.join(endZone->zone.volume.commonRegion(transitionArea));
+      _transitions[endZone->zone].emplace_back(startZone->zone, movement, endToTransition);
     }
   }
 

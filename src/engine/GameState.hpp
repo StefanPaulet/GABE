@@ -6,6 +6,7 @@
 
 #include "Map.hpp"
 #include "Weapon.hpp"
+#include "utils/objectDetection/ObjectDetectionController.hpp"
 #include <cassert>
 #include <mutex>
 #include <types.hpp>

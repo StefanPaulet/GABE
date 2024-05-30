@@ -145,8 +145,6 @@ public:
     }
 
     _totalMovement = _totalMovement / _itCount * _itCount;
-
-    log(std::format("Treated strafe mouse event of distance x={}, y={}", _totalMovement.x, _totalMovement.y), OpState::INFO);
   }
 
 private:
@@ -206,7 +204,6 @@ public:
       }
     }
     XDestroyImage(img);
-    log("Treated screenshot event", OpState::INFO);
   }
 
 private:
@@ -391,8 +388,6 @@ public:
     }
     XTestFakeKeyEvent(display, keyCode, _press, CurrentTime);
     XSync(display, False);
-    log(std::format("Treated key press action event of type {} for key={}", _press ? "PRESS" : "RELEASE", _key),
-        OpState::INFO);
     usleep(_sleepTime);
   }
 
@@ -488,14 +483,12 @@ public:
 
   auto solve(Display* display, Window window) -> void override {
     if (_axis == Axis::OX) {
-      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 50, 2, sleepTime)
+      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 20, 2, sleepTime)
           .solve(display, window);
     } else {
-      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 50, 2, sleepTime)
+      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 20, 2, sleepTime)
           .solve(display, window);
     }
-    log(std::format("Treated rotation event on the {} axis with angle={}", _axis == Axis::OX ? "OX" : "OY", _angle),
-        OpState::INFO);
   }
 
 private:
@@ -516,10 +509,10 @@ protected:
   auto getKeys() -> std::vector<char> {
     std::vector<char> inputs {};
     if (_movementVector.x != 0) {
-      inputs.push_back(_movementVector.x > 0 ? 'd' : 'a');
+      inputs.push_back(_movementVector.x > 0 ? 'w' : 's');
     }
     if (_movementVector.y != 0) {
-      inputs.push_back(_movementVector.y > 0 ? 'w' : 's');
+      inputs.push_back(_movementVector.y > 0 ? 'a' : 'd');
     }
     return inputs;
   }
@@ -531,7 +524,8 @@ public:
   MovementEvent() = default;
   MovementEvent(MovementEvent const&) = default;
   MovementEvent(MovementEvent&&) noexcept = default;
-  MovementEvent(Vector const& vector, int duration) : Movement(vector), _duration {duration} {}
+  MovementEvent(Vector const& vector, int duration, Orientation orientation) :
+      Movement(vector), _duration {duration}, _orientation {orientation} {}
 
   auto solve(Display* display, Window window) -> void override {
     auto inputs = getKeys();
@@ -542,12 +536,11 @@ public:
     for (auto const& input : inputs) {
       KeyActionEvent(input, 50, false).solve(display, window);
     }
-    log(std::format("Treated movement event for vector x={}, y={}", _movementVector.x, _movementVector.y),
-        OpState::INFO);
   }
 
 private:
   int _duration {};
+  Orientation _orientation {};
 };
 
 class JumpEvent : public Movement, public Event {

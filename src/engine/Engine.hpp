@@ -34,7 +34,7 @@ public:
     _windowControllerThread = _windowController.run();
     _positionReaderThread = _positionReader.run();
 
-    //setupCommands();
+    setupCommands();
 
     while (true) {
       for (auto const& e : _trees) {
@@ -50,8 +50,9 @@ public:
 
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
-    //buildImageCapturingTree();
+    buildImageCapturingTree();
     //buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildPositionGettingTree();
     buildTargetChoosingTree();
     buildMovementTree();
   }
@@ -90,12 +91,14 @@ private:
 
   auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
 
+  auto buildPositionGettingTree() -> void {
+    _trees.push_back(std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer));
+  }
+
   auto buildTargetChoosingTree() -> void {
-    auto positionGettingTree = std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer);
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
     destinationTree->addDecision(1.0f, std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state));
-    positionGettingTree->addDecision(1.0f, std::move(destinationTree));
-    _trees.push_back(std::move(positionGettingTree));
+    _trees.push_back(std::move(destinationTree));
   }
 
   Synchronizer _synchronizer {};
