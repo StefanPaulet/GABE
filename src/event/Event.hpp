@@ -508,15 +508,18 @@ public:
 protected:
   auto getKeys() -> std::vector<char> {
     std::vector<char> inputs {};
-    if (_movementVector.x != 0) {
+    if (std::abs(_movementVector.x) >= errorMargin) {
       inputs.push_back(_movementVector.x > 0 ? 'w' : 's');
     }
-    if (_movementVector.y != 0) {
+    if (std::abs(_movementVector.y) >= errorMargin) {
       inputs.push_back(_movementVector.y > 0 ? 'a' : 'd');
     }
     return inputs;
   }
   Vector _movementVector {};
+
+private:
+  static constexpr auto errorMargin = 1.0f;
 };
 
 class MovementEvent : public Movement, public Event {
@@ -564,7 +567,7 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 200;
+  static constexpr auto sleepTime = 0;
   bool _crouched {false};
 };
 } // namespace gabe

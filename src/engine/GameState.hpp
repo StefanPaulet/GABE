@@ -119,8 +119,11 @@ private:
 
 public:
   Map const map {};
+
   Map::NamedZone targetZone {Zone {}, Map::ZoneName::NO_ZONE};
   std::vector<Zone> currentPath {};
+  Position nextPosition {};
+
   utils::BoundingBox enemy {utils::sentinelBox};
   Weapon weapon {GLOCK};
 };

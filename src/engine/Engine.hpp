@@ -41,7 +41,6 @@ public:
         _windowController.addEvent(e->evaluate());
         e->postEvaluation();
       }
-      _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
       _synchronizer.requestSynchronization();
       usleep(6000);
     }
@@ -51,10 +50,11 @@ public:
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
-    //buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildShootingTree(rootFolder + "scripts/objectDetection");
     buildPositionGettingTree();
     buildTargetChoosingTree();
-    buildMovementTree();
+    buildAimingTree();
+    //    buildMovementTree();
   }
 
 #ifndef NDEBUG
@@ -89,15 +89,19 @@ private:
     _trees.push_back(std::move(shootingTreeRoot));
   }
 
-  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
+  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree>(_state)); }
 
   auto buildPositionGettingTree() -> void {
     _trees.push_back(std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer));
   }
 
+  auto buildAimingTree() -> void { _trees.push_back(std::make_unique<RotationTree>(_state)); }
+
   auto buildTargetChoosingTree() -> void {
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
-    destinationTree->addDecision(1.0f, std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state));
+    auto pathChoosingTree = std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state);
+    pathChoosingTree->addDecision(1.0f, std::make_unique<LocationChoosingTree<DirectMovementPolicy>>(_state));
+    destinationTree->addDecision(1.0f, std::move(pathChoosingTree));
     _trees.push_back(std::move(destinationTree));
   }
 

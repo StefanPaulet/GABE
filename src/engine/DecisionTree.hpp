@@ -248,17 +248,17 @@ template <typename PathChoosingPolicy> class PathChoosingTree : public DecisionT
 public:
   using DecisionTree::DecisionTree;
 
-  auto act() -> std::unique_ptr<Event> override {
+  auto evaluate() -> std::unique_ptr<Event> override {
     _policy.getPath(_state.map.findZone(_state.position()).name, _state.targetZone.name);
     _state.currentPath = _policy.path;
-    return std::make_unique<EmptyEvent>();
+    return DecisionTree::evaluate();
   }
 
 private:
   PathChoosingPolicy _policy {_state.map};
 };
 
-template <typename MovementPolicy> class MovementTree : public DecisionTree {
+template <typename MovementPolicy> class LocationChoosingTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
 
@@ -266,11 +266,37 @@ public:
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
-    _currentPath = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath);
+    auto nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
+    _state.nextPosition = nextPoint;
+    return std::make_unique<EmptyEvent>();
+  }
+};
 
-    auto nextPoint = _currentPath.back();
-    _currentPath.pop_back();
-    auto movementVector = Vector {position, nextPoint}.multiply(-_state.orientation().y);
+class RotationTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    auto position = _state.position();
+    auto targetPosition = _state.nextPosition;
+    auto orientation = _state.orientation().y;
+    auto moveAngle = orientation - Vector(position, targetPosition).getAngle();
+    if (std::abs(moveAngle) > 180.0f) {
+      moveAngle = 360 - moveAngle * (moveAngle < 0.0f ? -1 : 1);
+    }
+    return std::make_unique<RotationEvent>(moveAngle, RotationEvent::Axis::OX);
+  }
+};
+
+class MovementTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    auto position = _state.position();
+    auto currentZone = _state.map.findZone(position);
+    auto nextZone = _state.currentPath.back();
+    auto movementVector = Vector {position, _state.nextPosition}.multiply(-_state.orientation().y);
     for (auto possibleTransitions = _state.map.possibleTransitions(currentZone.zone, nextZone);
          auto const& transition : possibleTransitions) {
       if (transition.transitionArea.contains(position)
@@ -291,9 +317,5 @@ public:
     }
     return std::make_unique<MovementEvent>(movementVector, 6000 * 30, _state.orientation());
   }
-
-private:
-  Map::NamedZone _lastZone {};
-  std::vector<Position> _currentPath {};
 };
 } // namespace gabe

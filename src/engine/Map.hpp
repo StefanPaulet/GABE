@@ -29,7 +29,7 @@ struct Zone {
   auto operator==(Zone const& other) const -> bool { return volume == other.volume; }
   [[nodiscard]] auto subzones() const -> std::vector<std::vector<SubZone>> {
     std::vector<std::vector<SubZone>> result {};
-    static constexpr auto subzoneRatio = 15;
+    static constexpr auto subzoneRatio = 10;
     auto lowerCorner = Position {std::min(volume.firstCorner.x, volume.secondCorner.x),
                                  std::min(volume.firstCorner.y, volume.secondCorner.y),
                                  std::min(volume.firstCorner.z, volume.secondCorner.z)};
@@ -237,10 +237,12 @@ private:
     tSpawnToLong.zone.obstacles.emplace_back(Position {148.03f, -182.03f, 71.87f}, Position {211.8f, 19.62f, 69.4f});
     tSpawnToLong.zone.obstacles.emplace_back(Position {124.08f, 101.10f, 73.1f}, Position {170.13f, 39.09f, 71.09f});
     tSpawnToLong.zone.obstacles.emplace_back(Position {734.93f, -168.89f, 71.0f}, Position {598.21f, 51.49f, 60.32f});
+    tSpawnToLong.zone.obstacles.emplace_back(Position {144.76f, -276.f, 64.72f}, Position {106.05f, -23.17f, 86.51f});
     _zones.push_back(tSpawnToLong);
 
     NamedZone tDoors {Zone {Position {584.03f, 261.05f, 63.74f}, Position {700.69f, 339.08f, 64.48f}}, T_DOORS};
     tDoors.zone.obstacles.emplace_back(Position {639.4f, 359.03f, 64.79f}, Position {584.03f, 276.99f, 64.63f});
+    tDoors.zone.obstacles.emplace_back(Position {639.0f, 236.97f, 63.07f}, Position {722.13f, 305.93f, 58.73f});
     _zones.push_back(tDoors);
 
     NamedZone doorsCorridor {Zone {Position {539.03f, 346.59f, 65.31f}, Position {733.76f, 707.08f, 71.95f}},
@@ -275,14 +277,14 @@ private:
                          A_SITE_LONG};
     _zones.push_back(aSiteLong);
 
-    NamedZone ramp {Zone {Position {1601.38f, 2306.24f, 68.40f}, Position {1311.11f, 2772.2f, 179.13f}}, RAMP};
+    NamedZone ramp {Zone {Position {1601.38f, 2306.24f, 68.40f}, Position {1300.11f, 2772.2f, 179.13f}}, RAMP};
     _zones.push_back(ramp);
 
     NamedZone topOfRamp {Zone {Position {1561.97f, 3059.97f, 190.74f}, Position {1311.11f, 2772.2f, 179.13f}},
                          TOP_OF_RAMP};
     _zones.push_back(topOfRamp);
 
-    NamedZone goose {Zone {Position {1235.97f, 2632.93f, 190.36f}, Position {1051.03f, 3059.86f, 193.89f}}, GOOSE};
+    NamedZone goose {Zone {Position {1295.53f, 2632.93f, 190.36f}, Position {1051.03f, 3059.86f, 193.89f}}, GOOSE};
     _zones.push_back(goose);
 
     NamedZone aSite {Zone {Position {1249.08f, 2616.88f, 190.6f}, Position {1056.03f, 2347.07f, 190.53f}}, A_SITE};
@@ -349,7 +351,7 @@ private:
     addTransition(T_SPAWN_TO_LONG, T_DOORS, NONE, false, {{576.74f, 248.7f, 63.1f}, {622.43f, 249.67f, 63.33f}});
     addTransition(T_SPAWN_TO_LONG, T_SPAWN_TO_MID);
 
-    addTransition(T_DOORS, DOORS_CORRIDOR);
+    addTransition(T_DOORS, DOORS_CORRIDOR, NONE, false, {{740.97f, 365.5f, 64.26f}, {651.21f, 322.24f, 64.75f}});
 
     addTransition(DOORS_CORRIDOR, LONG_DOORS, NONE, false, {{629.97f, 705.0f, 64.65f}, {566.55f, 702.553f, 64.99f}});
 
@@ -366,7 +368,7 @@ private:
     addTransition(A_SITE_LONG, RAMP);
 
     //addTransition(RAMP, A_SITE, JUMP_AND_CROUCH, true, {{1300.0f, 2481.87f, 128.46f}, {1300.0f, 2665.0f, 161.46f}});
-    addTransition(RAMP, A_SITE, NONE, true, {{1297.82f, 2802.3f, 183.72f}, {1305.22f, 2711.42f, 170.18f}});
+    addTransition(RAMP, A_SITE, NONE, true, {{1265.45f, 2808.3f, 190.87f}, {1300.52f, 2705.18f, 170.19f}});
     addTransition(RAMP, TOP_OF_RAMP);
 
     addTransition(TOP_OF_RAMP, GOOSE);
