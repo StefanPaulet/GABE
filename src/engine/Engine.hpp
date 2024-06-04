@@ -54,7 +54,7 @@ private:
     buildPositionGettingTree();
     buildTargetChoosingTree();
     buildAimingTree();
-    //    buildMovementTree();
+    buildMovementTree();
   }
 
 #ifndef NDEBUG
@@ -64,11 +64,6 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-
-    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    //for (auto idx = 0; idx < 5; ++idx) {
-    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
-    //}
   }
 
 #else
@@ -95,7 +90,13 @@ private:
     _trees.push_back(std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer));
   }
 
-  auto buildAimingTree() -> void { _trees.push_back(std::make_unique<RotationTree>(_state)); }
+  auto buildAimingTree() -> void {
+    auto aimingRootTree = std::make_unique<DecisionTree>(_state);
+    aimingRootTree->addDecision(0.55f, std::make_unique<MovementOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.35f, std::make_unique<AimingOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.1f, std::make_unique<BackCheckingRotationTree>(_state));
+    _trees.push_back(std::move(aimingRootTree));
+  }
 
   auto buildTargetChoosingTree() -> void {
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);

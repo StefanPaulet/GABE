@@ -277,14 +277,62 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
+    auto orientation = _state.orientation();
+    auto moveAngle = orientation.y - _targetAngle;
+    if (std::abs(moveAngle) > 180.0f) {
+      moveAngle = 360 - moveAngle * (moveAngle < 0.0f ? -1.0f : 1.0f);
+    }
+    orientation.y = _targetAngle;
+    _state.set(GameState::Properties::ORIENTATION, orientation);
+    return std::make_unique<RotationEvent>(moveAngle, RotationEvent::Axis::OX);
+  }
+
+
+protected:
+  float _targetAngle {};
+};
+
+class MovementOrientedRotationTree : public RotationTree {
+public:
+  using RotationTree::RotationTree;
+
+  auto act() -> std::unique_ptr<Event> override {
     auto position = _state.position();
     auto targetPosition = _state.nextPosition;
-    auto orientation = _state.orientation().y;
-    auto moveAngle = orientation - Vector(position, targetPosition).getAngle();
-    if (std::abs(moveAngle) > 180.0f) {
-      moveAngle = 360 - moveAngle * (moveAngle < 0.0f ? -1 : 1);
+    _targetAngle = Vector(position, targetPosition).getAngle();
+    return RotationTree::act();
+  }
+};
+
+class AimingOrientedRotationTree : public MovementOrientedRotationTree {
+public:
+  using MovementOrientedRotationTree::MovementOrientedRotationTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    auto position = _state.position();
+    auto possibleWatchpoints = _state.map.watchpoints(_state.map.findZone(position).zone);
+    if (possibleWatchpoints.empty()) {
+      return MovementOrientedRotationTree::act();
     }
-    return std::make_unique<RotationEvent>(moveAngle, RotationEvent::Axis::OX);
+
+    std::mt19937 gen(_rd());
+    std::ranges::shuffle(possibleWatchpoints, gen);
+    _targetAngle = Vector(position, possibleWatchpoints.back()).getAngle();
+    return RotationTree::act();
+  }
+
+private:
+  std::random_device _rd {};
+};
+
+class BackCheckingRotationTree : public RotationTree {
+public:
+  using RotationTree::RotationTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    auto orientation = _state.orientation().y;
+    _targetAngle = orientation < 0.0f ? (orientation + 180.0f) : (orientation - 180.0f);
+    return RotationTree::act();
   }
 };
 
@@ -315,7 +363,7 @@ public:
         }
       }
     }
-    return std::make_unique<MovementEvent>(movementVector, 6000 * 30, _state.orientation());
+    return std::make_unique<MovementEvent>(movementVector, 6000 * 30);
   }
 };
 } // namespace gabe

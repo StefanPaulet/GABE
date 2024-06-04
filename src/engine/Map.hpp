@@ -190,6 +190,7 @@ public:
   Map() {
     buildZones();
     buildZoneTransitions();
+    buildZoneWatchpoints();
   }
 
   auto findZone(Position const& position) const -> NamedZone {
@@ -209,7 +210,8 @@ public:
 
   [[nodiscard]] auto const& transitions() const { return _transitions; }
 
-  auto possibleTransitions(Zone const& startZone, Zone const& targetZone) const -> std::vector<Transition> {
+  [[nodiscard]] auto possibleTransitions(Zone const& startZone, Zone const& targetZone) const
+      -> std::vector<Transition> {
     std::vector<Transition> result {};
     for (auto const& transition : _transitions.at(startZone)) {
       if (transition.zone == targetZone) {
@@ -218,6 +220,8 @@ public:
     }
     return result;
   }
+
+  [[nodiscard]] auto watchpoints(Zone const& zone) const -> std::vector<Position> { return _watchPoints.at(zone); }
 
 private:
   auto buildZones() -> void {
@@ -398,9 +402,54 @@ private:
     addTransition(SHORT_TO_A, A_SITE);
   }
 
+  auto buildZoneWatchpoints() -> void {
+    using enum ZoneName;
+    for (auto const& zone : _zones) {
+      _watchPoints[zone.zone] = {};
+    }
+
+    addWatchpoint(T_SPAWN_TO_LONG, BUNELU);
+    addWatchpoint(T_SPAWN_TO_LONG, T_SPAWN_TO_MID);
+
+    addWatchpoint(DOORS_CORRIDOR, T_DOORS);
+
+    addWatchpoint(LONG_DOORS, Position {1391.66f, 1239.72f, 53.08f});
+
+    addWatchpoint(OUTSIDE_DOORS_LONG, Position {516.34f, 808.03f, 65.62f});
+    addWatchpoint(OUTSIDE_DOORS_LONG, NEAR_DOORS_LONG);
+
+    addWatchpoint(FAR_LONG, A_SITE);
+    addWatchpoint(FAR_LONG, RAMP);
+    addWatchpoint(FAR_LONG, TOP_OF_RAMP);
+
+    addWatchpoint(A_SITE_LONG, A_SITE);
+    addWatchpoint(A_SITE_LONG, RAMP);
+    addWatchpoint(A_SITE_LONG, TOP_OF_RAMP);
+    addWatchpoint(A_SITE_LONG, SHORT_ABOVE_CT);
+
+    addWatchpoint(RAMP, FAR_LONG);
+    addWatchpoint(RAMP, SHORT_TO_A);
+    addWatchpoint(RAMP, GOOSE);
+    addWatchpoint(RAMP, A_SITE);
+
+    addWatchpoint(TOP_OF_RAMP, FAR_LONG);
+    addWatchpoint(TOP_OF_RAMP, SHORT_ABOVE_CT);
+    addWatchpoint(TOP_OF_RAMP, SHORT_STAIRS);
+
+    addWatchpoint(GOOSE, RAMP);
+    addWatchpoint(GOOSE, FAR_LONG);
+    addWatchpoint(GOOSE, A_SITE);
+
+    addWatchpoint(A_SITE, FAR_LONG);
+    addWatchpoint(A_SITE, RAMP);
+    addWatchpoint(A_SITE, SHORT_ABOVE_CT);
+    addWatchpoint(A_SITE, SHORT_STAIRS);
+  }
+
+  static auto zoneSelector(NamedZone const& z) { return z.name; }
+
   auto addTransition(ZoneName start, ZoneName target, RequiredMovement movement = RequiredMovement::NONE,
                      bool oneWay = false, Volume&& transitionArea = {}) -> void {
-    auto zoneSelector = [](NamedZone const& z) { return z.name; };
     auto startZone = std::ranges::find(_zones.begin(), _zones.end(), start, zoneSelector);
     auto endZone = std::ranges::find(_zones.begin(), _zones.end(), target, zoneSelector);
 
@@ -416,8 +465,19 @@ private:
     }
   }
 
+  auto addWatchpoint(ZoneName zoneName, Position const& target) -> void {
+    auto zone = std::ranges::find(_zones.begin(), _zones.end(), zoneName, zoneSelector);
+    _watchPoints[zone->zone].emplace_back(target);
+  }
+
+  auto addWatchpoint(ZoneName zoneName, ZoneName targetZoneName) -> void {
+    auto targetZone = std::ranges::find(_zones.begin(), _zones.end(), targetZoneName, zoneSelector);
+    addWatchpoint(zoneName, targetZone->zone.volume.center());
+  }
+
   std::map<Zone, std::vector<Transition>> _transitions;
   std::vector<NamedZone> _zones;
+  std::map<Zone, std::vector<Position>> _watchPoints;
 };
 
 } // namespace gabe
