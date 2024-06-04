@@ -41,7 +41,6 @@ public:
         _windowController.addEvent(e->evaluate());
         e->postEvaluation();
       }
-      _windowController.addEvent(std::make_unique<KeyPressEvent>('p', 100));
       _synchronizer.requestSynchronization();
       usleep(6000);
     }
@@ -51,9 +50,10 @@ public:
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
     buildImageCapturingTree();
-    //buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildShootingTree(rootFolder + "scripts/objectDetection");
     buildPositionGettingTree();
     buildTargetChoosingTree();
+    buildAimingTree();
     buildMovementTree();
   }
 
@@ -64,11 +64,6 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-
-    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    //for (auto idx = 0; idx < 5; ++idx) {
-    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add_ct"));
-    //}
   }
 
 #else
@@ -89,15 +84,25 @@ private:
     _trees.push_back(std::move(shootingTreeRoot));
   }
 
-  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree<DirectMovementPolicy>>(_state)); }
+  auto buildMovementTree() -> void { _trees.push_back(std::make_unique<MovementTree>(_state)); }
 
   auto buildPositionGettingTree() -> void {
     _trees.push_back(std::make_unique<PositionGettingTree>(_state, _positionReader.synchronizer));
   }
 
+  auto buildAimingTree() -> void {
+    auto aimingRootTree = std::make_unique<DecisionTree>(_state);
+    aimingRootTree->addDecision(0.55f, std::make_unique<MovementOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.35f, std::make_unique<AimingOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.1f, std::make_unique<BackCheckingRotationTree>(_state));
+    _trees.push_back(std::move(aimingRootTree));
+  }
+
   auto buildTargetChoosingTree() -> void {
     auto destinationTree = std::make_unique<DestinationChoosingTree>(_state);
-    destinationTree->addDecision(1.0f, std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state));
+    auto pathChoosingTree = std::make_unique<PathChoosingTree<ShortestPathPolicy>>(_state);
+    pathChoosingTree->addDecision(1.0f, std::make_unique<LocationChoosingTree<DirectMovementPolicy>>(_state));
+    destinationTree->addDecision(1.0f, std::move(pathChoosingTree));
     _trees.push_back(std::move(destinationTree));
   }
 

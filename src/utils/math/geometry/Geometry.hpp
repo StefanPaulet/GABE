@@ -77,6 +77,9 @@ struct Position {
 
   auto operator<=>(Position const& other) const = default;
   auto empty() const -> bool { return x == 0 && y == 0 && z == 0; }
+  [[nodiscard]] auto distanceXY(Position const& other) const -> float {
+    return (x - other.x) * (x - other.x) + (y - other.y) * (y - other.y);
+  }
   friend auto operator<<(std::ostream& out, Position const& position) -> std::ostream& {
     out << position.x << " " << position.y << " " << position.z;
     return out;
@@ -97,7 +100,7 @@ struct Vector {
   Vector(Position const& pos1, Position const& pos2) : x {pos2.x - pos1.x}, y {pos2.y - pos1.y} {}
 
   [[nodiscard]] auto getAngle() const -> float {
-    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? (y < 0 ? 180.0f : -180.0f) : .0f);
+    return std::atanf(y / x) * 180.0f / std::numbers::pi_v<float> + (x < 0 ? 180.0f : .0f);
   }
 
   [[nodiscard]] auto multiply(float angle) const -> Vector {

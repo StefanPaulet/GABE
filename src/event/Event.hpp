@@ -508,15 +508,18 @@ public:
 protected:
   auto getKeys() -> std::vector<char> {
     std::vector<char> inputs {};
-    if (_movementVector.x != 0) {
+    if (std::abs(_movementVector.x) >= errorMargin) {
       inputs.push_back(_movementVector.x > 0 ? 'w' : 's');
     }
-    if (_movementVector.y != 0) {
+    if (std::abs(_movementVector.y) >= errorMargin) {
       inputs.push_back(_movementVector.y > 0 ? 'a' : 'd');
     }
     return inputs;
   }
   Vector _movementVector {};
+
+private:
+  static constexpr auto errorMargin = 1.0f;
 };
 
 class MovementEvent : public Movement, public Event {
@@ -524,8 +527,7 @@ public:
   MovementEvent() = default;
   MovementEvent(MovementEvent const&) = default;
   MovementEvent(MovementEvent&&) noexcept = default;
-  MovementEvent(Vector const& vector, int duration, Orientation orientation) :
-      Movement(vector), _duration {duration}, _orientation {orientation} {}
+  MovementEvent(Vector const& vector, int duration) : Movement(vector), _duration {duration} {}
 
   auto solve(Display* display, Window window) -> void override {
     auto inputs = getKeys();
@@ -540,7 +542,6 @@ public:
 
 private:
   int _duration {};
-  Orientation _orientation {};
 };
 
 class JumpEvent : public Movement, public Event {
@@ -560,11 +561,10 @@ public:
         KeyPressEvent(input, sleepTime).solve(display, input);
       }
     }
-    log("Treated jump event", OpState::INFO);
   }
 
 private:
-  static constexpr auto sleepTime = 200;
+  static constexpr auto sleepTime = 0;
   bool _crouched {false};
 };
 } // namespace gabe
