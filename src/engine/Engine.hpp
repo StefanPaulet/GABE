@@ -53,12 +53,13 @@ public:
 
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
-    buildImageCapturingTree();
-    buildShootingTree(rootFolder + "scripts/objectDetection");
-    buildPositionGettingTree();
-    buildTargetChoosingTree();
-    buildAimingTree();
-    buildMovementTree();
+    //buildImageCapturingTree();
+    //buildShootingTree(rootFolder + "scripts/objectDetection");
+    //buildPositionGettingTree();
+    //buildTargetChoosingTree();
+    //buildAimingTree();
+    //buildMovementTree();
+    buildWeaponsChoosingTree();
   }
 
 #ifndef NDEBUG
@@ -68,10 +69,10 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-    _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    for (auto idx = 0; idx < 3; ++idx) {
-      _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
-    }
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    //for (auto idx = 0; idx < 3; ++idx) {
+    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
+    //}
   }
 
 #else
@@ -113,6 +114,8 @@ private:
     destinationTree->addDecision(1.0f, std::move(pathChoosingTree));
     _trees.push_back(std::move(destinationTree));
   }
+
+  auto buildWeaponsChoosingTree() -> void { _trees.push_back(std::make_unique<WeaponChoosingTree>(_state)); }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "Inventory.hpp"
 #include "Map.hpp"
 #include "Weapon.hpp"
 #include "utils/objectDetection/ObjectDetectionController.hpp"
@@ -126,5 +127,6 @@ public:
 
   utils::BoundingBox enemy {utils::sentinelBox};
   Weapon weapon {GLOCK};
+  Inventory inventory {};
 };
 } // namespace gabe

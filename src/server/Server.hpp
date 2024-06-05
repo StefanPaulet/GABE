@@ -19,6 +19,11 @@
 namespace gabe::server {
 class Server {
 public:
+  struct ThreadParam {
+    GameState& state;
+    int fd;
+  };
+
   Server(GameState& state) noexcept(false) : _state {state} {
     _properties.sin_family = AF_INET;
     _properties.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -39,9 +44,8 @@ public:
 
 private:
   auto createThread(int fd) noexcept(false) -> void {
-    auto pFd = new int;
-    *pFd = fd;
-    _threadList.emplace_back(&Server::threadMain, pFd);
+    auto pTp = new ThreadParam {_state, fd};
+    _threadList.emplace_back(&Server::threadMain, pTp);
   }
   inline auto initialize() noexcept(false) -> void {
 
@@ -65,27 +69,27 @@ private:
     static std::mutex myMutex {};
     static auto cout = std::ofstream("fisier.out");
 
-    int fd = *static_cast<int*>(pParam);
-    delete static_cast<int*>(pParam);
+    auto threadParam = std::unique_ptr<ThreadParam>(static_cast<ThreadParam*>(pParam));
     HttpMessage response {"Http 1.1/ 200 OK", {}, "ok"};
-    Socket const socket {fd};
+    Socket const socket {threadParam->fd};
 
     try {
       HttpMessage request = socket.read();
       auto lg = std::lock_guard {myMutex};
       auto jsonData = cds::json::parseJson(request.getBody());
       try {
-        std::cout << jsonData.getJson("player").getJson("weapons").getJson("weapon_0").getString("name") << '\n';
+        threadParam->state.inventory.update(jsonData);
       } catch (cds::Exception const&) {
-        cout << request << '\n';
-        cout.flush();
+        //empty on purpose
       }
+      cout << request << '\n';
+      cout.flush();
       socket.write(response);
     } catch (exception::ConnectionTimeoutException& e) {
       //empty on purpose
     }
 
-    close(fd);
+    close(threadParam->fd);
 
     return nullptr;
   }

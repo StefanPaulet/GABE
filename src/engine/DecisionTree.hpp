@@ -382,4 +382,14 @@ public:
     return std::make_unique<MovementEvent>(movementVector, 6000 * 30);
   }
 };
+
+class WeaponChoosingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    log(std::format("Current weapon is {}", _state.inventory.currentWeapon().toString()), OpState::INFO);
+    return std::make_unique<EmptyEvent>();
+  }
+};
 } // namespace gabe
