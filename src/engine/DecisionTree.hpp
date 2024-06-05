@@ -272,6 +272,18 @@ public:
   }
 };
 
+class AimingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (_state.enemy != utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+    return DecisionTree::evaluate();
+  }
+};
+
 class RotationTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
@@ -341,6 +353,10 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
+    if (_state.enemy != utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();

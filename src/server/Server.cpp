@@ -3,7 +3,9 @@
 //
 
 #include "Server.hpp"
+#include <CDS/util/JSON>
 #include <fstream>
+#include <mutex>
 
 namespace {
 using namespace gabe::server;
@@ -56,21 +58,26 @@ auto Server::createThread(int fd) -> void {
 
 
 auto Server::threadMain(void* pParam) -> void* {
+  static std::mutex myMutex {};
+  static auto cout = std::ofstream("fisier.out");
+
   int fd = *static_cast<int*>(pParam);
-  delete pParam;
+  delete static_cast<int*>(pParam);
   HttpMessage response {"Http 1.1/ 200 OK", {}, "ok"};
   Socket const socket {fd};
-  auto cout = std::ofstream("fisier.out");
-  while (true) {
-    try {
-      HttpMessage request = socket.read();
-      cout << request;
-      cout.flush();
-      socket.write(response);
-    } catch (ConnectionTimeoutException& e) {
-      break;
-    }
+
+  try {
+    HttpMessage request = socket.read();
+    auto lg = std::lock_guard {myMutex};
+    auto jsonData = cds::json::parseJson(request.getBody());
+    cout << jsonData.getJson("player").getString("name") << '\n';
+    cout.flush();
+    socket.write(response);
+  } catch (ConnectionTimeoutException& e) {
+    //empty on purpose
   }
+
+  close(fd);
 
   return nullptr;
 }
