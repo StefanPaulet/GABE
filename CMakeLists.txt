@@ -16,9 +16,6 @@ set(CDS_INCLUDE_DIRECTORIES CDS/include)
 add_executable(
     server
     src/target/server.cpp
-    src/server/Server.cpp
-    src/server/httpMessage/HttpMessage.cpp
-    src/server/socket/Socket.cpp
 )
 
 add_executable(
@@ -34,6 +31,7 @@ add_executable(
 target_include_directories(
     server
     PUBLIC
+    src
     src/server
     ${CDS_INCLUDE_DIRECTORIES}
 )
@@ -42,6 +40,7 @@ target_include_directories(
     main
     PUBLIC
     src
+    src/server
     ${CDS_INCLUDE_DIRECTORIES}
 )
 
