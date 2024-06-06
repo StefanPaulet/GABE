@@ -9,9 +9,8 @@
 #include "Movement.hpp"
 #include "Path.hpp"
 #include "event/Event.hpp"
-#include "synchronizer/Synchronizer.hpp"
+#include "multithreaded/synchronizer/Synchronizer.hpp"
 #include "utils/objectDetection/ObjectDetectionController.hpp"
-#include "utils/positionReader/PositionReader.hpp"
 #include <memory>
 #include <numeric>
 #include <random>

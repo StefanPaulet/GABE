@@ -7,6 +7,7 @@
 #include "GameState.hpp"
 #include "Path.hpp"
 #include "gameStateIntegrator/Integrator.hpp"
+#include "positionReader/PositionReader.hpp"
 #include "windowController/WindowController.hpp"
 
 namespace gabe {
@@ -26,17 +27,14 @@ public:
     _windowController.stop();
     _positionReader.stop();
     _integrator.stop();
-    _windowControllerThread.join();
-    _positionReaderThread.join();
-    _integratorThread.join();
     log("Stopped processing commands", OpState::SUCCESS);
   }
 
   auto run() -> int {
     log("Started processing commands", OpState::SUCCESS);
-    _windowControllerThread = _windowController.run();
-    _positionReaderThread = _positionReader.run();
-    _integratorThread = _integrator.run();
+    _windowController.run();
+    _positionReader.run();
+    _integrator.run();
 
     setupCommands();
 
@@ -53,12 +51,12 @@ public:
 
 private:
   auto buildTrees(std::string const& rootFolder) -> void {
-    //buildImageCapturingTree();
-    //buildShootingTree(rootFolder + "scripts/objectDetection");
-    //buildPositionGettingTree();
-    //buildTargetChoosingTree();
-    //buildAimingTree();
-    //buildMovementTree();
+    buildImageCapturingTree();
+    buildShootingTree(rootFolder + "scripts/objectDetection");
+    buildPositionGettingTree();
+    buildTargetChoosingTree();
+    buildAimingTree();
+    buildMovementTree();
     buildWeaponsChoosingTree();
   }
 
@@ -119,12 +117,9 @@ private:
 
   Synchronizer _synchronizer {};
   WindowController _windowController;
-  std::jthread _windowControllerThread;
   GameState _state {};
-  utils::PositionReader _positionReader;
-  std::jthread _positionReaderThread;
+  PositionReader _positionReader;
   std::vector<std::unique_ptr<DecisionTree>> _trees {};
   Integrator _integrator;
-  std::jthread _integratorThread;
 };
 } // namespace gabe

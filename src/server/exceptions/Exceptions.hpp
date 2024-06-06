@@ -6,7 +6,7 @@
 
 #include <exception>
 
-namespace gabe::server::exception {
+namespace gabe::server::exceptions {
 class SocketCreationException : public std::exception {
   [[nodiscard]] char const* what() const noexcept override { return "Could not create socket"; }
 };
@@ -34,4 +34,4 @@ class ThreadCreationException : public std::exception {
 class ConnectionTimeoutException : public std::exception {
   [[nodiscard]] char const* what() const noexcept override { return "Connection from client dropped"; }
 };
-} // namespace gabe::server::exception
+} // namespace gabe::server::exceptions

@@ -15,7 +15,7 @@ public:
   template <typename ThreadFuncParamType>
   Thread(ThreadFunctionType threadFunction, ThreadFuncParamType* parameter) noexcept(false) {
     if (0 > pthread_create(&_id, nullptr, threadFunction, reinterpret_cast<void*>(parameter))) {
-      throw exception::ThreadCreationException();
+      throw exceptions::ThreadCreationException();
     }
   }
 

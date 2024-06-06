@@ -5,7 +5,8 @@
 #pragma once
 
 #include "Exceptions.hpp"
-#include "synchronizer/Synchronizer.hpp"
+#include "multithreaded/runnable/Runnable.hpp"
+#include "multithreaded/synchronizer/Synchronizer.hpp"
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 #include <cstdio>
@@ -14,7 +15,7 @@
 #include <thread>
 
 namespace gabe {
-class WindowController {
+class WindowController : public Runnable<WindowController> {
 public:
   WindowController() = delete;
   WindowController(WindowController const&) = delete;
@@ -33,49 +34,28 @@ public:
     }
   }
 
-  [[nodiscard]] auto run() -> std::jthread {
-    auto eventLoop = [this] {
-      while (!stopped) {
-        if (_cleaningRequired) {
-          while (!_eventQueue.empty()) {
-            _eventQueue.pop();
-          }
-        }
-        try {
-          checkWindowState();
-        } catch (window::DisplayOpeningException const& e) {
-          log("Error: " + std::string(e.what()), OpState::FAILURE);
-        }
-        if (_windowState.focused == false) {
-          continue;
-        }
-        if (_eventQueue.empty()) {
-          if (_synchronizer.synchronizationRequired()) {
-            _synchronizer.handleSynchronization();
-          }
-          continue;
-        }
-        auto event = std::move(_eventQueue.front());
-        _eventQueue.pop();
-        event.get()->solve(_display, _window);
-      }
-      log("Finished running the event loop", OpState::SUCCESS);
-    };
-    return std::jthread {eventLoop};
+  auto mainLoop() -> void {
+    try {
+      checkWindowState();
+    } catch (window::DisplayOpeningException const& e) {
+      log("Error: " + std::string(e.what()), OpState::FAILURE);
+    }
+    if (_eventQueue.empty() && _synchronizer.synchronizationRequired()) {
+      _synchronizer.handleSynchronization();
+    }
+    if (_windowState.focused && !_eventQueue.empty()) {
+      auto event = std::move(_eventQueue.front());
+      _eventQueue.pop();
+      event.get()->solve(_display, _window);
+    }
   }
 
   auto addEvent(std::unique_ptr<Event>&& ev) { _eventQueue.push(std::move(ev)); }
-
-  auto stop() { stopped = true; }
-
-  auto cleanQueue() { _cleaningRequired = true; }
 
 private:
   struct WindowState {
     bool focused {true};
   };
-  bool volatile stopped {false};
-  bool volatile _cleaningRequired {false};
   WindowState _windowState {};
   Window _window {};
   Display* _display;

@@ -4,26 +4,17 @@
 
 #pragma once
 
+#include "multithreaded/runnable/Runnable.hpp"
 #include "server/Server.hpp"
 
 namespace gabe {
 
-class Integrator {
+class Integrator : public Runnable<Integrator> {
 public:
   explicit Integrator(GameState& state) : server {state} {}
-  auto run() -> std::jthread {
-    auto mainLoop = [this]() {
-      while (!_stopped) {
-        server.getClient();
-      }
-    };
-    return std::jthread {mainLoop};
-  }
-
-  auto stop() -> void { _stopped = true; }
+  auto mainLoop() -> void { server.getClient(); }
 
 private:
   server::Server server;
-  bool volatile _stopped {false};
 };
 } // namespace gabe

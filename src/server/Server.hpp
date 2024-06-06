@@ -36,7 +36,7 @@ public:
     int fd;
 
     if (-1 == (fd = accept(_socketFd, reinterpret_cast<sockaddr*>(&client_addr), &client_addr_size))) {
-      throw exception::AcceptException();
+      throw exceptions::AcceptException();
     }
 
     createThread(fd);
@@ -50,19 +50,19 @@ private:
   inline auto initialize() noexcept(false) -> void {
 
     if (-1 == (_socketFd = socket(AF_INET, SOCK_STREAM, 0))) {
-      throw exception::SocketCreationException();
+      throw exceptions::SocketCreationException();
     }
 
     if (int optionToggle = 1; -1 == setsockopt(_socketFd, SOL_SOCKET, SO_REUSEADDR, &optionToggle, sizeof(int))) {
-      throw exception::SocketOptionException();
+      throw exceptions::SocketOptionException();
     }
 
     if (-1 == bind(_socketFd, reinterpret_cast<sockaddr*>(&_properties), sizeof(sockaddr))) {
-      throw exception::SocketBindException();
+      throw exceptions::SocketBindException();
     }
 
     if (-1 == listen(_socketFd, 1)) {
-      throw exception::ListenException();
+      throw exceptions::ListenException();
     }
   }
   static auto threadMain(void* pParam) -> void* {
@@ -78,14 +78,14 @@ private:
       auto lg = std::lock_guard {myMutex};
       auto jsonData = cds::json::parseJson(request.getBody());
       try {
-        threadParam->state.inventory.update(jsonData);
+        threadParam->state.update(jsonData);
       } catch (cds::Exception const&) {
         //empty on purpose
       }
       cout << request << '\n';
       cout.flush();
       socket.write(response);
-    } catch (exception::ConnectionTimeoutException& e) {
+    } catch (exceptions::ConnectionTimeoutException& e) {
       //empty on purpose
     }
 

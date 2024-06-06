@@ -17,7 +17,7 @@ public:
   ~Socket() { delete[] _pBuf; }
   auto read() const noexcept(false) -> HttpMessage {
     if (auto bytesRead = ::read(_fd, _pBuf, MSG_SIZE); 0 >= bytesRead) {
-      throw exception::ConnectionTimeoutException();
+      throw exceptions::ConnectionTimeoutException();
     }
 
     auto pTopLine = strchr(_pBuf, '\r');
@@ -46,7 +46,7 @@ public:
     auto const response_str = httpMessage.to_string();
     auto bytesWritten = ::write(_fd, response_str.c_str(), response_str.size());
     if (0 >= bytesWritten) {
-      throw exception::ConnectionTimeoutException();
+      throw exceptions::ConnectionTimeoutException();
     }
   }
 
