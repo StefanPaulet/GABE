@@ -210,7 +210,7 @@ public:
     auto shootingPoint = (_state.enemy.topLeft + _state.enemy.bottomRight) - screenPoint;
     auto bulletCount = 5;
     log("Decided to use spray shooting", OpState::INFO);
-    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.weapon);
+    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.inventory().currentWeapon().weapon);
   }
 };
 
@@ -388,7 +388,7 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    log(std::format("Current weapon is {}", _state.inventory.currentWeapon().toString()), OpState::INFO);
+    log(std::format("Current weapon is {}", _state.inventory().currentWeapon().toString()), OpState::INFO);
     return std::make_unique<EmptyEvent>();
   }
 };

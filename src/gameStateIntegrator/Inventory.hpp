@@ -4,12 +4,14 @@
 
 #pragma once
 
-#include "Weapon.hpp"
+#include "JsonUpdatable.hpp"
+#include "engine/Weapon.hpp"
+#include "utils/logger/Logger.hpp"
 #include <CDS/util/JSON>
 #include <array>
 
 namespace gabe {
-class Inventory {
+class Inventory : public JsonUpdatable<Inventory> {
 public:
   enum class ActiveWeaponState { READY, RELOADING };
   enum class WeaponClass : unsigned int { WC_PRIMARY = 0, WC_PISTOL = 1, WC_KNIFE = 2, WC_BOMB = 3 };
@@ -22,10 +24,10 @@ public:
   };
 
   [[nodiscard]] auto currentWeapon() const -> InventoryWeapon const& {
-    return weapons[static_cast<int>(activeWeaponClass)];
+    return _weapons[static_cast<int>(_activeWeaponClass)];
   }
 
-  auto update(cds::json::JsonObject const& jsonObject) -> void {
+  auto jsonUpdate(cds::json::JsonObject const& jsonObject) -> void {
     using namespace cds;
 
     using enum WeaponClass;
@@ -47,8 +49,8 @@ public:
           case WC_PRIMARY:
           case WC_PISTOL: {
             auto weapon = weaponMatcher[newWeapon.value().getJson().getString("name")];
-            weapons[static_cast<unsigned int>(weaponType)].ammo = newWeapon.value().getJson().getInt("ammo_clip");
-            weapons[static_cast<unsigned int>(weaponType)].weapon = weapon;
+            _weapons[static_cast<unsigned int>(weaponType)].ammo = newWeapon.value().getJson().getInt("ammo_clip");
+            _weapons[static_cast<unsigned int>(weaponType)].weapon = weapon;
             break;
           }
           default: {
@@ -56,16 +58,18 @@ public:
           }
         }
         if (newWeapon.value().getJson().getString("state") != "holstered") {
-          activeWeaponClass = weaponType;
-          activeWeaponState = stateMatcher[newWeapon.value().getJson().getString("state")];
+          _activeWeaponClass = weaponType;
+          _activeWeaponState = stateMatcher[newWeapon.value().getJson().getString("state")];
         }
       }
-    } catch (...) {}
+    } catch (Exception const& e) {
+      log("Exception encountered while updating player state " + e.toString(), OpState::FAILURE);
+    }
   }
 
 private:
-  ActiveWeaponState activeWeaponState {};
-  WeaponClass activeWeaponClass {WeaponClass::WC_PISTOL};
-  std::array<InventoryWeapon, 4> weapons {{{NO_WEAPON, 0, '1'}, {NO_WEAPON, 0, '2'}, {KNIFE, 1, '3'}, {BOMB, 1, '4'}}};
+  ActiveWeaponState _activeWeaponState {};
+  WeaponClass _activeWeaponClass {WeaponClass::WC_PISTOL};
+  std::array<InventoryWeapon, 4> _weapons {{{NO_WEAPON, 0, '1'}, {NO_WEAPON, 0, '2'}, {KNIFE, 1, '3'}, {BOMB, 1, '4'}}};
 };
 } // namespace gabe

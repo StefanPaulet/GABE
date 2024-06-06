@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "Inventory.hpp"
 #include "Map.hpp"
 #include "Weapon.hpp"
+#include "gameStateIntegrator/Inventory.hpp"
+#include "gameStateIntegrator/Player.hpp"
 #include "utils/objectDetection/ObjectDetectionController.hpp"
 #include <cassert>
 #include <mutex>
@@ -62,7 +63,7 @@ struct SharedOrientation : Orientation, Shared {
 };
 
 
-class GameState {
+class GameState : public JsonUpdatable<GameState> {
 public:
   enum class Properties { POSITION, ORIENTATION, IMAGE };
 
@@ -113,10 +114,20 @@ public:
     return _image.image();
   }
 
+  [[nodiscard]] auto inventory() const -> Inventory { return _inventory; }
+  [[nodiscard]] auto player() const -> Player { return _player; }
+
+  auto jsonUpdate(cds::json::JsonObject const& jsonObject) -> void {
+    _inventory.update(jsonObject);
+    _player.update(jsonObject);
+  }
+
 private:
   SharedPosition _position {};
   SharedOrientation _orientation {};
   SharedImage _image {};
+  Inventory _inventory {};
+  Player _player {};
 
 public:
   Map const map {};
@@ -126,7 +137,5 @@ public:
   Position nextPosition {};
 
   utils::BoundingBox enemy {utils::sentinelBox};
-  Weapon weapon {GLOCK};
-  Inventory inventory {};
 };
 } // namespace gabe
