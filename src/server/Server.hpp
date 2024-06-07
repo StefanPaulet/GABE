@@ -73,20 +73,21 @@ private:
     HttpMessage response {"Http 1.1/ 200 OK", {}, "ok"};
     Socket const socket {threadParam->fd};
 
-    try {
-      HttpMessage request = socket.read();
-      auto lg = std::lock_guard {myMutex};
-      auto jsonData = cds::json::parseJson(request.getBody());
+    if (HttpMessage request = socket.read(); request.getBody().starts_with('{')) {
       try {
-        threadParam->state.update(jsonData);
-      } catch (cds::Exception const&) {
-        //empty on purpose
+        auto lg = std::lock_guard {myMutex};
+        try {
+          auto jsonData = cds::json::parseJson(request.getBody());
+          threadParam->state.update(jsonData);
+        } catch (cds::Exception const& e) {
+          cout << "Error\n";
+        }
+        cout << request << '\n';
+        cout.flush();
+        socket.write(response);
+      } catch (exceptions::ConnectionTimeoutException& e) {
+        log(std::format("Exception {} while receiving http requests", e.what()), OpState::FAILURE);
       }
-      cout << request << '\n';
-      cout.flush();
-      socket.write(response);
-    } catch (exceptions::ConnectionTimeoutException& e) {
-      //empty on purpose
     }
 
     close(threadParam->fd);

@@ -27,7 +27,9 @@ public:
     return _weapons[static_cast<int>(_activeWeaponClass)];
   }
 
-  auto jsonUpdate(cds::json::JsonObject const& jsonObject) -> void {
+  [[nodiscard]] auto weapons() const { return _weapons; }
+
+  auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
     using namespace cds;
 
     using enum WeaponClass;
@@ -62,8 +64,9 @@ public:
           _activeWeaponState = stateMatcher[newWeapon.value().getJson().getString("state")];
         }
       }
-    } catch (Exception const& e) {
-      log("Exception encountered while updating player state " + e.toString(), OpState::FAILURE);
+    } catch (cds::KeyException const& e) {
+      log("Exception encountered while updating player inventory " + e.toString(), OpState::FAILURE);
+      throw e;
     }
   }
 

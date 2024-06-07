@@ -10,6 +10,8 @@ namespace gabe {
 
 template <typename D> class JsonUpdatable {
 public:
-  auto update(cds::json::JsonObject const& jsonObject) -> void { static_cast<D*>(this)->jsonUpdate(jsonObject); }
+  auto update(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
+    static_cast<D*>(this)->jsonUpdate(jsonObject);
+  }
 };
 } // namespace gabe

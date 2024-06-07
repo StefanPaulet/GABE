@@ -10,17 +10,18 @@
 namespace gabe {
 class Player : public JsonUpdatable<Player> {
 public:
-  auto jsonUpdate(cds::json::JsonObject const& jsonObject) -> void {
+  auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
     using namespace cds;
     try {
       auto const& playerState = jsonObject.getJson("player").getJson("state");
       _health = playerState.getInt("health");
       _money = playerState.getInt("money");
       _armor = playerState.getInt("armor");
-      _helmet = playerState.getInt("helmet");
+      _helmet = playerState.getBoolean("helmet");
       _flashed = playerState.getInt("flashed");
-    } catch (Exception const& e) {
+    } catch (KeyException const& e) {
       log("Exception encountered while updating player state " + e.toString(), OpState::FAILURE);
+      throw e;
     }
   }
 

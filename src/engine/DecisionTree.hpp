@@ -387,8 +387,17 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    log(std::format("Current weapon is {}", _state.inventory().currentWeapon().toString()), OpState::INFO);
-    return std::make_unique<EmptyEvent>();
+    char keyToPress {};
+    if (_state.enemy != utils::sentinelBox) {
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+        keyToPress = '1';
+      } else {
+        keyToPress = '2';
+      }
+    } else {
+      keyToPress = '3';
+    }
+    return std::make_unique<KeyPressEvent>(keyToPress, 500);
   }
 };
 } // namespace gabe

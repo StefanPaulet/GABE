@@ -22,6 +22,9 @@ struct Weapon {
   WeaponSpray spray {};
   bool automatic {true};
 
+  auto operator==(Weapon const& other) const -> bool { return type == other.type; }
+  auto operator!=(Weapon const& other) const -> bool { return type != other.type; }
+
   [[nodiscard]] auto getSpray() -> Point {
     if (spray.points.empty()) {
       return {};

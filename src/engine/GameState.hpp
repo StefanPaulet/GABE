@@ -8,6 +8,7 @@
 #include "Weapon.hpp"
 #include "gameStateIntegrator/Inventory.hpp"
 #include "gameStateIntegrator/Player.hpp"
+#include "gameStateIntegrator/Round.hpp"
 #include "utils/objectDetection/ObjectDetectionController.hpp"
 #include <cassert>
 #include <mutex>
@@ -117,9 +118,10 @@ public:
   [[nodiscard]] auto inventory() const -> Inventory { return _inventory; }
   [[nodiscard]] auto player() const -> Player { return _player; }
 
-  auto jsonUpdate(cds::json::JsonObject const& jsonObject) -> void {
+  auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
     _inventory.update(jsonObject);
     _player.update(jsonObject);
+    _round.update(jsonObject);
   }
 
 private:
@@ -128,6 +130,7 @@ private:
   SharedImage _image {};
   Inventory _inventory {};
   Player _player {};
+  Round _round {};
 
 public:
   Map const map {};
