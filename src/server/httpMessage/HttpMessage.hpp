@@ -19,8 +19,11 @@ class HttpMessage {
 public:
   using HeaderType = std::map<std::string, std::string, std::less<>>;
 
-  HttpMessage(std::string const& topLine, HeaderType const& headers, std::string const& body);
-  HttpMessage(std::string&& topLine, HeaderType&& headers, std::string&& body);
+  HttpMessage(std::string const& topLine, HeaderType const& headers, std::string const& body) :
+      _topLine {topLine + "\n"}, _headers {headers}, _body {body + "\n"} {}
+
+  HttpMessage(std::string&& topLine, HeaderType&& headers, std::string&& body) :
+      _topLine {std::move(topLine)}, _headers {std::move(headers)}, _body {std::move(body)} {}
 
   template <Stringable HeaderContentType> auto setHeader(std::string const& name, HeaderContentType const& content)
       -> void {
@@ -32,19 +35,27 @@ public:
     _headers.emplace(name, content);
   }
 
-  constexpr auto setBody(std::string const& body) -> void;
+  [[nodiscard]] constexpr auto getBody() const -> std::string const& { return _body; }
 
-  constexpr auto setTopLine(std::string const& topLine) -> void;
+  [[nodiscard]] auto to_string() const -> std::string {
+    std::string res = _topLine;
+    for (auto& [header, value] : _headers) {
+      res += header;
+      res += ":";
+      res += value;
+      res += "\n";
+    }
+    return res + _body;
+  }
 
-  [[nodiscard]] constexpr auto getHeaders() const -> HeaderType const&;
-
-  [[nodiscard]] constexpr auto getBody() const -> std::string const&;
-
-  [[nodiscard]] constexpr auto getTopLine() const -> std::string const&;
-
-  [[nodiscard]] auto to_string() const -> std::string;
-
-  friend auto operator<<(std::ostream& out, HttpMessage const& message) -> std::ostream&;
+  friend auto operator<<(std::ostream& out, HttpMessage const& message) -> std::ostream& {
+    out << "Method:" << message._topLine;
+    for (auto& [header, value] : message._headers) {
+      out << header << ":" << value << '\n';
+    }
+    out << "Body:" << message._body;
+    return out;
+  }
 
 private:
   std::string _topLine {};

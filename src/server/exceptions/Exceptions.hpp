@@ -6,32 +6,39 @@
 
 #include <exception>
 
-namespace gabe::server::exception {
+namespace gabe::server::exceptions {
 class SocketCreationException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not create socket"; }
 };
 
 class SocketOptionException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not set socket options"; }
 };
 
 class SocketBindException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not bind socket"; }
 };
 
 class ListenException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not listen on socket"; }
 };
 
 class AcceptException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not accept client"; }
 };
 
 class ThreadCreationException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Could not create thread"; }
 };
 
 class ConnectionTimeoutException : public std::exception {
+public:
   [[nodiscard]] char const* what() const noexcept override { return "Connection from client dropped"; }
 };
-} // namespace gabe::server::exception
+} // namespace gabe::server::exceptions

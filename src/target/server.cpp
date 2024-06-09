@@ -3,13 +3,15 @@
 //
 
 #include <Server.hpp>
+#include <engine/GameState.hpp>
 #include <iostream>
 
 using namespace gabe::server;
 
 int main() {
   try {
-    Server server;
+    gabe::GameState state;
+    Server server {state};
     while (true) {
       server.getClient();
     }

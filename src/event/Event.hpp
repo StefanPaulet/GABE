@@ -465,10 +465,11 @@ public:
     }
     KeyPressEvent(10, sleepTime).solve(display, window);
     KeyPressEvent(27, sleepTime).solve(display, window);
+    usleep(5000);
   }
 
 private:
-  static constexpr auto sleepTime = 7500;
+  static constexpr auto sleepTime = 9000;
   std::string _command {};
 };
 

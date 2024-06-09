@@ -9,9 +9,8 @@
 #include "Movement.hpp"
 #include "Path.hpp"
 #include "event/Event.hpp"
-#include "synchronizer/Synchronizer.hpp"
+#include "multithreaded/synchronizer/Synchronizer.hpp"
 #include "utils/objectDetection/ObjectDetectionController.hpp"
-#include "utils/positionReader/PositionReader.hpp"
 #include <memory>
 #include <numeric>
 #include <random>
@@ -210,7 +209,7 @@ public:
     auto shootingPoint = (_state.enemy.topLeft + _state.enemy.bottomRight) - screenPoint;
     auto bulletCount = 5;
     log("Decided to use spray shooting", OpState::INFO);
-    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.weapon);
+    return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.inventory().currentWeapon().weapon);
   }
 };
 
@@ -269,6 +268,18 @@ public:
     auto nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
     _state.nextPosition = nextPoint;
     return std::make_unique<EmptyEvent>();
+  }
+};
+
+class AimingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (_state.enemy != utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+    return DecisionTree::evaluate();
   }
 };
 
@@ -341,6 +352,10 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
+    if (_state.enemy != utils::sentinelBox) {
+      return std::make_unique<EmptyEvent>();
+    }
+
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
@@ -364,6 +379,25 @@ public:
       }
     }
     return std::make_unique<MovementEvent>(movementVector, 6000 * 30);
+  }
+};
+
+class WeaponChoosingTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto act() -> std::unique_ptr<Event> override {
+    char keyToPress {};
+    if (_state.enemy != utils::sentinelBox) {
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+        keyToPress = '1';
+      } else {
+        keyToPress = '2';
+      }
+    } else {
+      keyToPress = '3';
+    }
+    return std::make_unique<KeyPressEvent>(keyToPress, 500);
   }
 };
 } // namespace gabe
