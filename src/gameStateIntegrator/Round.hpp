@@ -29,15 +29,18 @@ public:
       auto const& round = jsonObject.getJson("round");
       _stage = stageMatcher[round.getString("phase")];
       try {
-        _bombPlanted = bombStateMatcher[jsonObject.getString("bomb")];
-      } catch (...) {
-        //empty on purpose
+        _bombPlanted = bombStateMatcher[round.getString("bomb")];
+      } catch (KeyException const& e) {
+        _bombPlanted = BombState::NOT_PLANTED;
       }
     } catch (KeyException const& e) {
       log("Exception encountered while updating round state " + e.toString(), OpState::FAILURE);
       throw e;
     }
   }
+
+  [[nodiscard]] auto bombState() const -> BombState { return _bombPlanted; }
+  [[nodiscard]] auto stage() const -> Stage { return _stage; }
 
 private:
   BombState _bombPlanted {BombState::NOT_PLANTED};

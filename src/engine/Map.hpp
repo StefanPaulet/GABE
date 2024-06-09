@@ -230,7 +230,7 @@ private:
     tSpawn.zone.obstacles.emplace_back(Position {-878.56f, -722.03f, 186.22f}, Position {-982.03f, -638.03f, 192.16f});
     _zones.push_back(tSpawn);
 
-    NamedZone tSpawnExit {Zone {Position {375.97f, -481.48f, 63.87f}, Position {-491.97f, -634.46f, 221.34f}},
+    NamedZone tSpawnExit {Zone {Position {375.97f, -500.48f, 63.87f}, Position {-491.97f, -634.46f, 221.34f}},
                           T_SPAWN_EXIT};
     _zones.push_back(tSpawnExit);
 
@@ -346,7 +346,7 @@ private:
   auto buildZoneTransitions() -> void {
     using enum ZoneName;
     using enum RequiredMovement;
-    addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true, {{-507.37f, -661.95f, 184.66f}, {-1.93f, -660.03f, 69.35f}});
+    addTransition(T_SPAWN, T_SPAWN_EXIT, JUMP, true, {{-507.37f, -661.95f, 184.66f}, {-432.93f, -660.03f, 69.35f}});
     addTransition(T_SPAWN, T_SPAWN_EXIT, NONE, false, {{25.8f, -660.37f, 68.14f}, {321.43f, -665.32f, 62.87f}});
 
     addTransition(T_SPAWN_EXIT, T_SPAWN_TO_LONG);

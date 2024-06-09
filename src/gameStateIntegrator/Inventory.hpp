@@ -27,6 +27,9 @@ public:
     return _weapons[static_cast<int>(_activeWeaponClass)];
   }
 
+  [[nodiscard]] auto currentWeaponState() const -> ActiveWeaponState { return _activeWeaponState; }
+  [[nodiscard]] auto currentWeaponClass() const -> WeaponClass { return _activeWeaponClass; }
+
   [[nodiscard]] auto weapons() const { return _weapons; }
 
   auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {

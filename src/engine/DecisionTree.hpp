@@ -156,7 +156,8 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    if (_state.enemy == utils::sentinelBox) {
+    if (_state.enemy == utils::sentinelBox
+        || _state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING) {
       return std::make_unique<EmptyEvent>();
     }
     return shoot();
@@ -185,8 +186,6 @@ public:
       aimType = ShootEvent::AimType::TAP;
     }
     lastShootTime = timeNow;
-    log(std::format("Decided to use slow shooting of type {}", aimType == ShootEvent::AimType::FLICK ? "flick" : "tap"),
-        OpState::INFO);
     return std::make_unique<ShootEvent>(shootingPoint, aimType);
   }
 
@@ -201,8 +200,13 @@ public:
 
   auto shoot() -> std::unique_ptr<Event> override {
     auto shootingPoint = (_state.enemy.topLeft + _state.enemy.bottomRight) - screenPoint;
-    auto bulletCount = 5;
-    log("Decided to use spray shooting", OpState::INFO);
+    int bulletCount {};
+    if (_state.inventory().currentWeaponClass() == Inventory::WeaponClass::WC_PRIMARY) {
+      bulletCount = 6;
+    } else {
+      bulletCount = 4;
+    }
+    bulletCount = std::max(bulletCount, _state.inventory().currentWeapon().ammo);
     return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.inventory().currentWeapon().weapon);
   }
 };
@@ -224,7 +228,11 @@ public:
   using EnemyDependentTree::EnemyDependentTree;
 
   auto evaluate() -> std::unique_ptr<Event> override {
-    _state.targetZone.name = Map::ZoneName::A_SITE;
+    if (_state.round().bombState() == Round::BombState::PLANTED) {
+      _state.targetZone.name = Map::ZoneName::TOP_OF_RAMP;
+    } else {
+      _state.targetZone.name = Map::ZoneName::A_SITE;
+    }
     return EnemyDependentTree::evaluate();
   }
 };
@@ -272,9 +280,11 @@ public:
     if (std::abs(moveAngle) > 180.0f) {
       moveAngle = 360 - moveAngle * (moveAngle < 0.0f ? -1.0f : 1.0f);
     }
+    auto oldXOrientation = orientation.x;
     orientation.y = _targetAngle;
+    orientation.x = 0;
     _state.set(GameState::Properties::ORIENTATION, orientation);
-    return std::make_unique<RotationEvent>(moveAngle, RotationEvent::Axis::OX);
+    return std::make_unique<RotationEvent>(moveAngle, -oldXOrientation);
   }
 
 
@@ -364,7 +374,8 @@ public:
   auto act() -> std::unique_ptr<Event> override {
     char keyToPress {};
     if (_state.enemy != utils::sentinelBox) {
-      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON
+          && (_state.inventory().weapons()[0].ammo >= 5 || _state.inventory().weapons()[1].ammo < 5)) {
         keyToPress = '1';
       } else {
         keyToPress = '2';
@@ -374,8 +385,17 @@ public:
         --_iterationsHeld;
         return std::make_unique<EmptyEvent>();
       }
-      _iterationsHeld = persistanceCount;
-      keyToPress = '3';
+      if (_state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING
+          || _state.inventory().currentWeapon().weapon == BOMB) {
+        return std::make_unique<EmptyEvent>();
+      }
+      if (_state.map.findZone(_state.position()).name == Map::ZoneName::A_SITE
+          && _state.round().bombState() != Round::BombState::PLANTED) {
+        keyToPress = '5';
+      } else {
+        _iterationsHeld = persistanceCount;
+        keyToPress = '3';
+      }
     }
     return std::make_unique<KeyPressEvent>(keyToPress, 500);
   }
@@ -384,4 +404,37 @@ private:
   static constexpr auto persistanceCount = 5;
   int _iterationsHeld {};
 };
+
+class SituationalTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (conditionsFulfilled()) {
+      return DecisionTree::evaluate();
+    }
+    checkConditionInfluencers();
+    return std::make_unique<EmptyEvent>();
+  }
+  [[nodiscard]] virtual auto conditionsFulfilled() const -> bool = 0;
+  virtual auto checkConditionInfluencers() -> void {
+    //empty on purpose
+  }
+};
+
+class BombPlantingTree : public SituationalTree {
+public:
+  using SituationalTree::SituationalTree;
+
+  [[nodiscard]] auto conditionsFulfilled() const -> bool override {
+    return _state.map.findZone(_state.position()).name == Map::ZoneName::A_SITE
+        && _state.round().bombState() != Round::BombState::PLANTED && _state.inventory().currentWeapon().weapon == BOMB;
+  }
+
+  auto act() -> std::unique_ptr<Event> override {
+    return std::make_unique<MouseHoldEvent>(MouseButton::Button::LEFT_BUTTON, 6);
+  }
+};
+
+
 } // namespace gabe

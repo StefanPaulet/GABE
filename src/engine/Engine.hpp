@@ -39,6 +39,9 @@ public:
     setupCommands();
 
     while (true) {
+      if (_state.round().stage() == Round::Stage::OVER) {
+        continue;
+      }
       for (auto const& e : _trees) {
         _windowController.addEvent(e->evaluate());
         e->postEvaluation();
@@ -58,6 +61,7 @@ private:
     buildAimingTree();
     buildMovementTree();
     buildWeaponsChoosingTree();
+    buildSituationaltrees();
   }
 
 #ifndef NDEBUG
@@ -65,12 +69,16 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
     _windowController.addEvent(std::make_unique<CommandEvent>("bind p getpos"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime 600"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime_defuse 600"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    //for (auto idx = 0; idx < 3; ++idx) {
-    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
-    //}
+    _windowController.addEvent(std::make_unique<CommandEvent>("buddha true"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("buddha_ignore_bots true"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    for (auto idx = 0; idx < 3; ++idx) {
+      _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
+    }
   }
 
 #else
@@ -114,6 +122,8 @@ private:
   }
 
   auto buildWeaponsChoosingTree() -> void { _trees.push_back(std::make_unique<WeaponChoosingTree>(_state)); }
+
+  auto buildSituationaltrees() -> void { _trees.push_back(std::make_unique<BombPlantingTree>(_state)); }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;

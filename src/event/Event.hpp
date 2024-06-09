@@ -87,7 +87,6 @@ public:
     unsigned int mask;
 
     XQueryPointer(display, window, &window, &childWindow, &rootX, &rootY, &winX, &winY, &mask);
-    log(std::format("Treated mouse scan event; x={}, y={}", rootX, rootY), OpState::INFO);
   }
 };
 
@@ -109,7 +108,6 @@ public:
 
     XTestFakeMotionEvent(display, -1, _point.x, _point.y, CurrentTime);
     XFlush(display);
-    log(std::format("Treated move mouse event at x={}, y={}", _point.x, _point.y), OpState::INFO);
   }
 
 private:
@@ -270,11 +268,28 @@ public:
   auto solve(Display* display, Window window) -> void override {
     MouseActionEvent(_buttonType.button, true).solve(display, window);
     MouseActionEvent(_buttonType.button, false).solve(display, window);
-    log("Treated mouse click event of type " + _buttonType.toString(), OpState::INFO);
   }
 
 private:
   MouseButton _buttonType {};
+};
+
+class MouseHoldEvent : public Event {
+public:
+  MouseHoldEvent() = default;
+  MouseHoldEvent(MouseHoldEvent const&) = default;
+  MouseHoldEvent(MouseHoldEvent&&) noexcept = default;
+  explicit MouseHoldEvent(MouseButton::Button val, int sts) : _buttonType {val}, _sleepTimeSeconds {sts} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    MouseActionEvent(_buttonType.button, true).solve(display, window);
+    sleep(_sleepTimeSeconds);
+    MouseActionEvent(_buttonType.button, false).solve(display, window);
+  }
+
+private:
+  MouseButton _buttonType {};
+  int _sleepTimeSeconds;
 };
 
 class ShootEvent : public Event {
@@ -412,7 +427,6 @@ public:
   auto solve(Display* display, Window window) -> void override {
     KeyActionEvent(_key, _sleepTime / 2, true).solve(display, window);
     KeyActionEvent(_key, _sleepTime / 2, false).solve(display, window);
-    log(std::format("Treated key press event of key {}", _key), OpState::INFO);
   }
 
 private:
@@ -475,34 +489,27 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 9000;
+  static constexpr auto sleepTime = 12000;
   std::string _command {};
 };
 
 class RotationEvent : public Event {
 public:
-  enum class Axis { OX, OY };
-
   RotationEvent() = default;
   RotationEvent(RotationEvent const&) = default;
   RotationEvent(RotationEvent&&) noexcept = default;
-  RotationEvent(float angle, Axis axis) : _angle {angle}, _axis {axis} {}
+  RotationEvent(float xAngle, float yAngle) : _xAngle {xAngle}, _yAngle {yAngle} {}
 
   auto solve(Display* display, Window window) -> void override {
-    if (_axis == Axis::OX) {
-      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 20, 2, sleepTime)
-          .solve(display, window);
-    } else {
-      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 20, 2, sleepTime)
-          .solve(display, window);
-    }
+    FullStrafeEvent(Point {static_cast<int>(_xAngle * degreeToPixelRatio), 0}, 20, 2, sleepTime).solve(display, window);
+    FullStrafeEvent(Point {0, static_cast<int>(_yAngle * degreeToPixelRatio)}, 20, 2, sleepTime).solve(display, window);
   }
 
 private:
   static constexpr auto degreeToPixelRatio = 26.6667f;
   static constexpr auto sleepTime = 5000;
-  float _angle;
-  Axis _axis;
+  float _xAngle;
+  float _yAngle;
 };
 
 class Movement {
