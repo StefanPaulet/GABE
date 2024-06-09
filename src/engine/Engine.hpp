@@ -76,7 +76,7 @@ private:
 #else
   auto setupCommands() -> void {
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
-    _windowController.addEvent(std::make_unique<CommandEvent>("keybind p getpos"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("bind p getpos"));
   }
 #endif
 
