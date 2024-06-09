@@ -18,9 +18,9 @@ struct WeaponSpray {
 
 struct Weapon {
   WeaponType type {};
+  bool automatic {true};
   float firerate {};
   WeaponSpray spray {};
-  bool automatic {true};
 
   auto operator==(Weapon const& other) const -> bool { return type == other.type; }
   auto operator!=(Weapon const& other) const -> bool { return type != other.type; }
@@ -65,17 +65,17 @@ struct Weapon {
 };
 
 Weapon const NO_WEAPON {WeaponType::NONE};
-Weapon const KNIFE {WeaponType::KNIFE};
-Weapon const BOMB {WeaponType::BOMB};
+Weapon const KNIFE {WeaponType::KNIFE, false};
+Weapon const BOMB {WeaponType::BOMB, false};
 Weapon const AK_47 {
-    WeaponType::AK_47, 600.0f,
+    WeaponType::AK_47, true, 600.0f,
     WeaponSpray {{Point {0, 25},   Point {0, 25},   Point {0, 25},   Point {0, 25},   Point {0, 25},
                   Point {3, 25},   Point {3, 25},   Point {3, 25},   Point {0, 25},   Point {-10, 5},
                   Point {-15, 5},  Point {-15, 25}, Point {-15, 5},  Point {-15, 5},  Point {-15, 5},
                   Point {15, 5},   Point {15, 5},   Point {15, 5},   Point {15, 5},   Point {15, 5},
                   Point {0, 2},    Point {0, 2},    Point {0, 2},    Point {0, 2},    Point {0, 2},
                   Point {-15, -5}, Point {-15, -5}, Point {-15, -5}, Point {-15, -5}, Point {-15, -5}}}};
-Weapon const GLOCK {WeaponType::GLOCK, 400.0f, WeaponSpray {{}}, false};
-Weapon const USPS {WeaponType::USPS, 352.94f, WeaponSpray {{}}, false};
-Weapon const M4A4 {WeaponType::M4A4, 666.0f, WeaponSpray {{}}};
+Weapon const GLOCK {WeaponType::GLOCK, false, 400.0f, WeaponSpray {{}}};
+Weapon const USPS {WeaponType::USPS, false, 352.94f, WeaponSpray {{}}};
+Weapon const M4A4 {WeaponType::M4A4, true, 666.0f, WeaponSpray {{}}};
 } // namespace gabe

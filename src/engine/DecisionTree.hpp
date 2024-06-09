@@ -89,26 +89,23 @@ protected:
   std::vector<Decision> _children;
 };
 
-class ConditionalTree : public DecisionTree {
+template <int iterationDelay> class EnemyDependentTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
 
   auto evaluate() -> std::unique_ptr<Event> override {
-    if (!evaluationNeeded() && _lastActiveChild != nullptr) {
-      return _lastActiveChild->decision->evaluate();
+    if (_state.enemy != utils::sentinelBox) {
+      _iterationsWaited = iterationDelay;
     }
-
-    if (_children.empty()) {
-      return act();
+    if (_iterationsWaited == 0) {
+      return DecisionTree::evaluate();
     }
-    auto& child = selectChild();
-    _lastActiveChild = &child;
-    return child.decision->evaluate();
+    --_iterationsWaited;
+    return std::make_unique<EmptyEvent>();
   }
-  virtual auto evaluationNeeded() -> bool = 0;
 
-protected:
-  Decision* _lastActiveChild;
+private:
+  int _iterationsWaited {iterationDelay};
 };
 
 class ImageCapturingTree : public DecisionTree {
@@ -144,9 +141,6 @@ public:
             < ((b2.topLeft + b2.bottomRight - screenPoint) / 2).abs();
       };
       _state.enemy = *std::ranges::min_element(enemyList, pointChooser);
-      log(std::format("Detected enemy between x1={}, y1={}, x2={}, y2={}", _state.enemy.topLeft.x,
-                      _state.enemy.topLeft.y, _state.enemy.bottomRight.x, _state.enemy.bottomRight.y),
-          OpState::INFO);
     } else {
       _state.enemy = utils::sentinelBox;
     }
@@ -225,21 +219,13 @@ private:
   Synchronizer& _synchronizer;
 };
 
-class DestinationChoosingTree : public ConditionalTree {
+class DestinationChoosingTree : public EnemyDependentTree<3> {
 public:
-  using ConditionalTree::ConditionalTree;
+  using EnemyDependentTree::EnemyDependentTree;
 
   auto evaluate() -> std::unique_ptr<Event> override {
-    if (evaluationNeeded() || _lastActiveChild == nullptr) {
-      _state.targetZone.name = Map::ZoneName::A_SITE;
-      log("Evaluating destination choosing tree to set destination to " + _state.targetZone.toString(), OpState::INFO);
-    }
-    return ConditionalTree::evaluate();
-  }
-
-  auto evaluationNeeded() -> bool override {
-    auto currentZone = _state.map.findZone(_state.position());
-    return currentZone.name == _state.targetZone.name;
+    _state.targetZone.name = Map::ZoneName::A_SITE;
+    return EnemyDependentTree::evaluate();
   }
 };
 
@@ -271,16 +257,9 @@ public:
   }
 };
 
-class AimingTree : public DecisionTree {
+class AimingTree : public EnemyDependentTree<5> {
 public:
-  using DecisionTree::DecisionTree;
-
-  auto evaluate() -> std::unique_ptr<Event> override {
-    if (_state.enemy != utils::sentinelBox) {
-      return std::make_unique<EmptyEvent>();
-    }
-    return DecisionTree::evaluate();
-  }
+  using EnemyDependentTree::EnemyDependentTree;
 };
 
 class RotationTree : public DecisionTree {
@@ -347,15 +326,11 @@ public:
   }
 };
 
-class MovementTree : public DecisionTree {
+class MovementTree : public EnemyDependentTree<3> {
 public:
-  using DecisionTree::DecisionTree;
+  using EnemyDependentTree::EnemyDependentTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    if (_state.enemy != utils::sentinelBox) {
-      return std::make_unique<EmptyEvent>();
-    }
-
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
@@ -395,9 +370,18 @@ public:
         keyToPress = '2';
       }
     } else {
+      if (_iterationsHeld != 0) {
+        --_iterationsHeld;
+        return std::make_unique<EmptyEvent>();
+      }
+      _iterationsHeld = persistanceCount;
       keyToPress = '3';
     }
     return std::make_unique<KeyPressEvent>(keyToPress, 500);
   }
+
+private:
+  static constexpr auto persistanceCount = 5;
+  int _iterationsHeld {};
 };
 } // namespace gabe

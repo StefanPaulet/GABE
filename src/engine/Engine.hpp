@@ -100,8 +100,8 @@ private:
   auto buildAimingTree() -> void {
     auto aimingRootTree = std::make_unique<AimingTree>(_state);
     aimingRootTree->addDecision(0.55f, std::make_unique<MovementOrientedRotationTree>(_state));
-    aimingRootTree->addDecision(0.35f, std::make_unique<AimingOrientedRotationTree>(_state));
-    aimingRootTree->addDecision(0.1f, std::make_unique<BackCheckingRotationTree>(_state));
+    aimingRootTree->addDecision(0.4f, std::make_unique<AimingOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.05f, std::make_unique<BackCheckingRotationTree>(_state));
     _trees.push_back(std::move(aimingRootTree));
   }
 

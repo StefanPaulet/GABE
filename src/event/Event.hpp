@@ -336,6 +336,7 @@ public:
       _startPoint {startPoint}, _bulletCount {bulletCount}, _weapon {weapon} {}
 
   auto solve(Display* display, Window window) -> void override {
+
     StrafeEvent(_startPoint, 1, 250).solve(display, window);
     if (_weapon.automatic) {
       MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
@@ -345,9 +346,13 @@ public:
       }
       MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
     } else {
-      for (auto idx = 0; idx < _bulletCount; ++idx) {
+      if (_weapon == KNIFE) {
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
-        usleep(static_cast<int>(60000000 / _weapon.firerate));
+      } else {
+        for (auto idx = 0; idx < _bulletCount; ++idx) {
+          MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+          usleep(static_cast<int>(60000000 / _weapon.firerate));
+        }
       }
     }
     log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
@@ -407,6 +412,7 @@ public:
   auto solve(Display* display, Window window) -> void override {
     KeyActionEvent(_key, _sleepTime / 2, true).solve(display, window);
     KeyActionEvent(_key, _sleepTime / 2, false).solve(display, window);
+    log(std::format("Treated key press event of key {}", _key), OpState::INFO);
   }
 
 private:

@@ -42,7 +42,7 @@ public:
     static auto const stateMatcher = cds::mapOf(F {"reloading", RELOADING}, F {"active", READY});
 
     using G = MapEntry<StringView, Weapon>;
-    static auto const weaponMatcher = cds::mapOf(G {"weapon_glock", GLOCK});
+    static auto const weaponMatcher = cds::mapOf(G {"weapon_glock", GLOCK}, G {"weapon_ak47", AK_47});
 
     try {
       for (auto const& newWeapon : jsonObject.getJson("player").getJson("weapons")) {
