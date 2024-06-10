@@ -36,7 +36,7 @@ public:
     _positionReader.run();
     _integrator.run();
 
-    setupCommands();
+    //setupCommands();
 
     while (true) {
       if (_state.round().stage() == Round::Stage::OVER) {
