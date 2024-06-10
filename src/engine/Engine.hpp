@@ -36,7 +36,7 @@ public:
     _positionReader.run();
     _integrator.run();
 
-    //setupCommands();
+    setupCommands();
 
     while (true) {
       if (_state.round().stage() == Round::Stage::OVER) {
@@ -73,8 +73,6 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime_defuse 600"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-    _windowController.addEvent(std::make_unique<CommandEvent>("buddha true"));
-    _windowController.addEvent(std::make_unique<CommandEvent>("buddha_ignore_bots true"));
     _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
     for (auto idx = 0; idx < 3; ++idx) {
       _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));

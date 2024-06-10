@@ -24,6 +24,7 @@ struct Zone {
 
   Volume volume;
   std::vector<Volume> obstacles {};
+  std::vector<Volume> hidingSpots {};
 
   auto operator<=>(Zone const& other) const { return volume.operator<=>(other.volume); }
   auto operator==(Zone const& other) const -> bool { return volume == other.volume; }
@@ -289,6 +290,7 @@ private:
     _zones.push_back(topOfRamp);
 
     NamedZone goose {Zone {Position {1295.53f, 2632.93f, 190.36f}, Position {1051.03f, 3059.86f, 193.89f}}, GOOSE};
+    goose.zone.hidingSpots.emplace_back(Position {1051.24f, 3059.97f, 193.89f}, Position {1103.35f, 2969.1f, 192.24f});
     _zones.push_back(goose);
 
     NamedZone aSite {Zone {Position {1249.08f, 2616.88f, 190.6f}, Position {1056.03f, 2347.07f, 190.53f}}, A_SITE};

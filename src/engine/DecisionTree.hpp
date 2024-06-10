@@ -229,7 +229,7 @@ public:
 
   auto evaluate() -> std::unique_ptr<Event> override {
     if (_state.round().bombState() == Round::BombState::PLANTED) {
-      _state.targetZone.name = Map::ZoneName::TOP_OF_RAMP;
+      _state.targetZone.name = Map::ZoneName::GOOSE;
     } else {
       _state.targetZone.name = Map::ZoneName::A_SITE;
     }
@@ -259,7 +259,14 @@ public:
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
-    auto nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
+    Position nextPoint = position;
+    if (currentZone.zone == nextZone) {
+      if (_state.round().bombState() == Round::BombState::PLANTED) {
+        nextPoint = currentZone.zone.hidingSpots[0].center();
+      }
+    } else {
+      nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
+    }
     _state.nextPosition = nextPoint;
     return std::make_unique<EmptyEvent>();
   }
