@@ -73,10 +73,9 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime_defuse 600"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
-    _windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    for (auto idx = 0; idx < 3; ++idx) {
-      _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
-    }
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("bot_stop 0"));
   }
 
 #else

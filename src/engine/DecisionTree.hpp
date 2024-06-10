@@ -206,7 +206,7 @@ public:
     } else {
       bulletCount = 4;
     }
-    bulletCount = std::max(bulletCount, _state.inventory().currentWeapon().ammo);
+    bulletCount = std::min(bulletCount, _state.inventory().currentWeapon().ammo);
     return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.inventory().currentWeapon().weapon);
   }
 };
@@ -272,11 +272,6 @@ public:
   }
 };
 
-class AimingTree : public EnemyDependentTree<10> {
-public:
-  using EnemyDependentTree::EnemyDependentTree;
-};
-
 class RotationTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
@@ -340,6 +335,36 @@ public:
     auto orientation = _state.orientation().y;
     _targetAngle = orientation < 0.0f ? (orientation + 180.0f) : (orientation - 180.0f);
     return RotationTree::act();
+  }
+};
+
+class AimingTree : public EnemyDependentTree<10> {
+public:
+  using EnemyDependentTree::EnemyDependentTree;
+
+  auto postEvaluation() -> void override {
+    if (_state.round().bombState() == Round::BombState::PLANTED) {
+      for (auto& child : _children) {
+        if (dynamic_cast<AimingOrientedRotationTree*>(child.decision.get()) != nullptr) {
+          child.weight = 1.0f;
+        } else {
+          child.weight = 0.0f;
+        }
+      }
+    } else {
+      for (auto& child : _children) {
+        if (dynamic_cast<AimingOrientedRotationTree*>(child.decision.get()) != nullptr) {
+          child.weight = 0.4f;
+        } else {
+          if (dynamic_cast<MovementOrientedRotationTree*>(child.decision.get()) != nullptr) {
+            child.weight = 0.55f;
+          } else {
+            child.weight = 0.05f;
+          }
+        }
+      }
+    }
+    DecisionTree::postEvaluation();
   }
 };
 
