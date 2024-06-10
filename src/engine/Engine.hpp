@@ -39,6 +39,9 @@ public:
     setupCommands();
 
     while (true) {
+      if (_state.round().stage() == Round::Stage::OVER) {
+        continue;
+      }
       for (auto const& e : _trees) {
         _windowController.addEvent(e->evaluate());
         e->postEvaluation();
@@ -58,6 +61,7 @@ private:
     buildAimingTree();
     buildMovementTree();
     buildWeaponsChoosingTree();
+    buildSituationalTrees();
   }
 
 #ifndef NDEBUG
@@ -65,12 +69,13 @@ private:
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_cheats true"));
     _windowController.addEvent(std::make_unique<CommandEvent>("bind p getpos"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_autoteambalance false"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime 600"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("mp_roundtime_defuse 600"));
     _windowController.addEvent(std::make_unique<CommandEvent>("mp_limitteams 5"));
     _windowController.addEvent(std::make_unique<CommandEvent>("sv_infinite_ammo 2"));
     //_windowController.addEvent(std::make_unique<CommandEvent>("bot_kick"));
-    //for (auto idx = 0; idx < 3; ++idx) {
-    //  _windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
-    //}
+    //_windowController.addEvent(std::make_unique<CommandEvent>("bot_add ct"));
+    _windowController.addEvent(std::make_unique<CommandEvent>("bot_stop 0"));
   }
 
 #else
@@ -100,8 +105,8 @@ private:
   auto buildAimingTree() -> void {
     auto aimingRootTree = std::make_unique<AimingTree>(_state);
     aimingRootTree->addDecision(0.55f, std::make_unique<MovementOrientedRotationTree>(_state));
-    aimingRootTree->addDecision(0.35f, std::make_unique<AimingOrientedRotationTree>(_state));
-    aimingRootTree->addDecision(0.1f, std::make_unique<BackCheckingRotationTree>(_state));
+    aimingRootTree->addDecision(0.4f, std::make_unique<AimingOrientedRotationTree>(_state));
+    aimingRootTree->addDecision(0.05f, std::make_unique<BackCheckingRotationTree>(_state));
     _trees.push_back(std::move(aimingRootTree));
   }
 
@@ -114,6 +119,11 @@ private:
   }
 
   auto buildWeaponsChoosingTree() -> void { _trees.push_back(std::make_unique<WeaponChoosingTree>(_state)); }
+
+  auto buildSituationalTrees() -> void {
+    _trees.push_back(std::make_unique<BombPlantingTree>(_state));
+    _trees.push_back(std::make_unique<BuyingTree>(_state));
+  }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;

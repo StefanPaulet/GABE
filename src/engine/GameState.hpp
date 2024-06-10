@@ -117,6 +117,7 @@ public:
 
   [[nodiscard]] auto inventory() const -> Inventory { return _inventory; }
   [[nodiscard]] auto player() const -> Player { return _player; }
+  [[nodiscard]] auto round() const -> Round { return _round; }
 
   auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
     _inventory.update(jsonObject);

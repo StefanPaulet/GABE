@@ -27,6 +27,9 @@ public:
     return _weapons[static_cast<int>(_activeWeaponClass)];
   }
 
+  [[nodiscard]] auto currentWeaponState() const -> ActiveWeaponState { return _activeWeaponState; }
+  [[nodiscard]] auto currentWeaponClass() const -> WeaponClass { return _activeWeaponClass; }
+
   [[nodiscard]] auto weapons() const { return _weapons; }
 
   auto jsonUpdate(cds::json::JsonObject const& jsonObject) noexcept(false) -> void {
@@ -42,7 +45,10 @@ public:
     static auto const stateMatcher = cds::mapOf(F {"reloading", RELOADING}, F {"active", READY});
 
     using G = MapEntry<StringView, Weapon>;
-    static auto const weaponMatcher = cds::mapOf(G {"weapon_glock", GLOCK});
+    static auto const weaponMatcher = cds::mapOf(G {"weapon_glock", GLOCK}, G {"weapon_ak47", AK_47});
+
+    _weapons[0].weapon = NO_WEAPON;
+    _weapons[1].weapon = NO_WEAPON;
 
     try {
       for (auto const& newWeapon : jsonObject.getJson("player").getJson("weapons")) {

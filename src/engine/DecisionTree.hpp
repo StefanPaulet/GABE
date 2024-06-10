@@ -89,26 +89,23 @@ protected:
   std::vector<Decision> _children;
 };
 
-class ConditionalTree : public DecisionTree {
+template <int iterationDelay> class EnemyDependentTree : public DecisionTree {
 public:
   using DecisionTree::DecisionTree;
 
   auto evaluate() -> std::unique_ptr<Event> override {
-    if (!evaluationNeeded() && _lastActiveChild != nullptr) {
-      return _lastActiveChild->decision->evaluate();
+    if (_state.enemy != utils::sentinelBox) {
+      _iterationsWaited = iterationDelay;
     }
-
-    if (_children.empty()) {
-      return act();
+    if (_iterationsWaited == 0) {
+      return DecisionTree::evaluate();
     }
-    auto& child = selectChild();
-    _lastActiveChild = &child;
-    return child.decision->evaluate();
+    --_iterationsWaited;
+    return std::make_unique<EmptyEvent>();
   }
-  virtual auto evaluationNeeded() -> bool = 0;
 
-protected:
-  Decision* _lastActiveChild;
+private:
+  int _iterationsWaited {iterationDelay};
 };
 
 class ImageCapturingTree : public DecisionTree {
@@ -144,9 +141,6 @@ public:
             < ((b2.topLeft + b2.bottomRight - screenPoint) / 2).abs();
       };
       _state.enemy = *std::ranges::min_element(enemyList, pointChooser);
-      log(std::format("Detected enemy between x1={}, y1={}, x2={}, y2={}", _state.enemy.topLeft.x,
-                      _state.enemy.topLeft.y, _state.enemy.bottomRight.x, _state.enemy.bottomRight.y),
-          OpState::INFO);
     } else {
       _state.enemy = utils::sentinelBox;
     }
@@ -162,7 +156,8 @@ public:
   using DecisionTree::DecisionTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    if (_state.enemy == utils::sentinelBox) {
+    if (_state.enemy == utils::sentinelBox
+        || _state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING) {
       return std::make_unique<EmptyEvent>();
     }
     return shoot();
@@ -191,8 +186,6 @@ public:
       aimType = ShootEvent::AimType::TAP;
     }
     lastShootTime = timeNow;
-    log(std::format("Decided to use slow shooting of type {}", aimType == ShootEvent::AimType::FLICK ? "flick" : "tap"),
-        OpState::INFO);
     return std::make_unique<ShootEvent>(shootingPoint, aimType);
   }
 
@@ -207,8 +200,13 @@ public:
 
   auto shoot() -> std::unique_ptr<Event> override {
     auto shootingPoint = (_state.enemy.topLeft + _state.enemy.bottomRight) - screenPoint;
-    auto bulletCount = 5;
-    log("Decided to use spray shooting", OpState::INFO);
+    int bulletCount {};
+    if (_state.inventory().currentWeaponClass() == Inventory::WeaponClass::WC_PRIMARY) {
+      bulletCount = 6;
+    } else {
+      bulletCount = 4;
+    }
+    bulletCount = std::min(bulletCount, _state.inventory().currentWeapon().ammo);
     return std::make_unique<SprayEvent>(shootingPoint, bulletCount, _state.inventory().currentWeapon().weapon);
   }
 };
@@ -225,21 +223,17 @@ private:
   Synchronizer& _synchronizer;
 };
 
-class DestinationChoosingTree : public ConditionalTree {
+class DestinationChoosingTree : public EnemyDependentTree<10> {
 public:
-  using ConditionalTree::ConditionalTree;
+  using EnemyDependentTree::EnemyDependentTree;
 
   auto evaluate() -> std::unique_ptr<Event> override {
-    if (evaluationNeeded() || _lastActiveChild == nullptr) {
+    if (_state.round().bombState() == Round::BombState::PLANTED) {
+      _state.targetZone.name = Map::ZoneName::GOOSE;
+    } else {
       _state.targetZone.name = Map::ZoneName::A_SITE;
-      log("Evaluating destination choosing tree to set destination to " + _state.targetZone.toString(), OpState::INFO);
     }
-    return ConditionalTree::evaluate();
-  }
-
-  auto evaluationNeeded() -> bool override {
-    auto currentZone = _state.map.findZone(_state.position());
-    return currentZone.name == _state.targetZone.name;
+    return EnemyDependentTree::evaluate();
   }
 };
 
@@ -265,21 +259,16 @@ public:
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
-    auto nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
+    Position nextPoint = position;
+    if (currentZone.zone == nextZone) {
+      if (_state.round().bombState() == Round::BombState::PLANTED) {
+        nextPoint = currentZone.zone.hidingSpots[0].center();
+      }
+    } else {
+      nextPoint = MovementPolicy {_state.map}.getNextPoints(position, currentZone.zone, _state.currentPath).back();
+    }
     _state.nextPosition = nextPoint;
     return std::make_unique<EmptyEvent>();
-  }
-};
-
-class AimingTree : public DecisionTree {
-public:
-  using DecisionTree::DecisionTree;
-
-  auto evaluate() -> std::unique_ptr<Event> override {
-    if (_state.enemy != utils::sentinelBox) {
-      return std::make_unique<EmptyEvent>();
-    }
-    return DecisionTree::evaluate();
   }
 };
 
@@ -293,9 +282,11 @@ public:
     if (std::abs(moveAngle) > 180.0f) {
       moveAngle = 360 - moveAngle * (moveAngle < 0.0f ? -1.0f : 1.0f);
     }
+    auto oldXOrientation = orientation.x;
     orientation.y = _targetAngle;
+    orientation.x = 0;
     _state.set(GameState::Properties::ORIENTATION, orientation);
-    return std::make_unique<RotationEvent>(moveAngle, RotationEvent::Axis::OX);
+    return std::make_unique<RotationEvent>(moveAngle, -oldXOrientation);
   }
 
 
@@ -347,15 +338,41 @@ public:
   }
 };
 
-class MovementTree : public DecisionTree {
+class AimingTree : public EnemyDependentTree<10> {
 public:
-  using DecisionTree::DecisionTree;
+  using EnemyDependentTree::EnemyDependentTree;
+
+  auto postEvaluation() -> void override {
+    if (_state.round().bombState() == Round::BombState::PLANTED) {
+      for (auto& child : _children) {
+        if (dynamic_cast<AimingOrientedRotationTree*>(child.decision.get()) != nullptr) {
+          child.weight = 1.0f;
+        } else {
+          child.weight = 0.0f;
+        }
+      }
+    } else {
+      for (auto& child : _children) {
+        if (dynamic_cast<AimingOrientedRotationTree*>(child.decision.get()) != nullptr) {
+          child.weight = 0.4f;
+        } else {
+          if (dynamic_cast<MovementOrientedRotationTree*>(child.decision.get()) != nullptr) {
+            child.weight = 0.55f;
+          } else {
+            child.weight = 0.05f;
+          }
+        }
+      }
+    }
+    DecisionTree::postEvaluation();
+  }
+};
+
+class MovementTree : public EnemyDependentTree<10> {
+public:
+  using EnemyDependentTree::EnemyDependentTree;
 
   auto act() -> std::unique_ptr<Event> override {
-    if (_state.enemy != utils::sentinelBox) {
-      return std::make_unique<EmptyEvent>();
-    }
-
     auto position = _state.position();
     auto currentZone = _state.map.findZone(position);
     auto nextZone = _state.currentPath.back();
@@ -388,16 +405,123 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     char keyToPress {};
+
+    if (_state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING) {
+      return std::make_unique<EmptyEvent>();
+    }
+
     if (_state.enemy != utils::sentinelBox) {
-      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+      _iterationsHeld = persistanceCount;
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON
+          && (_state.inventory().weapons()[0].ammo >= 5 || _state.inventory().weapons()[1].ammo < 5)) {
         keyToPress = '1';
       } else {
         keyToPress = '2';
       }
     } else {
-      keyToPress = '3';
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+        if (_state.inventory().weapons()[0].ammo == 0) {
+          return std::make_unique<KeyPressEvent>('1', 500);
+        }
+      } else {
+        if (_state.inventory().weapons()[1].ammo == 0) {
+          return std::make_unique<KeyPressEvent>('2', 500);
+        }
+      }
+
+      if (_iterationsHeld != 0) {
+        --_iterationsHeld;
+        return std::make_unique<EmptyEvent>();
+      }
+      if (_state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING
+          || _state.inventory().currentWeapon().weapon == BOMB) {
+        return std::make_unique<EmptyEvent>();
+      }
+      if (_state.map.findZone(_state.position()).name == Map::ZoneName::A_SITE
+          && _state.round().bombState() != Round::BombState::PLANTED) {
+        keyToPress = '5';
+      } else {
+        keyToPress = '3';
+      }
     }
     return std::make_unique<KeyPressEvent>(keyToPress, 500);
   }
+
+private:
+  static constexpr auto persistanceCount = 10;
+  int _iterationsHeld {};
 };
+
+class SituationalTree : public DecisionTree {
+public:
+  using DecisionTree::DecisionTree;
+
+  auto evaluate() -> std::unique_ptr<Event> override {
+    if (conditionsFulfilled()) {
+      return DecisionTree::evaluate();
+    }
+    checkConditionInfluencers();
+    return std::make_unique<EmptyEvent>();
+  }
+  [[nodiscard]] virtual auto conditionsFulfilled() const -> bool = 0;
+  virtual auto checkConditionInfluencers() -> void {
+    //empty on purpose
+  }
+};
+
+class BombPlantingTree : public SituationalTree {
+public:
+  using SituationalTree::SituationalTree;
+
+  [[nodiscard]] auto conditionsFulfilled() const -> bool override {
+    return _state.map.findZone(_state.position()).name == Map::ZoneName::A_SITE
+        && _state.round().bombState() != Round::BombState::PLANTED && _state.inventory().currentWeapon().weapon == BOMB;
+  }
+
+  auto act() -> std::unique_ptr<Event> override {
+    return std::make_unique<MouseHoldEvent>(MouseButton::Button::LEFT_BUTTON, 6);
+  }
+};
+
+class BuyingTree : public SituationalTree {
+public:
+  using SituationalTree::SituationalTree;
+
+  [[nodiscard]] auto conditionsFulfilled() const -> bool override {
+    return _buyingNeeded && _state.round().stage() == Round::Stage::START;
+  }
+
+  auto checkConditionInfluencers() -> void override {
+    if (_state.round().stage() == Round::Stage::OVER) {
+      _buyingNeeded = true;
+    }
+  }
+
+  auto act() -> std::unique_ptr<Event> override {
+    std::vector<BuyEvent::Item> itemsToBuy;
+    if (_state.player().armor() == 0) {
+      if (!_state.player().hasHelmet()) {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR_HELMET);
+      } else {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR);
+      }
+    } else {
+      if (_state.player().money() > 4000 || _state.player().armor() < 30) {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR);
+      }
+    }
+    if (_state.inventory().weapons()[0].weapon == NO_WEAPON && _state.player().money() > 2700) {
+      itemsToBuy.push_back(BuyEvent::Item::AK_47);
+    }
+
+    _buyingNeeded = false;
+
+    return std::make_unique<BuyEvent>(itemsToBuy);
+  }
+
+private:
+  bool _buyingNeeded {true};
+};
+
+
 } // namespace gabe

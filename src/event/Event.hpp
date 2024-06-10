@@ -87,7 +87,6 @@ public:
     unsigned int mask;
 
     XQueryPointer(display, window, &window, &childWindow, &rootX, &rootY, &winX, &winY, &mask);
-    log(std::format("Treated mouse scan event; x={}, y={}", rootX, rootY), OpState::INFO);
   }
 };
 
@@ -109,7 +108,6 @@ public:
 
     XTestFakeMotionEvent(display, -1, _point.x, _point.y, CurrentTime);
     XFlush(display);
-    log(std::format("Treated move mouse event at x={}, y={}", _point.x, _point.y), OpState::INFO);
   }
 
 private:
@@ -270,11 +268,28 @@ public:
   auto solve(Display* display, Window window) -> void override {
     MouseActionEvent(_buttonType.button, true).solve(display, window);
     MouseActionEvent(_buttonType.button, false).solve(display, window);
-    log("Treated mouse click event of type " + _buttonType.toString(), OpState::INFO);
   }
 
 private:
   MouseButton _buttonType {};
+};
+
+class MouseHoldEvent : public Event {
+public:
+  MouseHoldEvent() = default;
+  MouseHoldEvent(MouseHoldEvent const&) = default;
+  MouseHoldEvent(MouseHoldEvent&&) noexcept = default;
+  explicit MouseHoldEvent(MouseButton::Button val, int sts) : _buttonType {val}, _sleepTimeSeconds {sts} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    MouseActionEvent(_buttonType.button, true).solve(display, window);
+    sleep(_sleepTimeSeconds);
+    MouseActionEvent(_buttonType.button, false).solve(display, window);
+  }
+
+private:
+  MouseButton _buttonType {};
+  int _sleepTimeSeconds;
 };
 
 class ShootEvent : public Event {
@@ -336,6 +351,7 @@ public:
       _startPoint {startPoint}, _bulletCount {bulletCount}, _weapon {weapon} {}
 
   auto solve(Display* display, Window window) -> void override {
+
     StrafeEvent(_startPoint, 1, 250).solve(display, window);
     if (_weapon.automatic) {
       MouseActionEvent(MouseButton::Button::LEFT_BUTTON, true).solve(display, window);
@@ -345,9 +361,13 @@ public:
       }
       MouseActionEvent(MouseButton::Button::LEFT_BUTTON, false).solve(display, window);
     } else {
-      for (auto idx = 0; idx < _bulletCount; ++idx) {
+      if (_weapon == KNIFE) {
         MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
-        usleep(static_cast<int>(60000000 / _weapon.firerate));
+      } else {
+        for (auto idx = 0; idx < _bulletCount; ++idx) {
+          MouseClickEvent(MouseButton::Button::LEFT_BUTTON).solve(display, window);
+          usleep(static_cast<int>(60000000 / _weapon.firerate));
+        }
       }
     }
     log(std::format("Treated spray event at x={} y={}", _startPoint.x, _startPoint.y), OpState::INFO);
@@ -469,34 +489,27 @@ public:
   }
 
 private:
-  static constexpr auto sleepTime = 9000;
+  static constexpr auto sleepTime = 12000;
   std::string _command {};
 };
 
 class RotationEvent : public Event {
 public:
-  enum class Axis { OX, OY };
-
   RotationEvent() = default;
   RotationEvent(RotationEvent const&) = default;
   RotationEvent(RotationEvent&&) noexcept = default;
-  RotationEvent(float angle, Axis axis) : _angle {angle}, _axis {axis} {}
+  RotationEvent(float xAngle, float yAngle) : _xAngle {xAngle}, _yAngle {yAngle} {}
 
   auto solve(Display* display, Window window) -> void override {
-    if (_axis == Axis::OX) {
-      FullStrafeEvent(Point {static_cast<int>(_angle * degreeToPixelRatio), 0}, 20, 2, sleepTime)
-          .solve(display, window);
-    } else {
-      FullStrafeEvent(Point {0, static_cast<int>(_angle * degreeToPixelRatio)}, 20, 2, sleepTime)
-          .solve(display, window);
-    }
+    FullStrafeEvent(Point {static_cast<int>(_xAngle * degreeToPixelRatio), 0}, 20, 2, sleepTime).solve(display, window);
+    FullStrafeEvent(Point {0, static_cast<int>(_yAngle * degreeToPixelRatio)}, 20, 2, sleepTime).solve(display, window);
   }
 
 private:
   static constexpr auto degreeToPixelRatio = 26.6667f;
   static constexpr auto sleepTime = 5000;
-  float _angle;
-  Axis _axis;
+  float _xAngle;
+  float _yAngle;
 };
 
 class Movement {
@@ -568,4 +581,49 @@ private:
   static constexpr auto sleepTime = 0;
   bool _crouched {false};
 };
+
+class BuyEvent : public Event {
+public:
+  enum class Item { KEVLAR, KEVLAR_HELMET, AK_47 };
+  BuyEvent() = default;
+  BuyEvent(BuyEvent const&) = default;
+  BuyEvent(BuyEvent&&) noexcept = default;
+  BuyEvent(std::vector<Item> const& items) : _itemsToBuy {items} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    auto toString = [](Item item) -> std::string {
+      switch (item) {
+        using enum Item;
+        case KEVLAR: {
+          return "KEVLAR";
+        }
+        case KEVLAR_HELMET: {
+          return "KEVLAR_HELMET";
+        }
+        case AK_47: {
+          return "AK_47";
+        }
+      }
+    };
+
+    KeyPressEvent('b', sleep).solve(display, window);
+    for (auto const& item : _itemsToBuy) {
+      log("Decided to buy" + toString(item), OpState::INFO);
+      for (auto const& key : menuCombination.at(item)) {
+        KeyPressEvent(key, sleep).solve(display, window);
+        usleep(sleep);
+      }
+      usleep(sleep);
+    }
+    KeyPressEvent(27, sleep).solve(display, window);
+  }
+
+private:
+  std::vector<Item> _itemsToBuy;
+  static const std::map<Item, std::string> menuCombination;
+  static constexpr auto sleep = 2500;
+};
+
+std::map<BuyEvent::Item, std::string> const BuyEvent::menuCombination = {
+    {BuyEvent::Item::KEVLAR, "11"}, {BuyEvent::Item::KEVLAR_HELMET, "12"}, {BuyEvent::Item::AK_47, "42"}};
 } // namespace gabe
