@@ -436,5 +436,46 @@ public:
   }
 };
 
+class BuyingTree : public SituationalTree {
+public:
+  using SituationalTree::SituationalTree;
+
+  [[nodiscard]] auto conditionsFulfilled() const -> bool override {
+    return _buyingNeeded && _state.round().stage() == Round::Stage::START;
+  }
+
+  auto checkConditionInfluencers() -> void override {
+    if (_state.round().stage() == Round::Stage::OVER) {
+      _buyingNeeded = true;
+    }
+  }
+
+  auto act() -> std::unique_ptr<Event> override {
+    std::vector<BuyEvent::Item> itemsToBuy;
+    if (_state.player().armor() == 0) {
+      if (!_state.player().hasHelmet()) {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR_HELMET);
+      } else {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR);
+      }
+    } else {
+      if (_state.player().money() > 4000 || _state.player().armor() < 30) {
+        itemsToBuy.push_back(BuyEvent::Item::KEVLAR);
+      }
+    }
+    if (_state.inventory().weapons()[0].weapon == NO_WEAPON && _state.player().money() > 2700) {
+      itemsToBuy.push_back(BuyEvent::Item::AK_47);
+    }
+
+    _buyingNeeded = false;
+
+    log("Evaluated buy tree", OpState::INFO);
+    return std::make_unique<BuyEvent>(itemsToBuy);
+  }
+
+private:
+  bool _buyingNeeded {true};
+};
+
 
 } // namespace gabe

@@ -581,4 +581,48 @@ private:
   static constexpr auto sleepTime = 0;
   bool _crouched {false};
 };
+
+class BuyEvent : public Event {
+public:
+  enum class Item { KEVLAR, KEVLAR_HELMET, AK_47 };
+  BuyEvent() = default;
+  BuyEvent(BuyEvent const&) = default;
+  BuyEvent(BuyEvent&&) noexcept = default;
+  BuyEvent(std::vector<Item> const& items) : _itemsToBuy {items} {}
+
+  auto solve(Display* display, Window window) -> void override {
+    auto toString = [](Item item) -> std::string {
+      switch (item) {
+        using enum Item;
+        case KEVLAR: {
+          return "KEVLAR";
+        }
+        case KEVLAR_HELMET: {
+          return "KEVLAR_HELMET";
+        }
+        case AK_47: {
+          return "AK_47";
+        }
+      }
+    };
+
+    KeyPressEvent('b', sleep).solve(display, window);
+    for (auto const& item : _itemsToBuy) {
+      log("Decided to buy" + toString(item), OpState::INFO);
+      for (auto const& key : menuCombination.at(item)) {
+        KeyPressEvent(key, sleep).solve(display, window);
+        usleep(sleep);
+      }
+      usleep(sleep);
+    }
+  }
+
+private:
+  std::vector<Item> _itemsToBuy;
+  static const std::map<Item, std::string> menuCombination;
+  static constexpr auto sleep = 2500;
+};
+
+std::map<BuyEvent::Item, std::string> const BuyEvent::menuCombination = {
+    {BuyEvent::Item::KEVLAR, "11"}, {BuyEvent::Item::KEVLAR_HELMET, "12"}, {BuyEvent::Item::AK_47, "42"}};
 } // namespace gabe

@@ -61,7 +61,7 @@ private:
     buildAimingTree();
     buildMovementTree();
     buildWeaponsChoosingTree();
-    buildSituationaltrees();
+    buildSituationalTrees();
   }
 
 #ifndef NDEBUG
@@ -123,7 +123,10 @@ private:
 
   auto buildWeaponsChoosingTree() -> void { _trees.push_back(std::make_unique<WeaponChoosingTree>(_state)); }
 
-  auto buildSituationaltrees() -> void { _trees.push_back(std::make_unique<BombPlantingTree>(_state)); }
+  auto buildSituationalTrees() -> void {
+    _trees.push_back(std::make_unique<BombPlantingTree>(_state));
+    _trees.push_back(std::make_unique<BuyingTree>(_state));
+  }
 
   Synchronizer _synchronizer {};
   WindowController _windowController;
