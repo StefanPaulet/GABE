@@ -615,6 +615,7 @@ public:
       }
       usleep(sleep);
     }
+    KeyPressEvent(27, sleep).solve(display, window);
   }
 
 private:

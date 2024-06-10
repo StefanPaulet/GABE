@@ -223,7 +223,7 @@ private:
   Synchronizer& _synchronizer;
 };
 
-class DestinationChoosingTree : public EnemyDependentTree<3> {
+class DestinationChoosingTree : public EnemyDependentTree<10> {
 public:
   using EnemyDependentTree::EnemyDependentTree;
 
@@ -265,7 +265,7 @@ public:
   }
 };
 
-class AimingTree : public EnemyDependentTree<5> {
+class AimingTree : public EnemyDependentTree<10> {
 public:
   using EnemyDependentTree::EnemyDependentTree;
 };
@@ -336,7 +336,7 @@ public:
   }
 };
 
-class MovementTree : public EnemyDependentTree<3> {
+class MovementTree : public EnemyDependentTree<10> {
 public:
   using EnemyDependentTree::EnemyDependentTree;
 
@@ -373,7 +373,13 @@ public:
 
   auto act() -> std::unique_ptr<Event> override {
     char keyToPress {};
+
+    if (_state.inventory().currentWeaponState() == Inventory::ActiveWeaponState::RELOADING) {
+      return std::make_unique<EmptyEvent>();
+    }
+
     if (_state.enemy != utils::sentinelBox) {
+      _iterationsHeld = persistanceCount;
       if (_state.inventory().weapons()[0].weapon != NO_WEAPON
           && (_state.inventory().weapons()[0].ammo >= 5 || _state.inventory().weapons()[1].ammo < 5)) {
         keyToPress = '1';
@@ -381,6 +387,16 @@ public:
         keyToPress = '2';
       }
     } else {
+      if (_state.inventory().weapons()[0].weapon != NO_WEAPON) {
+        if (_state.inventory().weapons()[0].ammo == 0) {
+          return std::make_unique<KeyPressEvent>('1', 500);
+        }
+      } else {
+        if (_state.inventory().weapons()[1].ammo == 0) {
+          return std::make_unique<KeyPressEvent>('2', 500);
+        }
+      }
+
       if (_iterationsHeld != 0) {
         --_iterationsHeld;
         return std::make_unique<EmptyEvent>();
@@ -393,7 +409,6 @@ public:
           && _state.round().bombState() != Round::BombState::PLANTED) {
         keyToPress = '5';
       } else {
-        _iterationsHeld = persistanceCount;
         keyToPress = '3';
       }
     }
@@ -401,7 +416,7 @@ public:
   }
 
 private:
-  static constexpr auto persistanceCount = 5;
+  static constexpr auto persistanceCount = 10;
   int _iterationsHeld {};
 };
 
@@ -469,7 +484,6 @@ public:
 
     _buyingNeeded = false;
 
-    log("Evaluated buy tree", OpState::INFO);
     return std::make_unique<BuyEvent>(itemsToBuy);
   }
 

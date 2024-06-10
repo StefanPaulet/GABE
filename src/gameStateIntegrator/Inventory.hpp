@@ -47,6 +47,9 @@ public:
     using G = MapEntry<StringView, Weapon>;
     static auto const weaponMatcher = cds::mapOf(G {"weapon_glock", GLOCK}, G {"weapon_ak47", AK_47});
 
+    _weapons[0].weapon = NO_WEAPON;
+    _weapons[1].weapon = NO_WEAPON;
+
     try {
       for (auto const& newWeapon : jsonObject.getJson("player").getJson("weapons")) {
         auto weaponType = typeMatcher[newWeapon.value().getJson().getString("type")];
